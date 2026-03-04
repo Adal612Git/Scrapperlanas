@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Software Architecture Atlas</title>
+    <style>
+        :root {
+            --bg: #05050a;
+            --grid: rgba(255, 255, 255, 0.04);
+            --neon-blue: #00d9ff;
+            --neon-green: #00ff9d;
+            --neon-purple: #9d00ff;
+            --neon-pink: #ff00c8;
+            --neon-orange: #ff7300;
+            --card-bg: rgba(15, 15, 30, 0.9);
+            --card-border: rgba(0, 217, 255, 0.35);
+            --text-main: #ffffff;
+            --text-soft: #b6c0ff;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: var(--bg);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--text-main);
+        }
+
+        #viewport {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            cursor: grab;
+        }
+
+        #viewport.grabbing {
+            cursor: grabbing;
+        }
+
+        #world {
+            position: absolute;
+            width: 5000px;
+            height: 5000px;
+            background-image: 
+                linear-gradient(var(--grid) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+            background-size: 50px 50px;
+            transform-origin: 0 0;
+        }
+
+        #connections {
+            position: absolute;
+            width: 5000px;
+            height: 5000px;
+            pointer-events: none;
+        }
+
+        .card {
+            position: absolute;
+            width: 280px;
+            background: var(--card-bg);
+            border: 2px solid var(--card-border);
+            border-radius: 14px;
+            padding: 16px;
+            box-shadow: 
+                0 0 25px rgba(0, 217, 255, 0.15),
+                inset 0 0 20px rgba(0, 217, 255, 0.05);
+            backdrop-filter: blur(10px);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 
+                0 0 35px rgba(0, 217, 255, 0.25),
+                inset 0 0 25px rgba(0, 217, 255, 0.1);
+        }
+
+        .card h3 {
+            margin: 0 0 12px;
+            font-size: 18px;
+            color: var(--neon-blue);
+            font-weight: 600;
+        }
+
+        .card .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            border: 1px solid;
+        }
+
+        .tag.ingest {
+            color: var(--neon-green);
+            border-color: var(--neon-green);
+            background: rgba(0, 255, 157, 0.1);
+        }
+
+        .tag.process {
+            color: var(--neon-blue);
+            border-color: var(--neon-blue);
+            background: rgba(0, 217, 255, 0.1);
+        }
+
+        .tag.storage {
+            color: var(--neon-purple);
+            border-color: var(--neon-purple);
+            background: rgba(157, 0, 255, 0.1);
+        }
+
+        .tag.output {
+            color: var(--neon-orange);
+            border-color: var(--neon-orange);
+            background: rgba(255, 115, 0, 0.1);
+        }
+
+        .card p {
+            font-size: 13px;
+            color: var(--text-soft);
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        .line {
+            stroke: var(--neon-blue);
+            stroke-width: 2;
+            opacity: 0.6;
+            filter: drop-shadow(0 0 3px rgba(0, 217, 255, 0.5));
+        }
+
+        .controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(15, 15, 30, 0.8);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            padding: 12px;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+
+        .controls button {
+            background: rgba(0, 217, 255, 0.1);
+            border: 1px solid var(--neon-blue);
+            color: var(--neon-blue);
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-right: 8px;
+            transition: all 0.2s;
+        }
+
+        .controls button:hover {
+            background: rgba(0, 217, 255, 0.2);
+        }
+
+        .zoom-info {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(15, 15, 30, 0.8);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 12px;
+            color: var(--neon-blue);
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+    </style>
+</head>
+<body>
+    <div id="viewport">
+        <svg id="connections"></svg>
+        <div id="world"></div>
+    </div>
+    
+    <div class="controls">
+        <button onclick="resetView()">Reset View</button>
+        <button onclick="zoomIn()">Zoom +</button>
+        <button onclick="zoomOut()">Zoom -</button>
+    </div>
+    
+    <div class="zoom-info" id="zoomInfo">Zoom: 100%</div>
+
+    <script>
+        // Configuración del mapa
+        const viewport = document.getElementById('viewport');
+        const world = document.getElementById('world');
+        const svg = document.getElementById('connections');
+        const zoomInfo = document.getElementById('zoomInfo');
+        
+        let scale = 1;
+        let offsetX = window.innerWidth / 2 - 1000;
+        let offsetY = window.innerHeight / 2 - 300;
+        let isDragging = false;
+        let startX, startY;
+        
+        // Definición de nodos del sistema
+        const nodes = [
+            {
+                id: "api-ingest",
+                x: 300,
+                y: 200,
+                title: "API Ingestor",
+                tags: ["ingest"],
+                desc: "Conectores a APIs externas: Reddit, Twitter, News APIs. Autenticación OAuth, rate limiting."
+            },
+            {
+                id: "scrapers",
+                x: 300,
+                y: 400,
+                title: "Web Scrapers",
+                tags: ["ingest"],
+                desc: "Crawlers especializados para fuentes sin API. Rotación de proxies, headers anti-bot."
+            },
+            {
+                id: "queue",
+                x: 800,
+                y: 300,
+                title: "Message Queue",
+                tags: ["process"],
+                desc: "RabbitMQ/Kafka. Colas prioritarias, dead-letter queues, garantía de entrega."
+            },
+            {
+                id: "filter-engine",
+                x: 1300,
+                y: 200,
+                title: "Filter Engine",
+                tags: ["process"],
+                desc: "Filtros heurísticos por keywords, regex patterns, scoring básico."
+            },
+            {
+                id: "ai-processor",
+                x: 1300,
+                y: 400,
+                title: "AI Processor",
+                tags: ["process"],
+                desc: "LLMs para análisis semántico. Extracción de entidades, sentimiento, relevancia."
+            },
+            {
+                id: "vector-db",
+                x: 1800,
+                y: 200,
+                title: "Vector DB",
+                tags: ["storage"],
+                desc: "Pinecone/Weaviate. Embeddings semánticos, búsqueda por similitud."
+            },
+            {
+                id: "sql-db",
+                x: 1800,
+                y: 400,
+                title: "SQL Database",
+                tags: ["storage"],
+                desc: "PostgreSQL con TimescaleDB. Datos estructurados, relaciones, historial."
+            },
+            {
+                id: "cache-layer",
+                x: 1800,
+                y: 600,
+                title: "Cache Layer",
+                tags: ["storage"],
+                desc: "Redis Cluster. Session storage, resultados frecuentes, counters."
+            },
+            {
+                id: "alert-system",
+                x: 2300,
+                y: 300,
+                title: "Alert System",
+                tags: ["output"],
+                desc: "Notificaciones en tiempo real: Telegram, Discord, Email, Webhooks."
+            },
+            {
+                id: "dashboard",
+                x: 2300,
+                y: 500,
+                title: "Dashboard UI",
+                tags: ["output"],
+                desc: "React/Vue frontend. Gráficas en tiempo real, filtros interactivos."
+            }
+        ];
+        
+        // Definición de conexiones entre nodos
+        const edges = [
+            ["api-ingest", "queue"],
+            ["scrapers", "queue"],
+            ["queue", "filter-engine"],
+            ["queue", "ai-processor"],
+            ["filter-engine", "sql-db"],
+            ["ai-processor", "vector-db"],
+            ["ai-processor", "sql-db"],
+            ["vector-db", "alert-system"],
+            ["sql-db", "alert-system"],
+            ["sql-db", "dashboard"],
+            ["cache-layer", "dashboard"]
+        ];
+        
+        // Inicialización del mapa
+        function initMap() {
+            const nodeMap = {};
+            
+            // Crear tarjetas para cada nodo
+            nodes.forEach(node => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.style.left = node.x + 'px';
+                card.style.top = node.y + 'px';
+                card.dataset.id = node.id;
+                
+                card.innerHTML = `
+                    <h3>${node.title}</h3>
+                    <div class="tags">
+                        ${node.tags.map(tag => `<span class="tag ${tag}">${tag}</span>`).join('')}
+                    </div>
+                    <p>${node.desc}</p>
+                `;
+                
+                world.appendChild(card);
+                nodeMap[node.id] = { element: card, x: node.x, y: node.y };
+            });
+            
+            // Crear líneas de conexión
+            edges.forEach(([sourceId, targetId]) => {
+                const source = nodes.find(n => n.id === sourceId);
+                const target = nodes.find(n => n.id === targetId);
+                
+                if (source && target) {
+                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    line.classList.add('line');
+                    line.setAttribute('x1', source.x + 140); // Centro de la tarjeta
+                    line.setAttribute('y1', source.y + 60);
+                    line.setAttribute('x2', target.x + 140);
+                    line.setAttribute('y2', target.y + 60);
+                    line.setAttribute('marker-end', 'url(#arrowhead)');
+                    
+                    svg.appendChild(line);
+                }
+            });
+            
+            // Crear marcador de flecha
+            const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+            const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+            marker.setAttribute('id', 'arrowhead');
+            marker.setAttribute('markerWidth', '10');
+            marker.setAttribute('markerHeight', '7');
+            marker.setAttribute('refX', '9');
+            marker.setAttribute('refY', '3.5');
+            marker.setAttribute('orient', 'auto');
+            
+            const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+            polygon.setAttribute('points', '0 0, 10 3.5, 0 7');
+            polygon.setAttribute('fill', 'var(--neon-blue)');
+            
+            marker.appendChild(polygon);
+            defs.appendChild(marker);
+            svg.appendChild(defs);
+            
+            updateTransform();
+        }
+        
+        // Sistema de zoom y drag
+        viewport.addEventListener('wheel', e => {
+            e.preventDefault();
+            
+            const zoomIntensity = 0.001;
+            const wheelDelta = e.deltaY;
+            const zoomFactor = Math.exp(-wheelDelta * zoomIntensity);
+            
+            // Calcular zoom relativo al cursor
+            const mouseX = e.clientX;
+            const mouseY = e.clientY;
+            
+            const worldX = (mouseX - offsetX) / scale;
+            const worldY = (mouseY - offsetY) / scale;
+            
+            // Aplicar zoom
+            scale = Math.min(2.5, Math.max(0.3, scale * zoomFactor));
+            
+            // Ajustar offset para mantener posición del cursor
+            offsetX = mouseX - worldX * scale;
+            offsetY = mouseY - worldY * scale;
+            
+            updateTransform();
+            updateZoomInfo();
+        });
+        
+        viewport.addEventListener('mousedown', e => {
+            if (e.button === 0) { // Solo botón izquierdo
+                isDragging = true;
+                viewport.classList.add('grabbing');
+                startX = e.clientX - offsetX;
+                startY = e.clientY - offsetY;
+            }
+        });
+        
+        window.addEventListener('mousemove', e => {
+            if (!isDragging) return;
+            
+            offsetX = e.clientX - startX;
+            offsetY = e.clientY - startY;
+            
+            updateTransform();
+        });
+        
+        window.addEventListener('mouseup', () => {
+            isDragging = false;
+            viewport.classList.remove('grabbing');
+        });
+        
+        // Funciones de utilidad
+        function updateTransform() {
+            world.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
+            svg.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
+        }
+        
+        function updateZoomInfo() {
+            zoomInfo.textContent = `Zoom: ${Math.round(scale * 100)}%`;
+        }
+        
+        function resetView() {
+            scale = 1;
+            offsetX = window.innerWidth / 2 - 1000;
+            offsetY = window.innerHeight / 2 - 300;
+            updateTransform();
+            updateZoomInfo();
+        }
+        
+        function zoomIn() {
+            scale = Math.min(2.5, scale * 1.2);
+            updateTransform();
+            updateZoomInfo();
+        }
+        
+        function zoomOut() {
+            scale = Math.max(0.3, scale / 1.2);
+            updateTransform();
+            updateZoomInfo();
+        }
+        
+        // Inicializar
+        initMap();
+        updateZoomInfo();
+        
+        // Ajustar al redimensionar
+        window.addEventListener('resize', () => {
+            if (scale === 1) {
+                offsetX = window.innerWidth / 2 - 1000;
+                offsetY = window.innerHeight / 2 - 300;
+                updateTransform();
+            }
+        });
+    </script>
+</body>
+</html>
