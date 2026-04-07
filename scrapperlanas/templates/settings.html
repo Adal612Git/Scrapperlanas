@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+{% block title %}Configuracion | Scrapperlanas{% endblock %}
+{% block page_kicker %}Control{% endblock %}
+{% block page_title %}Ajustes del orquestador{% endblock %}
+{% block page_description %}Centro de control para preferencias del operador, memoria de trabajo y politicas de ingesta con la misma linea visual del prototipo oficial.{% endblock %}
+{% block page_status %}
+  <span class="rounded-full border border-blue-500/30 bg-blue-500/15 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-blue-200">Control plane</span>
+  <span class="rounded-full border border-slate-700 bg-slate-900 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-slate-300">{{ policies|length }} fuentes</span>
+{% endblock %}
+{% block page_actions %}
+  <a href="{{ url_for('main.dashboard') }}" class="inline-flex items-center gap-2 rounded-2xl border border-slate-700 bg-slate-900 px-4 py-2.5 text-sm font-bold text-slate-200 hover:border-slate-600 hover:bg-slate-800">
+    <i class="fa-solid fa-arrow-left"></i>
+    Volver al dashboard
+  </a>
+{% endblock %}
+{% block content %}
+  <section class="rounded-[28px] border border-slate-800 bg-slate-900/90 p-6 shadow-xl shadow-black/20">
+    <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <div>
+        <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Modo operativo</p>
+        <h2 class="mt-2 text-2xl font-black text-white">{{ automation_summary.headline }}</h2>
+        <p class="mt-3 text-sm leading-6 text-slate-400">{{ automation_summary.summary }}</p>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-3">
+        <div class="rounded-2xl border border-slate-800 bg-slate-950/70 px-4 py-3">
+          <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Modo</p>
+          <p class="mt-2 text-sm font-bold text-white">{{ automation_summary.mode_label }}</p>
+        </div>
+        <div class="rounded-2xl border border-slate-800 bg-slate-950/70 px-4 py-3">
+          <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Fuentes activas</p>
+          <p class="mt-2 text-sm font-bold text-white">{{ automation_summary.enabled_count }}</p>
+        </div>
+        <div class="rounded-2xl border border-slate-800 bg-slate-950/70 px-4 py-3">
+          <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Siguiente ventana</p>
+          <p class="mt-2 text-sm font-bold text-white">{{ automation_summary.next_due_label }}</p>
+        </div>
+      </div>
+    </div>
+    <div class="mt-5 grid gap-4 md:grid-cols-3">
+      <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+        <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Runs 24h</p>
+        <p class="mt-2 text-2xl font-black text-white">{{ automation_summary.stability.total_runs }}</p>
+        <p class="mt-2 text-sm text-slate-400">{{ automation_summary.stability.successful_runs }} ok / {{ automation_summary.stability.failed_runs }} error.</p>
+      </div>
+      <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+        <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Heartbeat</p>
+        <p class="mt-2 text-sm font-semibold text-white">{{ automation_summary.runtime.last_loop_finished_at or "sin loops" }}</p>
+        <p class="mt-2 text-xs text-slate-500">{{ automation_summary.runtime.heartbeat_path }}</p>
+      </div>
+      <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+        <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Log activo</p>
+        <p class="mt-2 text-xs font-semibold text-white break-all">{{ automation_summary.runtime.log_path }}</p>
+        <p class="mt-2 text-sm text-slate-400">{% if automation_summary.runtime.last_error %}Error: {{ automation_summary.runtime.last_error }}{% else %}Sin error activo.{% endif %}</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="grid gap-4 xl:grid-cols-2">
+    <article class="rounded-[28px] border border-slate-800 bg-slate-900/90 p-6 shadow-xl shadow-black/20">
+      <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Perfil operativo</p>
+      <h2 class="mt-2 text-2xl font-black text-white">Preferencias de enfoque</h2>
+      <p class="mt-2 text-sm leading-6 text-slate-400">Estos criterios alimentan filtros, scoring y la decision asistida del pipeline.</p>
+
+      <form method="post" class="mt-6 grid gap-4">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="update_profile">
+        <label class="block">
+          <span class="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Keywords preferidas</span>
+          <textarea name="keywords" rows="3" placeholder="rust, python, scraping, n8n" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">{{ profile.keywords }}</textarea>
+        </label>
+        <label class="block">
+          <span class="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Sectores de interes</span>
+          <input type="text" name="sectors" value="{{ profile.sectors }}" placeholder="Tecnologia, SaaS B2B, FinTech" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
+        </label>
+        <label class="block">
+          <span class="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Pago minimo</span>
+          <input type="number" name="min_budget" min="0" step="100" value="{{ profile.min_budget }}" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
+        </label>
+        <label class="block">
+          <span class="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Fuentes preferidas</span>
+          <input type="text" name="preferred_sources" value="{{ profile.preferred_sources }}" placeholder="Workana Public Projects, Alertas por Correo, Reddit Public JSON" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
+        </label>
+        <button type="submit" class="inline-flex items-center justify-center gap-2 rounded-2xl border border-blue-500/30 bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-500">
+          <i class="fa-solid fa-floppy-disk"></i>
+          Guardar preferencias
+        </button>
+      </form>
+    </article>
+
+    <article class="rounded-[28px] border border-slate-800 bg-slate-900/90 p-6 shadow-xl shadow-black/20">
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Memoria de trabajo</p>
+          <h2 class="mt-2 text-2xl font-black text-white">Vistas guardadas</h2>
+          <p class="mt-2 text-sm leading-6 text-slate-400">Atajos persistentes hacia los filtros que mas usas en operacion.</p>
+        </div>
+        <span class="rounded-full border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-slate-300">{{ saved_views|length }}</span>
+      </div>
+
+      <div class="mt-6 space-y-3">
+        {% for view in saved_views %}
+          <div class="flex flex-col gap-3 rounded-2xl border border-slate-800 bg-slate-950/70 p-4 lg:flex-row lg:items-center lg:justify-between">
+            <div class="min-w-0">
+              <a href="{{ url_for('main.dashboard') }}?{{ view.query_string }}" class="text-sm font-bold text-white transition hover:text-blue-300">{{ view.name }}</a>
+              <p class="mt-1 truncate text-xs font-mono text-slate-500">{{ view.query_string or "Sin parametros" }}</p>
+            </div>
+            <form action="{{ url_for('main.delete_saved_view', view_id=view.id) }}" method="post">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="inline-flex items-center justify-center gap-2 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-sm font-bold text-rose-200 hover:bg-rose-500/15">
+                <i class="fa-solid fa-trash-can"></i>
+                Eliminar
+              </button>
+            </form>
+          </div>
+        {% else %}
+          <div class="rounded-2xl border border-dashed border-slate-700 bg-slate-950/40 p-5 text-sm text-slate-500">No hay vistas guardadas.</div>
+        {% endfor %}
+      </div>
+    </article>
+  </section>
+
+  <section class="mt-6 rounded-[28px] border border-slate-800 bg-slate-900/90 p-6 shadow-xl shadow-black/20">
+    <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <div>
+        <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">n8n</p>
+        <h2 class="mt-2 text-2xl font-black text-white">Orquestador ya empaquetado</h2>
+        <p class="mt-2 text-sm leading-6 text-slate-400">Definimos `n8n` como control plane operativo: un workflow programa la ingesta due-only y otro deja un webhook listo para importar oportunidades desde correo, forms o integraciones externas.</p>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <span class="rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] {% if n8n_summary.enabled %}border border-emerald-500/30 bg-emerald-500/15 text-emerald-200{% else %}border border-slate-700 bg-slate-950 text-slate-300{% endif %}">
+          {% if n8n_summary.enabled %}modo n8n{% else %}modo distinto{% endif %}
+        </span>
+        <span class="rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] {% if n8n_summary.cron_secret_configured %}border border-blue-500/30 bg-blue-500/15 text-blue-200{% else %}border border-rose-500/30 bg-rose-500/15 text-rose-200{% endif %}">
+          {% if n8n_summary.cron_secret_configured %}cron secret listo{% else %}falta cron secret{% endif %}
+        </span>
+      </div>
+    </div>
+
+    <div class="mt-6 grid gap-4 xl:grid-cols-3">
+      <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+        <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Editor URL</p>
+        <p class="mt-2 text-sm font-semibold text-white break-all">{{ n8n_summary.public_url or "sin definir" }}</p>
+      </div>
+      <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+        <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Base app</p>
+        <p class="mt-2 text-sm font-semibold text-white break-all">{{ n8n_summary.base_url or "sin definir" }}</p>
+      </div>
+      <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+        <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Cadencia scheduler</p>
+        <p class="mt-2 text-sm font-semibold text-white">cada {{ n8n_summary.scheduler_interval_minutes }} min</p>
+      </div>
+    </div>
+
+    <div class="mt-6 grid gap-4 xl:grid-cols-2">
+      <article class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+        <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Workflows incluidos</p>
+        <div class="mt-4 space-y-3">
+          {% for workflow in n8n_summary.workflows %}
+            <div class="rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3">
+              <p class="text-sm font-bold text-white">{{ workflow.name }}</p>
+              <p class="mt-1 text-xs font-mono text-slate-500">automation/n8n/workflows/{{ workflow.filename }}</p>
+              <p class="mt-2 text-sm leading-6 text-slate-400">{{ workflow.purpose }}</p>
+            </div>
+          {% endfor %}
+        </div>
+      </article>
+
+      <article class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+        <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Webhook de importacion</p>
+        <p class="mt-2 text-sm leading-6 text-slate-400">Cuando `n8n` esta arriba, cualquier sistema puede pegarle a este webhook y Scrapperlanas hace scoring, IA y deduplicacion con la misma pipeline interna.</p>
+        <div class="mt-4 rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3">
+          <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">URL</p>
+          <p class="mt-2 break-all text-sm font-semibold text-white">{{ n8n_summary.import_webhook_url or "sin definir" }}</p>
+        </div>
+        <div class="mt-4 rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3">
+          <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Path</p>
+          <p class="mt-2 text-sm font-mono text-slate-300">{{ n8n_summary.import_webhook_path or "sin definir" }}</p>
+        </div>
+        <p class="mt-4 text-xs leading-6 text-slate-500">Si activas `N8N_BOOTSTRAP_FORCE=true`, el contenedor reimporta los workflows empaquetados en el siguiente arranque.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="mt-6 grid gap-4 xl:grid-cols-2">
+    {% for policy in policies %}
+      <article class="rounded-[28px] border border-slate-800 bg-slate-900/90 p-6 shadow-xl shadow-black/20">
+        <div class="flex flex-col gap-4 border-b border-slate-800 pb-4 md:flex-row md:items-start md:justify-between">
+          <div>
+            <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Fuente</p>
+            <h2 class="mt-2 text-2xl font-black text-white">{{ policy.display_name }}</h2>
+            <p class="mt-2 text-sm text-slate-400">{{ policy.method }} / ultimo run: {{ policy.last_run_display }} / siguiente: {{ policy.next_run_display }}</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <span class="rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] {% if policy.risk_level == 'low' %}border border-emerald-500/30 bg-emerald-500/15 text-emerald-200{% elif policy.risk_level == 'medium' %}border border-amber-500/30 bg-amber-500/15 text-amber-200{% else %}border border-red-500/30 bg-red-500/15 text-red-200{% endif %}">{{ policy.risk_level }}</span>
+            <span class="rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] {% if policy.is_due %}border border-emerald-500/30 bg-emerald-500/15 text-emerald-200{% else %}border border-slate-700 bg-slate-950 text-slate-300{% endif %}">{% if policy.is_due %}lista{% else %}en cola{% endif %}</span>
+          </div>
+        </div>
+
+        <form method="post" class="mt-6 grid gap-4">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="action" value="update_policy">
+          <input type="hidden" name="policy_id" value="{{ policy.id }}">
+
+          <label class="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-950/70 px-4 py-3 text-sm font-semibold text-white">
+            <input type="checkbox" name="enabled" class="h-4 w-4 rounded border-slate-700 bg-slate-900 text-blue-500 focus:ring-blue-500" {% if policy.enabled %}checked{% endif %}>
+            Fuente habilitada
+          </label>
+
+          <label class="block">
+            <span class="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Frecuencia maxima (minutos)</span>
+            <input type="number" name="frequency_minutes" min="1" value="{{ policy.frequency_minutes }}" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
+            <span class="mt-2 block text-xs text-slate-500">El scheduler automatico respeta esta frecuencia. El boton del dashboard ignora esta espera y fuerza una corrida inmediata.</span>
+          </label>
+
+          <label class="block">
+            <span class="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Nivel de riesgo</span>
+            <select name="risk_level" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
+              {% for risk in ["low", "medium", "high"] %}
+                <option value="{{ risk }}" {% if policy.risk_level == risk %}selected{% endif %}>{{ risk }}</option>
+              {% endfor %}
+            </select>
+          </label>
+
+          <label class="block">
+            <span class="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Configuracion JSON</span>
+            <textarea name="config_json" rows="7" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 font-mono text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">{{ policy.config_pretty }}</textarea>
+            <span class="mt-2 block text-xs text-slate-500">Soporta filtros finos como <code>include_terms</code>, <code>exclude_terms</code>, <code>remote_only</code>, <code>require_budget</code>, <code>max_items</code>, <code>min_score</code> y <code>max_age_days</code>.</span>
+          </label>
+
+          <label class="block">
+            <span class="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Notas</span>
+            <textarea name="notes" rows="3" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">{{ policy.notes }}</textarea>
+          </label>
+
+          <button type="submit" class="inline-flex items-center justify-center gap-2 rounded-2xl border border-blue-500/30 bg-blue-500/15 px-4 py-3 text-sm font-bold text-blue-200 hover:bg-blue-500/20">
+            <i class="fa-solid fa-arrows-rotate"></i>
+            Actualizar politica
+          </button>
+        </form>
+      </article>
+    {% endfor %}
+  </section>
+{% endblock %}

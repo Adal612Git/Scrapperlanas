@@ -1,0 +1,98 @@
+{
+  "name": "Scrapperlanas Import Webhook",
+  "active": true,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "__N8N_IMPORT_WEBHOOK_PATH__",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "7df0508c-530f-4df6-b31c-94f8a6515ef8",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        220,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const incoming = $json.body ?? $json;\n\nif (Array.isArray(incoming)) {\n  return [{\n    json: {\n      source_key: 'email_alerts',\n      source_label: 'Alertas por Correo',\n      items: incoming,\n    },\n  }];\n}\n\nif (!incoming || typeof incoming !== 'object') {\n  throw new Error('Expected a JSON object or array body.');\n}\n\nif (Array.isArray(incoming.items)) {\n  return [{ json: incoming }];\n}\n\nif (incoming.items && typeof incoming.items === 'object') {\n  return [{ json: { ...incoming, items: [incoming.items] } }];\n}\n\nreturn [{\n  json: {\n    source_key: incoming.source_key ?? 'email_alerts',\n    source_label: incoming.source_label ?? 'Alertas por Correo',\n    items: [incoming],\n  },\n}];"
+      },
+      "id": "c4c6f195-8ce5-4f4f-86ca-972070c15e5d",
+      "name": "Normalize Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "__SCRAPPERLANAS_BASE_URL__/internal/import/opportunities",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer __CRON_SECRET__"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{$json}}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "e6650fdf-21af-42cf-a50a-a817d7b3b0d9",
+      "name": "Import Into Scrapperlanas",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        790,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Payload": {
+      "main": [
+        [
+          {
+            "node": "Import Into Scrapperlanas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "versionId": "2e9e9ac5-d1fd-4e18-b763-eb933fd2a6e6",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "scrapperlanas-import-webhook",
+  "tags": []
+}

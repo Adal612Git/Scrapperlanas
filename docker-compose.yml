@@ -1,0 +1,70 @@
+services:
+  web:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      APP_ENV: production
+      AUTOMATION_MODE: n8n
+      DATABASE_URL: postgresql://scrapperlanas:scrapperlanas@db:5432/scrapperlanas
+      SESSION_COOKIE_SECURE: "false"
+      TRUST_PROXY: "true"
+    ports:
+      - "5000:8000"
+
+  n8n:
+    image: n8nio/n8n:latest
+    depends_on:
+      web:
+        condition: service_started
+    env_file:
+      - .env
+    environment:
+      GENERIC_TIMEZONE: America/Mexico_City
+      TZ: America/Mexico_City
+      N8N_USER_FOLDER: /home/node/.n8n
+      N8N_HOST: ${N8N_HOST:-localhost}
+      N8N_PORT: 5678
+      N8N_PROTOCOL: ${N8N_PROTOCOL:-http}
+      N8N_EDITOR_BASE_URL: ${N8N_PUBLIC_URL:-http://localhost:5678}
+      WEBHOOK_URL: ${N8N_PUBLIC_URL:-http://localhost:5678}/
+      N8N_SECURE_COOKIE: "false"
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+      N8N_BASIC_AUTH_ACTIVE: "true"
+      N8N_BASIC_AUTH_USER: ${N8N_BASIC_AUTH_USER:-admin}
+      N8N_BASIC_AUTH_PASSWORD: ${N8N_BASIC_AUTH_PASSWORD:-change-me-n8n}
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:-change-me-n8n-encryption-key}
+      SCRAPPERLANAS_BASE_URL: ${SCRAPPERLANAS_BASE_URL:-http://web:8000}
+      N8N_IMPORT_WEBHOOK_PATH: ${N8N_IMPORT_WEBHOOK_PATH:-scrapperlanas/import}
+      N8N_SCHEDULER_INTERVAL_MINUTES: ${N8N_SCHEDULER_INTERVAL_MINUTES:-15}
+      N8N_BOOTSTRAP_FORCE: ${N8N_BOOTSTRAP_FORCE:-false}
+      CRON_SECRET: ${CRON_SECRET:-change-me-cron-secret}
+    entrypoint:
+      - /bin/sh
+      - /files/entrypoint.sh
+    ports:
+      - "5678:5678"
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./automation/n8n:/files:ro
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: scrapperlanas
+      POSTGRES_USER: scrapperlanas
+      POSTGRES_PASSWORD: scrapperlanas
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U scrapperlanas -d scrapperlanas"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
+  n8n_data:

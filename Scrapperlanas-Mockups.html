@@ -1,0 +1,1503 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scrapperlanas - Dashboard</title>
+    <!-- Usamos Tailwind CSS via CDN para el diseño rápido y moderno -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome para los íconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Configuración personalizada de la paleta de colores en Tailwind -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            200: '#bfdbfe',
+                            400: '#60a5fa',
+                            500: '#3b82f6',
+                            600: '#2563eb', /* Azul corporativo primario */
+                            700: '#1d4ed8',
+                        },
+                        success: {
+                            50: '#f0fdf4',
+                            500: '#22c55e', /* Verde solo para dinero y scores */
+                            600: '#16a34a',
+                            700: '#15803d',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Estilos base para scrollbars más limpias en modo claro (usando Zinc) */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #fafafa; }
+        ::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a1a1aa; }
+        
+        /* Animación suave para transiciones */
+        .panel-transition { transition: all 0.3s ease-in-out; }
+        
+        /* CORRECCIÓN: Ocultamiento y RETRACCIÓN FÍSICA dinámica del sidebar */
+        .sidebar-collapsed { width: 5rem !important; } /* Fuerza la reducción de ancho */
+        .sidebar-collapsed .sidebar-text { display: none !important; }
+        .sidebar-collapsed .nav-link { justify-content: center !important; padding-left: 0 !important; padding-right: 0 !important; }
+        .sidebar-collapsed .nav-icon { margin-right: 0 !important; }
+        .sidebar-collapsed .sidebar-logo-text { display: none !important; }
+        .sidebar-collapsed .sidebar-user-info { display: none !important; }
+    </style>
+</head>
+<body class="bg-zinc-50 text-zinc-600 font-sans">
+
+    <!-- ========================================== -->
+    <!-- VISTA DE AUTENTICACIÓN (LOGIN / REGISTRO)  -->
+    <!-- ========================================== -->
+    <div id="auth-view" class="h-screen w-full flex items-center justify-center bg-zinc-100 relative overflow-hidden">
+        <!-- Decoración de fondo -->
+        <div class="absolute top-[-10%] left-[-10%] w-96 h-96 bg-brand-200 rounded-full mix-blend-multiply filter blur-3xl opacity-50"></div>
+        <div class="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-success-200 rounded-full mix-blend-multiply filter blur-3xl opacity-50"></div>
+
+        <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md z-10 border border-zinc-200 relative">
+            <div class="text-center mb-8">
+                <i class="fa-solid fa-crosshairs text-brand-600 text-4xl mb-3"></i>
+                <h1 class="text-zinc-800 font-black text-2xl tracking-wider">Scrapper<span class="text-brand-600">lanas</span></h1>
+                <p id="auth-subtitle" class="text-sm text-zinc-500 mt-1">Inicia sesión en tu cuenta operativa</p>
+            </div>
+
+            <div class="space-y-5">
+                <!-- Campo Correo -->
+                <div>
+                    <label class="block text-sm font-bold text-zinc-700 mb-1">Correo Electrónico</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-envelope absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400"></i>
+                        <input type="email" value="contacto@usuario-negocio.com" class="w-full bg-zinc-50 border border-zinc-200 rounded-lg pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 text-zinc-700 transition-colors">
+                    </div>
+                </div>
+
+                <!-- Campo Contraseña -->
+                <div>
+                    <label class="block text-sm font-bold text-zinc-700 mb-1">Contraseña</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-lock absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400"></i>
+                        <input type="password" value="********" class="w-full bg-zinc-50 border border-zinc-200 rounded-lg pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 text-zinc-700 transition-colors">
+                    </div>
+                </div>
+
+                <!-- Opciones extra de Login -->
+                <div id="auth-options" class="flex items-center justify-between text-xs">
+                    <label class="flex items-center cursor-pointer text-zinc-600 font-medium">
+                        <input type="checkbox" checked class="mr-2 rounded text-brand-600 focus:ring-brand-500 w-3.5 h-3.5">
+                        Recordarme
+                    </label>
+                    <a href="#" class="text-brand-600 hover:text-brand-800 font-bold transition-colors">¿Olvidaste tu contraseña?</a>
+                </div>
+
+                <!-- Botón Principal -->
+                <button id="btn-auth-action" onclick="simularLogin(this)" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 rounded-lg shadow-md hover:shadow-lg shadow-brand-500/30 transition-all flex justify-center items-center mt-2">
+                    Iniciar Sesión
+                </button>
+            </div>
+
+            <!-- Toggle Login/Registro -->
+            <div class="mt-6 text-center text-sm text-zinc-500">
+                <span id="auth-toggle-text">¿No tienes cuenta?</span> 
+                <button onclick="toggleAuthMode()" id="btn-auth-toggle" class="text-brand-600 font-bold hover:underline transition-colors focus:outline-none">Regístrate aquí</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ========================================== -->
+    <!-- VISTA DEL APLICATIVO (DASHBOARD COMPLETO)  -->
+    <!-- ========================================== -->
+    <div id="app-view" class="hidden h-screen w-full flex overflow-hidden">
+        
+        <!-- SIDEBAR (Menú de Navegación Lateral - Ahora Colapsable) -->
+        <aside id="main-sidebar" class="w-64 bg-white border-r border-zinc-200 flex flex-col justify-between z-30 shadow-sm panel-transition shrink-0">
+            <div>
+                <!-- Logo / Título con Botón Hamburguesa -->
+                <div class="h-16 flex items-center justify-between px-4 border-b border-zinc-200 overflow-hidden">
+                    <div class="flex items-center">
+                        <i class="fa-solid fa-crosshairs text-brand-600 text-xl mr-3 nav-icon"></i>
+                        <h1 class="text-zinc-800 font-bold text-lg tracking-wider sidebar-logo-text whitespace-nowrap">Scrapper<span class="text-brand-600">lanas</span></h1>
+                    </div>
+                    <!-- Botón para colapsar/expandir -->
+                    <button onclick="toggleSidebar()" class="text-zinc-400 hover:text-brand-600 transition-colors p-2 rounded hover:bg-zinc-50 focus:outline-none">
+                        <i class="fa-solid fa-bars text-lg"></i>
+                    </button>
+                </div>
+
+                <!-- Menú de enlaces -->
+                <nav class="p-4 space-y-2 overflow-x-hidden">
+                    <p class="text-xs text-zinc-400 font-bold uppercase tracking-wider mb-2 ml-2 sidebar-text">Operación</p>
+                    <a id="nav-inbox" href="#" title="Dashboard (Inbox)" onclick="switchSection('inbox')" class="nav-link flex items-center px-4 py-3 bg-brand-50 text-brand-700 font-medium rounded-lg panel-transition">
+                        <i class="fa-solid fa-inbox w-6 nav-icon text-center shrink-0"></i>
+                        <span class="sidebar-text whitespace-nowrap ml-2">Dashboard (Inbox)</span>
+                    </a>
+                    <a id="nav-visualizacion" href="#" title="Visualización" onclick="switchSection('visualizacion')" class="nav-link flex items-center px-4 py-3 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 font-medium rounded-lg panel-transition">
+                        <i class="fa-solid fa-chart-pie w-6 nav-icon text-center shrink-0"></i>
+                        <span class="sidebar-text whitespace-nowrap ml-2">Visualización</span>
+                    </a>
+                    <a id="nav-historial" href="#" title="Historial / Pipeline" onclick="switchSection('historial')" class="nav-link flex items-center px-4 py-3 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 font-medium rounded-lg panel-transition">
+                        <i class="fa-solid fa-clock-rotate-left w-6 nav-icon text-center shrink-0"></i>
+                        <span class="sidebar-text whitespace-nowrap ml-2">Historial / Pipeline</span>
+                    </a>
+                    
+                    <p class="text-xs text-zinc-400 font-bold uppercase tracking-wider mb-2 ml-2 mt-6 sidebar-text">Configuración</p>
+                    <a id="nav-busquedas" href="#" title="Búsquedas Guardadas" onclick="switchSection('busquedas')" class="nav-link flex items-center px-4 py-3 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 font-medium rounded-lg panel-transition">
+                        <i class="fa-solid fa-filter w-6 nav-icon text-center shrink-0"></i>
+                        <span class="sidebar-text whitespace-nowrap ml-2">Búsquedas Guardadas</span>
+                    </a>
+                    <a id="nav-alertas" href="#" title="Alertas (Correos)" onclick="switchSection('alertas')" class="nav-link flex items-center px-4 py-3 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 font-medium rounded-lg panel-transition">
+                        <i class="fa-solid fa-bell w-6 nav-icon text-center shrink-0"></i>
+                        <span class="sidebar-text whitespace-nowrap ml-2">Alertas (Correos)</span>
+                    </a>
+                </nav>
+            </div>
+
+            <!-- Perfil Usuario Abajo -->
+            <div class="p-4 border-t border-zinc-200 bg-zinc-50/50 flex justify-center overflow-hidden">
+                <button onclick="openProfileModal()" class="flex items-center w-full hover:bg-zinc-100 p-2 rounded-lg transition-colors panel-transition text-left focus:outline-none">
+                    <div title="Usuario Negocio" class="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 font-bold shadow-inner border border-brand-200 shrink-0 nav-icon">
+                        UN
+                    </div>
+                    <div class="ml-3 sidebar-user-info whitespace-nowrap">
+                        <p class="text-zinc-800 font-bold text-sm">Usuario Negocio</p>
+                        <p class="text-zinc-500 text-xs">Plan Premium</p>
+                    </div>
+                </button>
+            </div>
+        </aside>
+
+        <!-- CONTENIDO CENTRAL PRINCIPAL -->
+        <main class="flex-1 flex flex-col h-full overflow-hidden">
+            
+            <!-- Top Bar / Filtros (Se mantiene fijo) -->
+            <header class="h-16 bg-white border-b border-zinc-200 flex items-center justify-between px-6 shadow-sm z-20 shrink-0">
+                <div class="flex items-center space-x-4">
+                    
+                    <!-- Buscador Interactivo -->
+                    <div class="relative">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400"></i>
+                        <input type="text" onkeyup="simularBusqueda(this)" placeholder="Buscar en oportunidades..." class="bg-zinc-50 border border-zinc-200 text-zinc-800 text-sm rounded-lg pl-10 pr-4 py-2 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 w-64 panel-transition">
+                    </div>
+                    
+                    <!-- Filtro Presupuesto Interactivo -->
+                    <div class="relative dropdown-container hidden md:block">
+                        <div onclick="toggleDropdown('drop-presupuesto')" class="flex items-center space-x-2 bg-white border border-zinc-200 rounded-lg px-3 py-2 cursor-pointer hover:border-zinc-300 hover:bg-zinc-50 panel-transition shadow-sm">
+                            <i class="fa-solid fa-sack-dollar text-zinc-500"></i>
+                            <span id="label-presupuesto" class="text-sm text-zinc-700 font-medium">Min: $1,000 USD</span>
+                            <i class="fa-solid fa-chevron-down text-xs text-zinc-400 ml-2"></i>
+                        </div>
+                        <div id="drop-presupuesto" class="dropdown-menu hidden absolute top-full left-0 mt-2 w-48 bg-white border border-zinc-200 rounded-lg shadow-xl z-50 py-1">
+                            <button onclick="seleccionarFiltro('presupuesto', 'Sin mínimo')" class="w-full text-left px-4 py-2 text-sm text-zinc-600 hover:bg-brand-50 hover:text-brand-700 transition-colors">Sin mínimo</button>
+                            <button onclick="seleccionarFiltro('presupuesto', 'Min: $500 USD')" class="w-full text-left px-4 py-2 text-sm text-zinc-600 hover:bg-brand-50 hover:text-brand-700 transition-colors">Min: $500 USD</button>
+                            <button onclick="seleccionarFiltro('presupuesto', 'Min: $1,000 USD')" class="w-full text-left px-4 py-2 text-sm text-zinc-600 hover:bg-brand-50 hover:text-brand-700 transition-colors font-bold">Min: $1,000 USD</button>
+                            <button onclick="seleccionarFiltro('presupuesto', 'Min: $3,000 USD')" class="w-full text-left px-4 py-2 text-sm text-zinc-600 hover:bg-brand-50 hover:text-brand-700 transition-colors">Min: $3,000 USD</button>
+                        </div>
+                    </div>
+
+                    <!-- Filtro Sector Interactivo -->
+                    <div class="relative dropdown-container hidden md:block">
+                        <div onclick="toggleDropdown('drop-sector')" class="flex items-center space-x-2 bg-white border border-zinc-200 rounded-lg px-3 py-2 cursor-pointer hover:border-zinc-300 hover:bg-zinc-50 panel-transition shadow-sm">
+                            <i class="fa-solid fa-briefcase text-zinc-500"></i>
+                            <span id="label-sector" class="text-sm text-zinc-700 font-medium">Tecnología</span>
+                            <i class="fa-solid fa-chevron-down text-xs text-zinc-400 ml-2"></i>
+                        </div>
+                        <div id="drop-sector" class="dropdown-menu hidden absolute top-full left-0 mt-2 w-40 bg-white border border-zinc-200 rounded-lg shadow-xl z-50 py-1">
+                            <button onclick="seleccionarFiltro('sector', 'Todos los Sectores')" class="w-full text-left px-4 py-2 text-sm text-zinc-600 hover:bg-brand-50 hover:text-brand-700 transition-colors">Todos los Sectores</button>
+                            <button onclick="seleccionarFiltro('sector', 'Tecnología')" class="w-full text-left px-4 py-2 text-sm text-zinc-600 hover:bg-brand-50 hover:text-brand-700 transition-colors font-bold">Tecnología</button>
+                            <button onclick="seleccionarFiltro('sector', 'Finanzas')" class="w-full text-left px-4 py-2 text-sm text-zinc-600 hover:bg-brand-50 hover:text-brand-700 transition-colors">Finanzas</button>
+                            <button onclick="seleccionarFiltro('sector', 'SaaS')" class="w-full text-left px-4 py-2 text-sm text-zinc-600 hover:bg-brand-50 hover:text-brand-700 transition-colors">SaaS</button>
+                        </div>
+                    </div>
+
+                    <!-- Botón Guardar Búsqueda -->
+                    <button onclick="simulateSaveFilters(this)" class="hidden xl:flex bg-brand-50 hover:bg-brand-100 text-brand-700 px-3 py-2 rounded-lg text-sm font-bold items-center panel-transition border border-brand-200 shadow-sm ml-2 w-40 justify-center">
+                        <i class="fa-solid fa-floppy-disk mr-2 text-brand-600"></i> Guardar Filtros
+                    </button>
+                </div>
+                
+                <!-- Botón Exportar abre Modal -->
+                <button onclick="openExportModal()" class="bg-white hover:bg-zinc-50 text-zinc-700 px-4 py-2 rounded-lg text-sm font-bold flex items-center panel-transition border border-zinc-300 shadow-sm">
+                    <i class="fa-solid fa-download mr-2 text-zinc-500"></i> <span class="hidden sm:inline">Exportar</span>
+                </button>
+            </header>
+
+            <!-- AREA DE CONTENIDO -->
+            <div id="main-content-area" class="flex-1 flex flex-col overflow-hidden panel-transition">
+                
+                <!-- SECCIÓN 1: INBOX -->
+                <div id="section-inbox" class="app-section flex-1 overflow-y-auto p-6 bg-zinc-50 block">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-black text-zinc-800 tracking-tight">Últimas Oportunidades</h2>
+                        <span id="counter-results" class="text-sm font-medium text-zinc-500 bg-zinc-200 px-3 py-1 rounded-full border border-zinc-300 shadow-sm">0 resultados (Score > 80)</span>
+                    </div>
+
+                    <!-- Contenedor Dinámico del Inbox -->
+                    <div id="inbox-list" class="space-y-4 max-w-5xl">
+                        <!-- Las tarjetas se inyectan aquí con JS -->
+                    </div>
+                </div>
+
+                <!-- SECCIÓN 2: VISUALIZACIÓN (GRÁFICAS MEJORADAS) -->
+                <div id="section-visualizacion" class="app-section flex-1 overflow-y-auto p-6 bg-zinc-50 hidden">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-black text-zinc-800 tracking-tight">Análisis Estratégico del Mercado</h2>
+                        <span class="text-sm font-bold text-zinc-500"><i class="fa-solid fa-calendar-alt mr-1"></i> Últimos 30 días</span>
+                    </div>
+                    
+                    <!-- KPIs -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <div class="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm flex items-center">
+                            <div class="w-12 h-12 rounded-full bg-brand-50 flex items-center justify-center text-brand-600 text-xl mr-4 border border-brand-100"><i class="fa-solid fa-satellite-dish"></i></div>
+                            <div>
+                                <p class="text-xs text-zinc-500 font-bold uppercase tracking-wider">Scraping Total</p>
+                                <p class="text-2xl font-black text-zinc-800">1,248 <span class="text-sm font-medium text-success-500 ml-1"><i class="fa-solid fa-arrow-trend-up"></i> 12%</span></p>
+                            </div>
+                        </div>
+                        <div class="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm flex items-center">
+                            <div class="w-12 h-12 rounded-full bg-success-50 flex items-center justify-center text-success-600 text-xl mr-4 border border-success-100"><i class="fa-solid fa-filter-circle-dollar"></i></div>
+                            <div>
+                                <p class="text-xs text-zinc-500 font-bold uppercase tracking-wider">Oportunidades Válidas</p>
+                                <p class="text-2xl font-black text-zinc-800">85 <span class="text-sm font-medium text-zinc-400 ml-1 font-normal">(Score > 80)</span></p>
+                            </div>
+                        </div>
+                        <div class="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm flex items-center relative overflow-hidden">
+                            <div class="absolute -right-4 -bottom-4 opacity-5 text-success-500"><i class="fa-solid fa-sack-dollar text-8xl"></i></div>
+                            <div class="w-12 h-12 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-700 text-xl mr-4 border border-zinc-200 z-10"><i class="fa-solid fa-money-bill-trend-up"></i></div>
+                            <div class="z-10">
+                                <p class="text-xs text-zinc-500 font-bold uppercase tracking-wider">Cashflow Potencial</p>
+                                <p class="text-2xl font-black text-success-600">$45.2k <span class="text-sm font-medium text-zinc-400 ml-1 font-normal">USD</span></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- Gráfica 1: CSS Area/Bar Chart -->
+                        <div class="bg-white border border-zinc-200 rounded-xl p-6 shadow-sm flex flex-col">
+                            <h3 class="text-lg font-bold text-zinc-800 mb-1">Evolución de Oportunidades</h3>
+                            <p class="text-xs text-zinc-500 mb-6">Matches validados vs Ruido descartado</p>
+                            
+                            <div class="flex-1 border-b border-l border-zinc-200 relative flex items-end justify-between px-4 pb-0 pt-8 gap-3 min-h-[200px]">
+                                <div class="absolute w-full border-t border-zinc-100 top-1/4 left-0 -z-10"></div>
+                                <div class="absolute w-full border-t border-zinc-100 top-2/4 left-0 -z-10"></div>
+                                <div class="absolute w-full border-t border-zinc-100 top-3/4 left-0 -z-10"></div>
+
+                                <div class="w-full h-[30%] bg-gradient-to-t from-brand-100 to-brand-400 rounded-t-md hover:opacity-80 transition-all cursor-pointer relative group border-t border-brand-500 shadow-sm">
+                                    <div class="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-zinc-800 text-white text-xs py-1 px-3 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 shadow-lg font-bold">45 Matches</div>
+                                    <div class="absolute -bottom-7 left-1/2 transform -translate-x-1/2 text-xs text-zinc-500 font-bold">Ene</div>
+                                </div>
+                                <div class="w-full h-[45%] bg-gradient-to-t from-brand-100 to-brand-400 rounded-t-md hover:opacity-80 transition-all cursor-pointer relative group border-t border-brand-500 shadow-sm">
+                                    <div class="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-zinc-800 text-white text-xs py-1 px-3 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 shadow-lg font-bold">68 Matches</div>
+                                    <div class="absolute -bottom-7 left-1/2 transform -translate-x-1/2 text-xs text-zinc-500 font-bold">Feb</div>
+                                </div>
+                                <div class="w-full h-[35%] bg-gradient-to-t from-brand-100 to-brand-400 rounded-t-md hover:opacity-80 transition-all cursor-pointer relative group border-t border-brand-500 shadow-sm">
+                                    <div class="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-zinc-800 text-white text-xs py-1 px-3 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 shadow-lg font-bold">52 Matches</div>
+                                    <div class="absolute -bottom-7 left-1/2 transform -translate-x-1/2 text-xs text-zinc-500 font-bold">Mar</div>
+                                </div>
+                                <div class="w-full h-[60%] bg-gradient-to-t from-brand-100 to-brand-400 rounded-t-md hover:opacity-80 transition-all cursor-pointer relative group border-t border-brand-500 shadow-sm">
+                                    <div class="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-zinc-800 text-white text-xs py-1 px-3 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 shadow-lg font-bold">85 Matches</div>
+                                    <div class="absolute -bottom-7 left-1/2 transform -translate-x-1/2 text-xs text-zinc-500 font-bold">Abr</div>
+                                </div>
+                                <div class="w-full h-[85%] bg-gradient-to-t from-brand-100 to-brand-500 rounded-t-md hover:opacity-80 transition-all cursor-pointer relative group border-t border-brand-600 shadow-sm shadow-brand-500/30">
+                                    <div class="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-zinc-800 text-white text-xs py-1 px-3 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 shadow-lg font-bold text-success-400">124 Matches</div>
+                                    <div class="absolute -bottom-7 left-1/2 transform -translate-x-1/2 text-xs text-zinc-800 font-black">May</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Gráfica 2: Tree Map -->
+                        <div class="bg-white border border-zinc-200 rounded-xl p-6 shadow-sm flex flex-col">
+                            <h3 class="text-lg font-bold text-zinc-800 mb-1">Rentabilidad por Sector</h3>
+                            <p class="text-xs text-zinc-500 mb-4">Concentración de presupuesto en el pipeline activo</p>
+                            
+                            <div class="flex-1 flex flex-col gap-3 min-h-[200px]">
+                                <div class="flex h-1/2 gap-3">
+                                    <div class="bg-gradient-to-br from-brand-500 to-brand-700 rounded-lg flex-1 flex flex-col items-center justify-center text-white shadow-md hover:scale-[1.02] panel-transition cursor-pointer border border-brand-800">
+                                        <i class="fa-solid fa-building-columns text-2xl mb-1 opacity-80"></i>
+                                        <span class="font-black tracking-wide">FinTech</span>
+                                        <span class="text-xs font-medium bg-black/20 px-2 py-0.5 rounded mt-1">45% ($20k)</span>
+                                    </div>
+                                    <div class="bg-gradient-to-br from-success-500 to-success-600 rounded-lg w-1/3 flex flex-col items-center justify-center text-white shadow-md hover:scale-[1.02] panel-transition cursor-pointer border border-success-700">
+                                        <i class="fa-solid fa-cart-shopping text-xl mb-1 opacity-80"></i>
+                                        <span class="font-bold">E-commerce</span>
+                                        <span class="text-xs font-medium mt-1">25%</span>
+                                    </div>
+                                </div>
+                                <div class="flex h-1/2 gap-3">
+                                    <div class="bg-gradient-to-br from-amber-400 to-amber-500 rounded-lg w-1/3 flex flex-col items-center justify-center text-white shadow-md hover:scale-[1.02] panel-transition cursor-pointer border border-amber-600">
+                                        <i class="fa-solid fa-heart-pulse text-lg mb-1 opacity-80"></i>
+                                        <span class="font-bold text-sm">HealthTech</span>
+                                        <span class="text-xs">15%</span>
+                                    </div>
+                                    <div class="bg-gradient-to-br from-zinc-600 to-zinc-800 rounded-lg flex-1 flex flex-col items-center justify-center text-white shadow-md hover:scale-[1.02] panel-transition cursor-pointer border border-zinc-900">
+                                        <i class="fa-solid fa-cloud text-xl mb-1 opacity-80"></i>
+                                        <span class="font-bold">SaaS B2B</span>
+                                        <span class="text-xs">10%</span>
+                                    </div>
+                                    <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg w-1/4 flex flex-col items-center justify-center text-white shadow-md hover:scale-[1.02] panel-transition cursor-pointer border border-purple-700">
+                                        <i class="fa-solid fa-robot text-lg mb-1 opacity-80"></i>
+                                        <span class="font-bold text-sm">AI/ML</span>
+                                        <span class="text-xs">5%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECCIÓN 3: HISTORIAL / PIPELINE -->
+                <div id="section-historial" class="app-section flex-1 overflow-y-auto p-6 bg-zinc-50 hidden">
+                    <h2 class="text-2xl font-black text-zinc-800 tracking-tight mb-2">Pipeline Operativo</h2>
+                    <p class="text-zinc-500 mb-6">Seguimiento de estados persistentes según validación humana.</p>
+                    
+                    <!-- Kanban Dinámico (Renderizado vía JS) -->
+                    <div class="flex gap-4 overflow-x-auto pb-4 h-[calc(100vh-180px)]">
+                        
+                        <div class="bg-zinc-100 border border-zinc-200 rounded-lg w-80 flex-shrink-0 flex flex-col shadow-sm">
+                            <div class="p-3 border-b border-zinc-200 bg-zinc-200/50 rounded-t-lg font-bold text-zinc-700 flex justify-between">
+                                <span>Interesante</span> <span id="count-Interesante" class="bg-zinc-300 text-xs px-2 py-1 rounded-full">0</span>
+                            </div>
+                            <div id="kanban-Interesante" class="p-3 space-y-3 flex-1 overflow-y-auto">
+                                <!-- Inyectado por JS -->
+                            </div>
+                        </div>
+
+                        <div class="bg-zinc-100 border border-zinc-200 rounded-lg w-80 flex-shrink-0 flex flex-col shadow-sm">
+                            <div class="p-3 border-b border-zinc-200 bg-brand-100 rounded-t-lg font-bold text-brand-800 flex justify-between">
+                                <span>Aplicado</span> <span id="count-Aplicado" class="bg-brand-200 text-xs px-2 py-1 rounded-full border border-brand-300">0</span>
+                            </div>
+                            <div id="kanban-Aplicado" class="p-3 space-y-3 flex-1 overflow-y-auto">
+                                 <!-- Inyectado por JS -->
+                            </div>
+                        </div>
+
+                        <div class="bg-zinc-100 border border-zinc-200 rounded-lg w-80 flex-shrink-0 flex flex-col shadow-sm">
+                            <div class="p-3 border-b border-zinc-200 bg-amber-100 rounded-t-lg font-bold text-amber-800 flex justify-between">
+                                <span>Follow-up (Entrevista)</span> <span id="count-Follow-up" class="bg-amber-200 text-xs px-2 py-1 rounded-full border border-amber-300">0</span>
+                            </div>
+                            <div id="kanban-Follow-up" class="p-3 space-y-3 flex-1 overflow-y-auto">
+                                 <!-- Inyectado por JS -->
+                            </div>
+                        </div>
+
+                        <div class="bg-zinc-100 border border-zinc-200 rounded-lg w-80 flex-shrink-0 flex flex-col shadow-sm">
+                            <div class="p-3 border-b border-zinc-200 bg-success-100 rounded-t-lg font-bold text-success-800 flex justify-between">
+                                <span>Confirmados</span> <span id="count-Confirmados" class="bg-success-200 text-xs px-2 py-1 rounded-full border border-success-300">0</span>
+                            </div>
+                            <div id="kanban-Confirmados" class="p-3 space-y-3 flex-1 overflow-y-auto">
+                                 <!-- Inyectado por JS -->
+                            </div>
+                        </div>
+
+                        <div class="bg-zinc-100 border border-zinc-200 rounded-lg w-80 flex-shrink-0 flex flex-col shadow-sm opacity-70">
+                            <div class="p-3 border-b border-zinc-200 bg-zinc-200/50 rounded-t-lg font-bold text-zinc-700 flex justify-between">
+                                <span>Descartados</span> <span id="count-Descartado" class="bg-zinc-300 text-xs px-2 py-1 rounded-full">0</span>
+                            </div>
+                            <div id="kanban-Descartado" class="p-3 space-y-3 flex-1 overflow-y-auto">
+                                <!-- Inyectado por JS -->
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- SECCIÓN 4: BÚSQUEDAS GUARDADAS -->
+                <div id="section-busquedas" class="app-section flex-1 overflow-y-auto p-6 bg-zinc-50 hidden">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-black text-zinc-800 tracking-tight">Búsquedas Guardadas y Filtros</h2>
+                        <button onclick="simularNuevaBusqueda(this)" class="bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors">
+                            <i class="fa-solid fa-plus mr-1"></i> Nueva Búsqueda
+                        </button>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div onclick="cargarBusquedaGuardada(this)" class="bg-white border border-zinc-200 rounded-lg p-5 shadow-sm hover:border-brand-400 hover:bg-brand-50 transition-colors cursor-pointer group">
+                            <div class="flex justify-between items-start mb-3">
+                                <h3 class="font-bold text-lg text-zinc-800 group-hover:text-brand-700 transition-colors">Rust Remoto Sr.</h3>
+                                <i class="fa-solid fa-star text-amber-400"></i>
+                            </div>
+                            <p class="text-xs text-zinc-500 mb-3"><i class="fa-solid fa-filter mr-1"></i> Sector: Tecnología | Min: $4k</p>
+                            <div class="text-xs font-mono bg-zinc-100 text-zinc-600 p-2 rounded group-hover:bg-white transition-colors border border-zinc-200">Keywords: rust, postgres, backend</div>
+                        </div>
+
+                        <div onclick="cargarBusquedaGuardada(this)" class="bg-white border border-zinc-200 rounded-lg p-5 shadow-sm hover:border-brand-400 hover:bg-brand-50 transition-colors cursor-pointer group">
+                            <div class="flex justify-between items-start mb-3">
+                                <h3 class="font-bold text-lg text-zinc-800 group-hover:text-brand-700 transition-colors">n8n Consultoría</h3>
+                                <i class="fa-solid fa-star text-amber-400"></i>
+                            </div>
+                            <p class="text-xs text-zinc-500 mb-3"><i class="fa-solid fa-filter mr-1"></i> Sector: Automatización | Min: $500</p>
+                            <div class="text-xs font-mono bg-zinc-100 text-zinc-600 p-2 rounded group-hover:bg-white transition-colors border border-zinc-200">Keywords: n8n, make, automation</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECCIÓN 5: ALERTAS -->
+                <div id="section-alertas" class="app-section flex-1 overflow-y-auto p-6 bg-zinc-50 hidden">
+                    <h2 class="text-2xl font-black text-zinc-800 tracking-tight mb-6">Configuración de Alertas</h2>
+                    
+                    <div class="bg-white border border-zinc-200 rounded-xl p-6 shadow-sm max-w-2xl">
+                        <div class="flex items-center justify-between border-b border-zinc-100 pb-4 mb-4">
+                            <div>
+                                <h4 class="font-bold text-zinc-800 text-lg">Notificaciones por Correo</h4>
+                                <p class="text-sm text-zinc-500">Recibe un aviso directo a tu inbox cuando un bot detecte un match superior a Score 85.</p>
+                            </div>
+                            <div id="toggle-correo" onclick="toggleSwitch(this)" class="w-11 h-6 bg-brand-600 rounded-full relative cursor-pointer panel-transition">
+                                <div class="w-4 h-4 bg-white rounded-full absolute top-1 right-1 shadow-sm panel-transition"></div>
+                            </div>
+                        </div>
+
+                        <div class="space-y-4">
+                            <label class="block">
+                                <span class="text-sm font-bold text-zinc-700">Frecuencia de Notificación</span>
+                                <select class="mt-1 block w-full bg-zinc-50 border border-zinc-200 rounded px-3 py-2 text-sm text-zinc-700 focus:outline-none focus:border-brand-500">
+                                    <option>En tiempo real (Al instante)</option>
+                                    <option>Resumen Diario (Daily Digest)</option>
+                                    <option>Resumen Semanal</option>
+                                </select>
+                            </label>
+                            <label class="block">
+                                <span class="text-sm font-bold text-zinc-700">Correo Destino</span>
+                                <input type="email" value="contacto@usuario-negocio.com" class="mt-1 block w-full bg-zinc-50 border border-zinc-200 rounded px-3 py-2 text-sm text-zinc-700 focus:outline-none focus:border-brand-500">
+                            </label>
+                        </div>
+                        <div class="mt-6">
+                            <button onclick="simulateSaveSettings(this)" class="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm w-40 justify-center flex panel-transition">
+                                Guardar Cambios
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div> <!-- Fin Area de Contenido -->
+
+        </main>
+
+        <!-- PANEL DE DETALLE LATERAL (Ahora Ocultable con 'X') -->
+        <aside id="detail-aside" class="w-[400px] bg-white border-l border-zinc-200 flex flex-col shadow-2xl z-20 transition-all duration-300 origin-right shrink-0 hidden">
+            <div class="p-6 border-b border-zinc-200 bg-zinc-50/50 relative">
+                <!-- Botón para cerrar el panel -->
+                <button onclick="cerrarPanelDetalle()" class="absolute top-4 right-4 text-zinc-400 hover:text-red-500 hover:bg-zinc-200 rounded-full w-8 h-8 flex items-center justify-center transition-colors focus:outline-none">
+                    <i class="fa-solid fa-times text-lg"></i>
+                </button>
+                
+                <div class="flex justify-between items-start mb-4 pr-8">
+                    <span id="detail-id" class="bg-zinc-200 text-zinc-700 text-xs font-bold px-2 py-1 rounded border border-zinc-300">ID: ----</span>
+                    <span id="detail-state" class="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-1 rounded uppercase tracking-wider border border-blue-200">Estado: --</span>
+                </div>
+                <h2 id="detail-title" class="text-xl font-black text-zinc-800 leading-tight mb-2">Selecciona una oportunidad</h2>
+                <a href="#" onclick="alert('Abriendo fuente original en una nueva pestaña segura...'); return false;" class="text-sm text-brand-600 hover:text-brand-800 hover:underline flex items-center font-medium transition-colors w-fit">
+                    <i class="fa-solid fa-arrow-up-right-from-square mr-1 text-xs"></i> Ver post original
+                </a>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-6 space-y-6">
+                <div class="bg-brand-50/50 rounded-lg border border-brand-200 p-5 shadow-sm">
+                    <h3 class="text-xs font-black text-brand-600 uppercase tracking-wider mb-3 flex items-center">
+                        <i class="fa-solid fa-robot mr-2 text-brand-500 text-base"></i> Análisis IA (Ollama)
+                    </h3>
+                    <p id="detail-ai-summary" class="text-sm text-zinc-700 leading-relaxed font-medium">...</p>
+                    <div class="mt-4 pt-4 border-t border-brand-200/60">
+                        <p class="text-sm" id="detail-ai-advantage">...</p>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2">Banderas Operativas</h3>
+                    <div id="detail-risk-box" class="bg-success-50 border border-success-200 rounded-lg p-4 flex items-start space-x-3">
+                        <i id="detail-risk-icon" class="fa-solid fa-shield-check text-success-500 mt-0.5 text-lg"></i>
+                        <div>
+                            <p id="detail-risk-title" class="text-sm text-success-900 font-bold">...</p>
+                            <p id="detail-risk-desc" class="text-xs text-success-700 mt-1 font-medium">...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2">Texto Original (Extracto)</h3>
+                    <div id="job-description-text" class="bg-zinc-100 rounded-lg p-4 font-mono text-xs text-zinc-600 whitespace-pre-line border border-zinc-200 shadow-inner">...</div>
+                </div>
+            </div>
+
+            <div class="p-5 border-t border-zinc-200 bg-white space-y-3 shrink-0">
+                <!-- Funciones actualizadas para sincronización en vivo -->
+                <button onclick="moverOportunidad(tarjetaActualId, 'Interesante')" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 px-4 rounded-lg shadow-md hover:shadow-lg shadow-brand-500/20 panel-transition flex justify-center items-center">
+                    <i class="fa-solid fa-star mr-2"></i> Marcar como Interesante
+                </button>
+                <div class="flex space-x-3">
+                    <!-- Botón Aplicar Actualizado: Abre modal en vez de mover directo -->
+                    <button onclick="openApplyModal()" class="flex-1 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 font-bold py-2 px-4 rounded-lg panel-transition text-sm border border-zinc-200 flex justify-center items-center shadow-sm">
+                        <i class="fa-solid fa-paper-plane mr-2 text-zinc-500"></i> Aplicar
+                    </button>
+                    <button onclick="openDiscardModal()" class="flex-1 bg-white border border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 font-bold py-2 px-4 rounded-lg panel-transition text-sm flex justify-center items-center shadow-sm">
+                        <i class="fa-solid fa-xmark mr-2"></i> Descartar
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+    </div> <!-- FIN APP VIEW -->
+
+    <!-- ========================================== -->
+    <!-- MODALES GLOBALES                           -->
+    <!-- ========================================== -->
+
+    <!-- Modal de Aplicación -->
+    <div id="apply-modal" class="fixed inset-0 bg-zinc-900/50 hidden items-center justify-center z-50 backdrop-blur-sm transition-opacity">
+        <div class="bg-white border border-zinc-200 rounded-xl p-6 w-full max-w-sm shadow-2xl">
+            <div class="flex justify-between items-center mb-4 border-b border-zinc-100 pb-3">
+                <h3 class="text-lg font-black text-zinc-800"><i class="fa-solid fa-paper-plane text-brand-500 mr-2"></i> Aplicar a Oportunidad</h3>
+                <button onclick="closeApplyModal()" class="text-zinc-400 hover:text-zinc-800 transition-colors"><i class="fa-solid fa-times text-xl"></i></button>
+            </div>
+
+            <p class="text-sm text-zinc-500 mb-4">¿Deseas enviar tu propuesta para esta oportunidad? Puedes agregar una nota rápida para tu historial.</p>
+
+            <div class="space-y-4 mb-6">
+                <label class="block">
+                    <span class="text-sm font-bold text-zinc-700">Nota interna (Opcional)</span>
+                    <textarea id="apply-note" class="mt-1 w-full bg-zinc-50 border border-zinc-200 rounded-lg p-3 text-sm focus:outline-none focus:border-brand-500 text-zinc-700 shadow-inner" rows="3" placeholder="Ej. Mandé mensaje por DM con mi portafolio..."></textarea>
+                </label>
+            </div>
+
+            <div class="flex justify-end space-x-3">
+                <button onclick="closeApplyModal()" class="px-4 py-2 text-sm font-bold text-zinc-500 hover:text-zinc-800 transition-colors">Cancelar</button>
+                <button onclick="confirmarAplicacion()" class="bg-brand-600 hover:bg-brand-700 text-white px-6 py-2 rounded-lg text-sm font-bold transition-colors shadow-md shadow-brand-500/20">
+                    Confirmar Envío
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Exportación -->
+    <div id="export-modal" class="fixed inset-0 bg-zinc-900/50 hidden items-center justify-center z-50 backdrop-blur-sm transition-opacity">
+        <div class="bg-white border border-zinc-200 rounded-xl p-6 w-full max-w-md shadow-2xl">
+            <div class="flex justify-between items-center mb-4 border-b border-zinc-100 pb-3">
+                <h3 class="text-lg font-black text-zinc-800"><i class="fa-solid fa-file-export text-zinc-500 mr-2"></i> Exportar Reporte</h3>
+                <button onclick="closeExportModal()" class="text-zinc-400 hover:text-red-500 transition-colors"><i class="fa-solid fa-times text-xl"></i></button>
+            </div>
+            
+            <p class="text-sm font-bold text-zinc-700 mb-2">1. Selecciona el formato</p>
+            <div class="grid grid-cols-3 gap-3 mb-6">
+                <button onclick="seleccionarFormatoReporte(this)" class="format-btn bg-zinc-50 border border-zinc-200 text-zinc-600 py-3 rounded-lg font-bold text-sm flex flex-col items-center justify-center transition-colors">
+                    <i class="fa-solid fa-file-pdf text-red-500 text-2xl mb-1"></i> PDF
+                </button>
+                <button onclick="seleccionarFormatoReporte(this)" class="format-btn border-brand-400 bg-brand-50 text-zinc-600 py-3 rounded-lg font-bold text-sm flex flex-col items-center justify-center transition-colors border">
+                    <i class="fa-solid fa-file-csv text-success-500 text-2xl mb-1"></i> CSV
+                </button>
+                <button onclick="seleccionarFormatoReporte(this)" class="format-btn bg-zinc-50 border border-zinc-200 text-zinc-600 py-3 rounded-lg font-bold text-sm flex flex-col items-center justify-center transition-colors">
+                    <i class="fa-solid fa-file-excel text-success-600 text-2xl mb-1"></i> Excel
+                </button>
+            </div>
+
+            <p class="text-sm font-bold text-zinc-700 mb-2">2. Personalización (Premium)</p>
+            <div class="bg-zinc-50 border border-zinc-200 rounded-lg p-3 flex items-center justify-between mb-6">
+                <div>
+                    <p class="text-sm font-bold text-zinc-800 flex items-center"><i class="fa-solid fa-crown text-amber-500 mr-2"></i> Marca Blanca</p>
+                    <p class="text-xs text-zinc-500">Incluir logo de tu empresa en el reporte</p>
+                </div>
+                <div onclick="toggleSwitch(this)" class="w-11 h-6 bg-zinc-300 rounded-full relative cursor-pointer panel-transition">
+                    <div class="w-4 h-4 bg-white rounded-full absolute top-1 left-1 shadow-sm panel-transition"></div>
+                </div>
+            </div>
+
+            <div class="flex justify-end space-x-3">
+                <button onclick="closeExportModal()" class="px-4 py-2 text-sm font-bold text-zinc-500 hover:text-zinc-800 transition-colors">Cancelar</button>
+                <button id="btn-descargar-reporte" onclick="simularDescarga(this)" class="bg-zinc-800 hover:bg-zinc-700 text-white px-6 py-2 rounded-lg text-sm font-bold transition-colors shadow-md w-32 justify-center flex">
+                    Descargar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Motivo de Descarte -->
+    <div id="discard-modal" class="fixed inset-0 bg-zinc-900/50 hidden items-center justify-center z-50 backdrop-blur-sm transition-opacity">
+        <div class="bg-white border border-zinc-200 rounded-xl p-6 w-full max-w-sm shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-black text-zinc-800"><i class="fa-solid fa-trash-can text-red-500 mr-2"></i> Descartar Oportunidad</h3>
+                <button onclick="closeDiscardModal()" class="text-zinc-400 hover:text-zinc-800 transition-colors"><i class="fa-solid fa-times text-xl"></i></button>
+            </div>
+            
+            <p class="text-sm text-zinc-500 mb-4">Por favor, selecciona el motivo de cierre para mantener el registro de auditoría.</p>
+            
+            <div class="space-y-2 mb-6">
+                <label class="flex items-center p-3 border border-zinc-200 rounded-lg cursor-pointer hover:bg-zinc-50 transition-colors">
+                    <input type="radio" name="discard_reason" class="w-4 h-4 text-red-600 focus:ring-red-500 border-zinc-300">
+                    <span class="ml-3 text-sm font-bold text-zinc-700">Presupuesto insuficiente</span>
+                </label>
+                <label class="flex items-center p-3 border border-zinc-200 rounded-lg cursor-pointer hover:bg-zinc-50 transition-colors">
+                    <input type="radio" name="discard_reason" class="w-4 h-4 text-red-600 focus:ring-red-500 border-zinc-300">
+                    <span class="ml-3 text-sm font-bold text-zinc-700">Stack tecnológico incorrecto</span>
+                </label>
+                <label class="flex items-center p-3 border border-zinc-200 rounded-lg cursor-pointer hover:bg-zinc-50 transition-colors">
+                    <input type="radio" name="discard_reason" class="w-4 h-4 text-red-600 focus:ring-red-500 border-zinc-300">
+                    <span class="ml-3 text-sm font-bold text-zinc-700">Sospecha de fraude / Scam</span>
+                </label>
+            </div>
+
+            <div class="flex justify-end space-x-3">
+                <button onclick="closeDiscardModal()" class="px-4 py-2 text-sm font-bold text-zinc-500 hover:text-zinc-800 transition-colors">Cancelar</button>
+                <button onclick="confirmarDescarteFisico()" class="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg text-sm font-bold transition-colors shadow-md shadow-red-500/20">
+                    Confirmar Descarte
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Perfil de Usuario -->
+    <div id="profile-modal" class="fixed inset-0 bg-zinc-900/50 hidden items-center justify-center z-50 backdrop-blur-sm transition-opacity">
+        <div class="bg-white border border-zinc-200 rounded-xl p-6 w-full max-w-sm shadow-2xl">
+            <div class="flex justify-between items-center mb-4 border-b border-zinc-100 pb-3">
+                <h3 class="text-lg font-black text-zinc-800"><i class="fa-solid fa-user-circle text-brand-600 mr-2"></i> Perfil de Usuario</h3>
+                <button onclick="closeProfileModal()" class="text-zinc-400 hover:text-red-500 transition-colors"><i class="fa-solid fa-times text-xl"></i></button>
+            </div>
+            
+            <!-- Resumen de cuenta -->
+            <div class="flex flex-col items-center mb-6">
+                <div class="w-20 h-20 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 font-bold text-2xl shadow-inner border border-brand-200 mb-3">
+                    UN
+                </div>
+                <h4 class="text-xl font-bold text-zinc-800">Usuario Negocio</h4>
+                <p class="text-sm text-zinc-500">contacto@usuario-negocio.com</p>
+                <span class="mt-2 bg-brand-100 text-brand-700 text-xs font-bold px-3 py-1 rounded-full border border-brand-200 uppercase tracking-wider">Plan Premium</span>
+            </div>
+
+            <!-- Botones de acciones -->
+            <div class="space-y-2 mb-6">
+                <!-- Botón conectado a la Configuración del Motor -->
+                <button onclick="openConfigModal()" class="w-full text-left p-3 border border-zinc-200 rounded-lg hover:bg-zinc-50 transition-colors flex items-center text-sm font-bold text-zinc-700">
+                    <i class="fa-solid fa-sliders w-6 text-brand-500"></i> Configuración del Motor (Keywords/Umbrales)
+                </button>
+                <!-- Botón de Facturación -->
+                <button onclick="simularFacturacion(this)" class="w-full text-left p-3 border border-zinc-200 rounded-lg hover:bg-zinc-50 transition-colors flex items-center text-sm font-bold text-zinc-700 panel-transition">
+                    <i class="fa-solid fa-credit-card w-6 text-zinc-400"></i> Facturación y Planes
+                </button>
+            </div>
+
+            <!-- Cerrar sesión (ACTUALIZADO: Regresa al Login) -->
+            <div class="flex justify-center border-t border-zinc-100 pt-4">
+                <button onclick="simularLogout()" class="text-red-500 hover:text-red-700 text-sm font-bold transition-colors flex items-center">
+                    <i class="fa-solid fa-sign-out-alt mr-2"></i> Cerrar Sesión
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Configuración en Vivo -->
+    <div id="config-modal" class="fixed inset-0 bg-zinc-900/50 hidden items-center justify-center z-[60] backdrop-blur-sm transition-opacity">
+        <div class="bg-white border border-zinc-200 rounded-xl p-6 w-full max-w-lg shadow-2xl overflow-y-auto max-h-[90vh]">
+            <div class="flex justify-between items-center mb-4 border-b border-zinc-100 pb-3">
+                <h3 class="text-lg font-black text-zinc-800"><i class="fa-solid fa-server text-brand-600 mr-2"></i> Ajustes del Orquestador</h3>
+                <button onclick="closeConfigModal()" class="text-zinc-400 hover:text-red-500 transition-colors"><i class="fa-solid fa-times text-xl"></i></button>
+            </div>
+            
+            <p class="text-sm text-zinc-500 mb-5">Define las reglas globales de ingesta (sin tocar código). Estos parámetros se sincronizan con n8n y Rust.</p>
+            
+            <div class="space-y-5">
+                <div>
+                    <label class="block text-sm font-bold text-zinc-700 mb-2"><i class="fa-solid fa-tags text-zinc-400 mr-1"></i> Keywords (Palabras Clave)</label>
+                    <textarea class="w-full bg-zinc-50 border border-zinc-200 rounded-lg p-3 text-sm focus:outline-none focus:border-brand-500 font-mono text-zinc-600 shadow-inner" rows="2">rust, postgresql, python, data engineer, n8n, scraping</textarea>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-bold text-zinc-700 mb-2"><i class="fa-solid fa-hand-holding-dollar text-zinc-400 mr-1"></i> Rango de Pago Mínimo (Umbral)</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-dollar-sign absolute left-4 top-1/2 transform -translate-y-1/2 text-success-500"></i>
+                        <input type="number" value="1000" class="w-full bg-zinc-50 border border-zinc-200 rounded-lg pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-brand-500 font-bold text-zinc-700 shadow-inner">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-zinc-700 mb-2"><i class="fa-solid fa-briefcase text-zinc-400 mr-1"></i> Sectores de Interés</label>
+                    <div class="grid grid-cols-2 gap-3 bg-zinc-50 p-3 rounded-lg border border-zinc-200">
+                        <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" checked class="rounded text-brand-600 focus:ring-brand-500 w-4 h-4"><span class="text-sm font-medium text-zinc-700">Tecnología</span></label>
+                        <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" checked class="rounded text-brand-600 focus:ring-brand-500 w-4 h-4"><span class="text-sm font-medium text-zinc-700">SaaS B2B</span></label>
+                        <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" checked class="rounded text-brand-600 focus:ring-brand-500 w-4 h-4"><span class="text-sm font-medium text-zinc-700">Finanzas / FinTech</span></label>
+                        <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" class="rounded text-brand-600 focus:ring-brand-500 w-4 h-4"><span class="text-sm font-medium text-zinc-700">E-commerce</span></label>
+                    </div>
+                </div>
+
+                <!-- Fuentes de Ingesta -->
+                <div class="pt-4 border-t border-zinc-100">
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="block text-sm font-bold text-zinc-700"><i class="fa-solid fa-network-wired text-zinc-400 mr-1"></i> Fuentes de Ingesta (Source Policy Registry)</label>
+                        <button onclick="alert('Abriendo formulario para añadir nueva fuente a n8n...')" class="text-xs text-brand-600 hover:text-brand-800 font-bold bg-brand-50 px-2 py-1 rounded transition-colors"><i class="fa-solid fa-plus"></i> Añadir</button>
+                    </div>
+                    
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between bg-white border border-zinc-200 rounded p-2 shadow-sm hover:border-zinc-300 transition-colors">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-8 h-8 rounded bg-[#ff4500]/10 text-[#ff4500] flex items-center justify-center"><i class="fa-brands fa-reddit-alien"></i></div>
+                                <div class="flex flex-col">
+                                    <span class="text-xs font-bold text-zinc-800">r/forhire (Reddit API)</span>
+                                    <span class="text-[10px] text-zinc-500">Frecuencia: 30 min | Riesgo: Bajo</span>
+                                </div>
+                            </div>
+                            <div onclick="toggleSwitch(this)" class="w-8 h-4 bg-brand-600 rounded-full relative cursor-pointer panel-transition shrink-0">
+                                <div class="w-3 h-3 bg-white rounded-full absolute top-0.5 right-0.5 shadow-sm panel-transition"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center justify-between bg-white border border-zinc-200 rounded p-2 shadow-sm hover:border-zinc-300 transition-colors">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-8 h-8 rounded bg-[#0077b5]/10 text-[#0077b5] flex items-center justify-center"><i class="fa-solid fa-briefcase"></i></div>
+                                <div class="flex flex-col">
+                                    <span class="text-xs font-bold text-zinc-800">Greenhouse ATS (Webhook)</span>
+                                    <span class="text-[10px] text-zinc-500">Frecuencia: Real-time | Riesgo: Medio</span>
+                                </div>
+                            </div>
+                            <div onclick="toggleSwitch(this)" class="w-8 h-4 bg-brand-600 rounded-full relative cursor-pointer panel-transition shrink-0">
+                                <div class="w-3 h-3 bg-white rounded-full absolute top-0.5 right-0.5 shadow-sm panel-transition"></div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between bg-white border border-zinc-200 rounded p-2 shadow-sm hover:border-zinc-300 transition-colors opacity-60">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-8 h-8 rounded bg-[#14a800]/10 text-[#14a800] flex items-center justify-center"><i class="fa-solid fa-upwork"></i></div>
+                                <div class="flex flex-col">
+                                    <span class="text-xs font-bold text-zinc-800">Upwork RSS Feed</span>
+                                    <span class="text-[10px] text-zinc-500">Frecuencia: 60 min | Riesgo: Alto</span>
+                                </div>
+                            </div>
+                            <div onclick="toggleSwitch(this)" class="w-8 h-4 bg-zinc-300 rounded-full relative cursor-pointer panel-transition shrink-0">
+                                <div class="w-3 h-3 bg-white rounded-full absolute top-0.5 left-0.5 shadow-sm panel-transition"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="flex justify-end space-x-3 mt-6 pt-4 border-t border-zinc-100">
+                <button onclick="closeConfigModal()" class="px-4 py-2 text-sm font-bold text-zinc-500 hover:text-zinc-800 transition-colors">Cancelar</button>
+                <button onclick="simularGuardarConfigMotor(this)" class="bg-brand-600 hover:bg-brand-700 text-white px-6 py-2 rounded-lg text-sm font-bold transition-colors shadow-md flex items-center justify-center min-w-[160px]">
+                    Sincronizar Reglas
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script de Navegación y Datos Dinámicos -->
+    <script>
+        let tarjetaActualId = null;
+        let sidebarExpanded = true;
+        let isLoginMode = true; // Para alternar entre Iniciar Sesión y Registro
+
+        // ==========================================
+        // FUNCIONES DE AUTENTICACIÓN (LOGIN/LOGOUT)
+        // ==========================================
+        function simularLogin(btn) {
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Verificando...';
+            btn.disabled = true;
+            
+            setTimeout(() => {
+                // Ocultar Auth y mostrar Dashboard
+                document.getElementById('auth-view').classList.add('hidden');
+                document.getElementById('app-view').classList.remove('hidden');
+                
+                // Restablecer botón de login por si cierran sesión después
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                
+                // Cargar datos en el dashboard
+                renderInbox();
+                renderKanban();
+            }, 1500);
+        }
+
+        function simularLogout() {
+            closeProfileModal();
+            // Ocultar Dashboard y mostrar Auth
+            document.getElementById('app-view').classList.add('hidden');
+            document.getElementById('auth-view').classList.remove('hidden');
+        }
+
+        function toggleAuthMode() {
+            isLoginMode = !isLoginMode;
+            const btnAction = document.getElementById('btn-auth-action');
+            const toggleText = document.getElementById('auth-toggle-text');
+            const btnToggle = document.getElementById('btn-auth-toggle');
+            const subtitle = document.getElementById('auth-subtitle');
+            const extraOptions = document.getElementById('auth-options');
+
+            if(isLoginMode) {
+                btnAction.innerHTML = 'Iniciar Sesión';
+                toggleText.innerText = '¿No tienes cuenta?';
+                btnToggle.innerText = 'Regístrate aquí';
+                subtitle.innerText = 'Inicia sesión en tu cuenta operativa';
+                extraOptions.classList.remove('hidden');
+            } else {
+                btnAction.innerHTML = 'Crear Cuenta';
+                toggleText.innerText = '¿Ya tienes cuenta?';
+                btnToggle.innerText = 'Inicia sesión';
+                subtitle.innerText = 'Crea tu cuenta para empezar a automatizar';
+                extraOptions.classList.add('hidden');
+            }
+        }
+
+
+        // ==========================================
+        // DATA DINÁMICA DE OPORTUNIDADES CON ESTADOS 
+        // ==========================================
+        const oportunidadesData = {
+            1: {
+                id: "8A9B-234F",
+                estadoPipeline: "Inbox",
+                fuente: "r/forhire",
+                fuenteIcon: "fa-brands fa-reddit-alien",
+                fuenteClass: "bg-[#ff4500]/10 text-[#ff4500] border border-[#ff4500]/20",
+                tiempo: "Hace 15 min",
+                titulo: "Desarrollador Backend Rust + PostgreSQL Urgente",
+                tags: ["Rust", "Backend"],
+                presupuesto: "Est. $3,500 - $5,000",
+                score: 95,
+                scoreClass: "text-success-500",
+                estadoTxt: "Estado: Nuevo",
+                estadoClass: "bg-blue-100 text-blue-700 border-blue-200",
+                aiSummary: "El cliente busca un desarrollador Senior en <span class='text-zinc-900 font-bold bg-zinc-200 px-1 rounded'>Rust</span> para refactorizar un monolito actual. Tienen presupuesto aprobado y están listos para contratar esta semana. Requieren conocimiento comprobable en <span class='text-zinc-900 font-bold bg-zinc-200 px-1 rounded'>PostgreSQL</span> para optimización de consultas complejas.",
+                aiAdvantage: "<span class='text-success-600 font-bold'><i class='fa-solid fa-check-circle mr-1'></i> Ventaja:</span> Match perfecto con tu stack actual (Rust/Postgres).",
+                riskTitle: "Bajo Riesgo",
+                riskDesc: "El usuario de Reddit tiene 4 años de antigüedad y posts previos contratando freelancers de forma exitosa.",
+                riskClassBox: "bg-success-50 border-success-200",
+                riskClassIcon: "fa-shield-check text-success-500",
+                riskClassTextTitle: "text-success-900",
+                riskClassTextDesc: "text-success-700",
+                originalText: "Hey everyone,\n\nWe are a fintech startup looking for a strong Rust developer to help us decouple our current Node.js monolith into performant microservices. Database is PostgreSQL.\n\nBudget is around $3.5k - $5k depending on experience. Please DM with your Github and a brief intro. Need to start next Monday."
+            },
+            2: {
+                id: "9C2D-551A",
+                estadoPipeline: "Inbox",
+                fuente: "Greenhouse ATS",
+                fuenteIcon: "fa-solid fa-briefcase",
+                fuenteClass: "bg-[#0077b5]/10 text-[#0077b5] border border-[#0077b5]/20",
+                tiempo: "Hace 2 horas",
+                titulo: "Senior Python Data Engineer (Remoto)",
+                tags: ["Python", "Data"],
+                presupuesto: "Tarifa a convenir",
+                score: 88,
+                scoreClass: "text-success-600",
+                estadoTxt: "Estado: Visto",
+                estadoClass: "bg-zinc-100 text-zinc-600 border-zinc-200",
+                aiSummary: "Empresa buscando un ingeniero de datos experimentado en <span class='text-zinc-900 font-bold bg-zinc-200 px-1 rounded'>Python</span> para integrarse a su equipo. El rol es 100% remoto y gestionado a través de Greenhouse ATS. Buscan a alguien que pueda empezar a más tardar el próximo mes.",
+                aiAdvantage: "<span class='text-success-600 font-bold'><i class='fa-solid fa-check-circle mr-1'></i> Oportunidad:</span> Excelente trabajo a largo plazo y rol estable.",
+                riskTitle: "Riesgo Moderado",
+                riskDesc: "Oferta de ATS estándar. No se especifica rango salarial exacto, lo que podría requerir negociación inicial fuerte para asegurar cashflow.",
+                riskClassBox: "bg-blue-50 border-blue-200",
+                riskClassIcon: "fa-circle-info text-blue-500",
+                riskClassTextTitle: "text-blue-900",
+                riskClassTextDesc: "text-blue-700",
+                originalText: "Role: Senior Data Engineer\nLocation: Remote\n\nWe are actively hiring a Data Engineer with 5+ years of Python experience. You will be responsible for building scalable data pipelines.\n\nPlease apply through our Greenhouse portal."
+            },
+            3: {
+                id: "1F4E-998X",
+                estadoPipeline: "Inbox",
+                fuente: "r/slavelabour",
+                fuenteIcon: "fa-brands fa-reddit-alien",
+                fuenteClass: "bg-[#ff4500]/10 text-[#ff4500] border border-[#ff4500]/20",
+                tiempo: "Hace 5 horas",
+                titulo: "Necesito bot de scraping ASAP pago hoy",
+                tags: ["Python", "Web Scraping"],
+                presupuesto: "Est. < $500",
+                score: 45,
+                scoreClass: "text-amber-500",
+                estadoTxt: "Estado: Nuevo",
+                estadoClass: "bg-blue-100 text-blue-700 border-blue-200",
+                aiSummary: "El usuario solicita con extrema urgencia un bot de web scraping construido en <span class='text-zinc-900 font-bold bg-zinc-200 px-1 rounded'>Python</span>. El presupuesto parece ser muy bajo en relación al requerimiento. El lenguaje de la oferta denota urgencia y poca estructura técnica.",
+                aiAdvantage: "<span class='text-amber-600 font-bold'><i class='fa-solid fa-bolt mr-1'></i> Dinero Rápido:</span> Viable solo si ya tienes un script pre-hecho que se adapte.",
+                riskTitle: "Alto Riesgo (Posible Scam/Lowball)",
+                riskDesc: "Publicado en r/slavelabour. Pagos el mismo día sin sistema de escrow (intermediario) suelen resultar problemáticos. Presupuesto irreal.",
+                riskClassBox: "bg-amber-50 border-amber-200",
+                riskClassIcon: "fa-triangle-exclamation text-amber-500",
+                riskClassTextTitle: "text-amber-900",
+                riskClassTextDesc: "text-amber-700",
+                originalText: "I need a scraping bot right now to get data from a directory. I will pay $50 today via crypto once it works.\n\nDM me if you can do it in 2 hours. Must be Python."
+            },
+            4: {
+                id: "B883-M9X2",
+                estadoPipeline: "Inbox",
+                fuente: "Upwork API",
+                fuenteIcon: "fa-solid fa-upwork",
+                fuenteClass: "bg-[#14a800]/10 text-[#14a800] border border-[#14a800]/20",
+                tiempo: "Hace 30 min",
+                titulo: "Integración n8n + OpenAI para CRM Inmobiliario",
+                tags: ["n8n", "OpenAI", "CRM"],
+                presupuesto: "Est. $1,500 Fijo",
+                score: 92,
+                scoreClass: "text-success-500",
+                estadoTxt: "Estado: Nuevo",
+                estadoClass: "bg-blue-100 text-blue-700 border-blue-200",
+                aiSummary: "El cliente necesita a alguien experto en automatizaciones con <span class='text-zinc-900 font-bold bg-zinc-200 px-1 rounded'>n8n</span> para conectar su CRM con la API de OpenAI y procesar correos entrantes automáticamente. Piden muestras de trabajos anteriores.",
+                aiAdvantage: "<span class='text-success-600 font-bold'><i class='fa-solid fa-check-circle mr-1'></i> Encaje Ideal:</span> Proyecto cerrado con requerimientos muy claros y técnicos.",
+                riskTitle: "Bajo Riesgo",
+                riskDesc: "Cliente verificado en Upwork con más de $10k gastados en la plataforma.",
+                riskClassBox: "bg-success-50 border-success-200",
+                riskClassIcon: "fa-shield-check text-success-500",
+                riskClassTextTitle: "text-success-900",
+                riskClassTextDesc: "text-success-700",
+                originalText: "We are a real estate agency looking to automate our lead processing. We need an expert in n8n to connect our CRM to OpenAI and parse incoming emails to extract client needs and budget. Fixed price $1,500. Please show previous n8n workflows."
+            },
+            5: {
+                id: "C4X1-7L0P",
+                estadoPipeline: "Inbox",
+                fuente: "r/forhire",
+                fuenteIcon: "fa-brands fa-reddit-alien",
+                fuenteClass: "bg-[#ff4500]/10 text-[#ff4500] border border-[#ff4500]/20",
+                tiempo: "Hace 1 hora",
+                titulo: "API Data Extraction Expert en C#",
+                tags: ["C#", "Scraping", ".NET"],
+                presupuesto: "Est. $40/hr",
+                score: 80,
+                scoreClass: "text-success-600",
+                estadoTxt: "Estado: Nuevo",
+                estadoClass: "bg-blue-100 text-blue-700 border-blue-200",
+                aiSummary: "Petición para desarrollar una herramienta en <span class='text-zinc-900 font-bold bg-zinc-200 px-1 rounded'>C#</span> que extraiga datos de una API gubernamental y los exporte a un archivo local de Excel diariamente.",
+                aiAdvantage: "<span class='text-success-600 font-bold'><i class='fa-solid fa-check-circle mr-1'></i> Matching Skill:</span> Habilidad listada en tu perfil (.NET/C#).",
+                riskTitle: "Riesgo Bajo",
+                riskDesc: "Usuario regular solicitando trabajo técnico estándar.",
+                riskClassBox: "bg-success-50 border-success-200",
+                riskClassIcon: "fa-shield-check text-success-500",
+                riskClassTextTitle: "text-success-900",
+                riskClassTextDesc: "text-success-700",
+                originalText: "Hiring a C# dev to build a small app that calls a public gov API every morning at 6 AM and saves the JSON payload to an Excel sheet. Will pay $40/hr, should take about 10 hours."
+            },
+            6: {
+                id: "K-001", estadoPipeline: "Interesante", score: 82, tiempo: "Hace 1 día",
+                titulo: "Scraper de Amazon", presupuesto: "Est. $800",
+                fuente: "r/slavelabour", fuenteIcon: "fa-brands fa-reddit-alien",
+                estadoTxt: "Estado: Interesante", estadoClass: "bg-brand-100 text-brand-700 border-brand-200",
+                aiSummary: "Resumen IA guardado en la base de datos...",
+                aiAdvantage: "Ventaja calculada por IA...",
+                riskTitle: "Riesgo Moderado", riskDesc: "Descripción del riesgo...",
+                riskClassBox: "bg-blue-50 border-blue-200", riskClassIcon: "fa-circle-info text-blue-500",
+                riskClassTextTitle: "text-blue-900", riskClassTextDesc: "text-blue-700",
+                originalText: "Texto original de Amazon Scraper..."
+            },
+            7: {
+                id: "K-002", estadoPipeline: "Interesante", score: 79, tiempo: "Hace 2 días",
+                titulo: "Data Engineer para Startup", presupuesto: "Tarifa a convenir",
+                fuente: "Greenhouse ATS", fuenteIcon: "fa-solid fa-briefcase",
+                estadoTxt: "Estado: Interesante", estadoClass: "bg-brand-100 text-brand-700 border-brand-200",
+                aiSummary: "Resumen IA guardado en la base de datos...",
+                aiAdvantage: "Ventaja calculada por IA...",
+                riskTitle: "Riesgo Bajo", riskDesc: "Descripción del riesgo...",
+                riskClassBox: "bg-success-50 border-success-200", riskClassIcon: "fa-shield-check text-success-500",
+                riskClassTextTitle: "text-success-900", riskClassTextDesc: "text-success-700",
+                originalText: "Texto original de Data Engineer..."
+            },
+            8: {
+                id: "K-003", estadoPipeline: "Aplicado", score: 90, tiempo: "12/Oct",
+                titulo: "API Integration Expert", presupuesto: "Est. $2,000",
+                fuente: "Upwork API", fuenteIcon: "fa-solid fa-upwork",
+                estadoTxt: "Estado: Aplicado", estadoClass: "bg-purple-100 text-purple-700 border-purple-200",
+                aiSummary: "Resumen IA guardado en la base de datos...",
+                aiAdvantage: "Ventaja calculada por IA...",
+                riskTitle: "Riesgo Bajo", riskDesc: "Descripción del riesgo...",
+                riskClassBox: "bg-success-50 border-success-200", riskClassIcon: "fa-shield-check text-success-500",
+                riskClassTextTitle: "text-success-900", riskClassTextDesc: "text-success-700",
+                originalText: "Texto original de API Integration..."
+            },
+            9: {
+                id: "K-004", estadoPipeline: "Confirmados", score: 99, tiempo: "Ayer",
+                titulo: "Bot de Telegram en Python", presupuesto: "$1,200 USD Asegurados",
+                fuente: "r/forhire", fuenteIcon: "fa-brands fa-reddit-alien",
+                estadoTxt: "Estado: Confirmados", estadoClass: "bg-success-100 text-success-700 border-success-200",
+                aiSummary: "Resumen IA guardado en la base de datos...",
+                aiAdvantage: "Ventaja calculada por IA...",
+                riskTitle: "Riesgo Bajo", riskDesc: "Descripción del riesgo...",
+                riskClassBox: "bg-success-50 border-success-200", riskClassIcon: "fa-shield-check text-success-500",
+                riskClassTextTitle: "text-success-900", riskClassTextDesc: "text-success-700",
+                originalText: "Texto original de Bot de Telegram..."
+            }
+        };
+
+        // ==========================================
+        // MOTOR DE RENDERIZADO DINÁMICO
+        // ==========================================
+        function renderInbox() {
+            const inboxContainer = document.getElementById("inbox-list");
+            if(!inboxContainer) return;
+            inboxContainer.innerHTML = ""; 
+            let contador = 0;
+
+            for (const key in oportunidadesData) {
+                const data = oportunidadesData[key];
+                if (data.estadoPipeline === "Inbox") {
+                    contador++;
+                    const isActive = (tarjetaActualId == key) ? "border-l-4 border-l-brand-600" : "";
+                    
+                    const cardHTML = `
+                    <div id="card-${key}" class="bg-white border border-zinc-200 rounded-lg p-5 cursor-pointer hover:shadow-lg hover:border-zinc-300 panel-transition shadow-sm ${isActive}" onclick="showDetails('${key}')">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <div class="flex items-center space-x-2 mb-2">
+                                    <span class="${data.fuenteClass} text-xs font-bold px-2 py-0.5 rounded flex items-center">
+                                        <i class="${data.fuenteIcon} mr-1"></i> ${data.fuente}
+                                    </span>
+                                    <span class="text-zinc-400 text-xs font-medium"><i class="fa-regular fa-clock mr-1"></i> ${data.tiempo}</span>
+                                </div>
+                                <h3 class="text-lg font-bold text-zinc-800">${data.titulo}</h3>
+                                <div class="mt-3 flex space-x-2">
+                                    ${data.tags ? data.tags.map(t => `<span class="text-xs bg-zinc-100 border border-zinc-200 text-zinc-600 px-2 py-1 rounded font-medium">${t}</span>`).join('') : ''}
+                                    <span class="text-xs text-success-700 bg-success-50 px-2 py-1 rounded border border-success-200 font-bold"><i class="fa-solid fa-money-bill-wave mr-1"></i> ${data.presupuesto}</span>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-3xl font-black ${data.scoreClass}">${data.score}</div>
+                                <div class="text-xs text-zinc-400 font-bold uppercase tracking-widest mt-1">Score</div>
+                            </div>
+                        </div>
+                    </div>`;
+                    inboxContainer.insertAdjacentHTML('beforeend', cardHTML);
+                }
+            }
+            const countEl = document.getElementById("counter-results");
+            if(countEl) countEl.innerText = `${contador} resultados (Score > 80)`;
+        }
+
+        function renderKanban() {
+            const columnas = ["Interesante", "Aplicado", "Follow-up", "Confirmados", "Descartado"];
+            
+            columnas.forEach(col => {
+                const container = document.getElementById(`kanban-${col}`);
+                const contadorBadge = document.getElementById(`count-${col}`);
+                if (!container) return;
+                
+                container.innerHTML = ""; 
+                let itemsEnColumna = 0;
+
+                for (const key in oportunidadesData) {
+                    const data = oportunidadesData[key];
+                    if (data.estadoPipeline === col) {
+                        itemsEnColumna++;
+                        
+                        let cardStyle = "bg-white border border-zinc-200 rounded p-3 shadow-sm text-sm cursor-grab hover:border-brand-400 panel-transition";
+                        let extraData = `<p class="text-xs text-zinc-500 mt-1">Score: ${data.score} | ${data.tiempo}</p>`;
+                        
+                        if (col === "Aplicado") {
+                            cardStyle = "bg-white border border-zinc-200 rounded p-3 shadow-sm text-sm border-l-4 border-l-brand-500 cursor-grab hover:border-brand-400 panel-transition";
+                            extraData = `<p class="text-xs text-zinc-500 mt-1">Aplicado: ${data.tiempo} | Score: ${data.score}</p>`;
+                        } else if (col === "Confirmados") {
+                            cardStyle = "bg-white border border-success-200 rounded p-3 shadow-sm text-sm border-l-4 border-l-success-500 cursor-grab hover:border-success-400 panel-transition";
+                            extraData = `<p class="text-xs text-success-600 font-bold mt-1"><i class="fa-solid fa-sack-dollar mr-1"></i> ${data.presupuesto}</p>`;
+                        } else if (col === "Descartado") {
+                            cardStyle = "bg-white border border-zinc-200 rounded p-3 shadow-sm text-sm border-l-4 border-l-zinc-500 cursor-grab hover:border-brand-400 panel-transition opacity-60";
+                        }
+
+                        // ACTUALIZADO: Tarjetas clickeables para abrir el panel de detalles
+                        const kCardHTML = `
+                        <div class="${cardStyle}" onclick="showDetails('${key}')">
+                            <h4 class="font-bold text-zinc-800">${data.titulo}</h4>
+                            ${extraData}
+                            ${data.notaInterna ? `<p class="text-[10px] text-zinc-400 mt-2 italic border-t border-zinc-100 pt-1">Nota: ${data.notaInterna}</p>` : ''}
+                        </div>`;
+                        container.insertAdjacentHTML('beforeend', kCardHTML);
+                    }
+                }
+                
+                if(contadorBadge) contadorBadge.innerText = itemsEnColumna;
+
+                if (itemsEnColumna === 0 && col !== "Descartado") {
+                    container.innerHTML = `<div class="flex items-center justify-center border-2 border-dashed border-zinc-300 m-3 rounded h-20"><p class="text-sm text-zinc-400 italic">Arrastra tarjetas aquí</p></div>`;
+                } else if (itemsEnColumna === 0 && col === "Descartado") {
+                     container.innerHTML = `<div class="flex items-center justify-center m-3 rounded h-10"><p class="text-xs text-zinc-400 italic">No hay descartes</p></div>`;
+                }
+            });
+        }
+
+        function moverOportunidad(idAfectado, nuevoEstado) {
+            if (!idAfectado || !oportunidadesData[idAfectado]) return;
+            oportunidadesData[idAfectado].estadoPipeline = nuevoEstado;
+            
+            // Actualizamos visualmente las clases de estado para el panel lateral
+            if(nuevoEstado === 'Interesante') {
+                oportunidadesData[idAfectado].estadoTxt = 'Estado: Interesante';
+                oportunidadesData[idAfectado].estadoClass = 'bg-brand-100 text-brand-700 border-brand-200';
+            } else if(nuevoEstado === 'Aplicado') {
+                oportunidadesData[idAfectado].estadoTxt = 'Estado: Aplicado';
+                oportunidadesData[idAfectado].estadoClass = 'bg-purple-100 text-purple-700 border-purple-200';
+            } else if(nuevoEstado === 'Descartado') {
+                 oportunidadesData[idAfectado].estadoTxt = 'Estado: Descartado';
+                 oportunidadesData[idAfectado].estadoClass = 'bg-zinc-100 text-zinc-700 border-zinc-200';
+            }
+
+            renderInbox();
+            renderKanban();
+            cerrarPanelDetalle();
+            tarjetaActualId = null;
+
+            if(nuevoEstado !== 'Descartado'){
+                // alert(`¡Éxito! Oferta movida a: ${nuevoEstado}. Ve a la pestaña 'Historial' para verla.`);
+            }
+        }
+
+        function confirmarDescarteFisico() {
+            // Recoger el motivo seleccionado
+            const opciones = document.getElementsByName('discard_reason');
+            let motivo = "Sin motivo especificado";
+            for (let i = 0; i < opciones.length; i++) {
+                if (opciones[i].checked) {
+                    motivo = opciones[i].nextElementSibling.innerText;
+                    break;
+                }
+            }
+            
+            if (tarjetaActualId && oportunidadesData[tarjetaActualId]) {
+                 oportunidadesData[tarjetaActualId].notaInterna = "Motivo: " + motivo;
+            }
+
+            closeDiscardModal();
+            moverOportunidad(tarjetaActualId, 'Descartado');
+        }
+        
+        function confirmarAplicacion() {
+            const nota = document.getElementById('apply-note').value;
+            if (tarjetaActualId && oportunidadesData[tarjetaActualId]) {
+                 oportunidadesData[tarjetaActualId].notaInterna = nota;
+            }
+            closeApplyModal();
+            moverOportunidad(tarjetaActualId, 'Aplicado');
+        }
+
+        window.onload = function() {
+            renderInbox();
+            renderKanban();
+        };
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('main-sidebar');
+            if(sidebarExpanded) {
+                sidebar.classList.add('sidebar-collapsed');
+            } else {
+                sidebar.classList.remove('sidebar-collapsed');
+            }
+            sidebarExpanded = !sidebarExpanded;
+        }
+
+        function cerrarPanelDetalle() {
+            const detailPanel = document.getElementById('detail-aside');
+            if(detailPanel) {
+                detailPanel.classList.add('hidden');
+                detailPanel.classList.remove('flex');
+            }
+            renderInbox(); 
+        }
+
+        function switchSection(sectionId) {
+            document.querySelectorAll('.app-section').forEach(el => {
+                el.classList.add('hidden');
+                el.classList.remove('block');
+            });
+            const sec = document.getElementById('section-' + sectionId);
+            if(sec) {
+                sec.classList.remove('hidden');
+                sec.classList.add('block');
+            }
+
+            document.querySelectorAll('.nav-link').forEach(el => {
+                el.className = "nav-link flex items-center px-4 py-3 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 font-medium rounded-lg panel-transition";
+            });
+            const nav = document.getElementById('nav-' + sectionId);
+            if(nav) {
+                nav.className = "nav-link flex items-center px-4 py-3 bg-brand-50 text-brand-700 font-medium rounded-lg panel-transition";
+            }
+
+            const detailPanel = document.getElementById('detail-aside');
+            if(sectionId === 'inbox' && tarjetaActualId && oportunidadesData[tarjetaActualId].estadoPipeline === 'Inbox') {
+                if(detailPanel) {
+                    detailPanel.classList.remove('hidden');
+                    detailPanel.classList.add('flex');
+                }
+            } else if (sectionId === 'historial' && tarjetaActualId && oportunidadesData[tarjetaActualId].estadoPipeline !== 'Inbox') {
+                // Si la tarjeta seleccionada está en Kanban, mostramos panel
+                if(detailPanel) {
+                    detailPanel.classList.remove('hidden');
+                    detailPanel.classList.add('flex');
+                }
+            } else {
+                if(detailPanel) {
+                    detailPanel.classList.add('hidden');
+                    detailPanel.classList.remove('flex');
+                }
+            }
+        }
+
+        function showDetails(id) {
+            tarjetaActualId = id; 
+            const data = oportunidadesData[id];
+            if(!data) return;
+
+            document.getElementById("detail-id").innerText = "ID: " + data.id;
+            document.getElementById("detail-title").innerText = data.titulo;
+            document.getElementById("detail-ai-summary").innerHTML = data.aiSummary;
+            document.getElementById("detail-ai-advantage").innerHTML = data.aiAdvantage;
+            document.getElementById("detail-risk-title").innerText = data.riskTitle;
+            document.getElementById("detail-risk-desc").innerText = data.riskDesc;
+            document.getElementById("job-description-text").innerText = data.originalText;
+            
+            const stateLabel = document.getElementById("detail-state");
+            if(stateLabel) {
+                stateLabel.innerText = data.estadoTxt;
+                stateLabel.className = `text-xs font-bold px-2 py-1 rounded uppercase tracking-wider border ${data.estadoClass}`;
+            }
+
+            const riskBox = document.getElementById("detail-risk-box");
+            if(riskBox) riskBox.className = `rounded-lg p-4 flex items-start space-x-3 border ${data.riskClassBox}`;
+            
+            const riskIcon = document.getElementById("detail-risk-icon");
+            if(riskIcon) riskIcon.className = `fa-solid mt-0.5 text-lg ${data.riskClassIcon}`;
+
+            const riskTitleEl = document.getElementById("detail-risk-title");
+            if(riskTitleEl) riskTitleEl.className = `text-sm font-bold ${data.riskClassTextTitle}`;
+            
+            const riskDescEl = document.getElementById("detail-risk-desc");
+            if(riskDescEl) riskDescEl.className = `text-xs mt-1 font-medium ${data.riskClassTextDesc}`;
+
+            renderInbox();
+
+            const detailPanel = document.getElementById('detail-aside');
+            if(detailPanel) {
+                detailPanel.classList.remove('hidden');
+                detailPanel.classList.add('flex');
+            }
+        }
+
+        function toggleDropdown(dropdownId) {
+            document.querySelectorAll('.dropdown-menu').forEach(el => {
+                if(el.id !== dropdownId) el.classList.add('hidden');
+            });
+            const dropdown = document.getElementById(dropdownId);
+            if(dropdown) dropdown.classList.toggle('hidden');
+        }
+
+        window.onclick = function(event) {
+            if (!event.target.closest('.dropdown-container')) {
+                document.querySelectorAll('.dropdown-menu').forEach(el => el.classList.add('hidden'));
+            }
+        }
+
+        function seleccionarFiltro(tipo, valorTxt) {
+            const label = document.getElementById('label-' + tipo);
+            if(label) label.innerText = valorTxt;
+            const drop = document.getElementById('drop-' + tipo);
+            if(drop) drop.classList.add('hidden');
+            simularCargaDatos();
+        }
+
+        function simularBusqueda(inputElement) {
+            if (inputElement.value.length > 2 || inputElement.value.length === 0) {
+                simularCargaDatos();
+            }
+        }
+
+        function simularCargaDatos() {
+            const mainContent = document.getElementById('main-content-area');
+            if(!mainContent) return;
+            mainContent.style.opacity = '0.3';
+            setTimeout(() => {
+                mainContent.style.opacity = '1';
+            }, 350);
+        }
+
+        // ==========================================
+        // MANEJO DE MODALES E INTERACCIONES MENORES
+        // ==========================================
+        
+        // NUEVO MODAL APLICAR
+        function openApplyModal() {
+            document.getElementById('apply-note').value = ""; // Limpiar notas anteriores
+            document.getElementById('apply-modal').classList.remove('hidden');
+            document.getElementById('apply-modal').classList.add('flex');
+        }
+        function closeApplyModal() {
+            document.getElementById('apply-modal').classList.add('hidden');
+            document.getElementById('apply-modal').classList.remove('flex');
+        }
+        
+
+        function openExportModal() {
+            document.getElementById('export-modal').classList.remove('hidden');
+            document.getElementById('export-modal').classList.add('flex');
+        }
+        function closeExportModal() {
+            document.getElementById('export-modal').classList.add('hidden');
+            document.getElementById('export-modal').classList.remove('flex');
+        }
+        function openDiscardModal() {
+            // Limpiar radios anteriores
+            const opciones = document.getElementsByName('discard_reason');
+            for(let i = 0; i < opciones.length; i++){
+                opciones[i].checked = false;
+            }
+            document.getElementById('discard-modal').classList.remove('hidden');
+            document.getElementById('discard-modal').classList.add('flex');
+        }
+        function closeDiscardModal() {
+            document.getElementById('discard-modal').classList.add('hidden');
+            document.getElementById('discard-modal').classList.remove('flex');
+        }
+
+        function openProfileModal() {
+            document.getElementById('profile-modal').classList.remove('hidden');
+            document.getElementById('profile-modal').classList.add('flex');
+        }
+        function closeProfileModal() {
+            document.getElementById('profile-modal').classList.add('hidden');
+            document.getElementById('profile-modal').classList.remove('flex');
+        }
+
+        function openConfigModal() {
+            closeProfileModal(); 
+            document.getElementById('config-modal').classList.remove('hidden');
+            document.getElementById('config-modal').classList.add('flex');
+        }
+        
+        function closeConfigModal() {
+            document.getElementById('config-modal').classList.add('hidden');
+            document.getElementById('config-modal').classList.remove('flex');
+        }
+
+        function simularGuardarConfigMotor(btn) {
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Sincronizando n8n...';
+            btn.disabled = true;
+            
+            setTimeout(() => {
+                btn.innerHTML = '<i class="fa-solid fa-check mr-2"></i> Reglas Actualizadas';
+                btn.classList.replace('bg-brand-600', 'bg-success-600');
+                btn.classList.replace('hover:bg-brand-700', 'hover:bg-success-700');
+                
+                setTimeout(() => {
+                    closeConfigModal();
+                    btn.innerHTML = originalHtml;
+                    btn.classList.replace('bg-success-600', 'bg-brand-600');
+                    btn.classList.replace('hover:bg-success-700', 'hover:bg-brand-700');
+                    btn.disabled = false;
+                }, 1500);
+            }, 1200);
+        }
+
+        function seleccionarFormatoReporte(btn) {
+            document.querySelectorAll('.format-btn').forEach(b => {
+                b.classList.remove('border-brand-400', 'bg-brand-50');
+                b.classList.add('bg-zinc-50', 'border-zinc-200');
+            });
+            btn.classList.remove('bg-zinc-50', 'border-zinc-200');
+            btn.classList.add('border-brand-400', 'bg-brand-50');
+        }
+
+        function simularDescarga(btn) {
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Procesando';
+            btn.disabled = true;
+            setTimeout(() => {
+                btn.innerHTML = '<i class="fa-solid fa-check mr-2"></i> ¡Descargado!';
+                btn.classList.replace('bg-zinc-800', 'bg-success-600');
+                setTimeout(() => {
+                    closeExportModal();
+                    btn.innerHTML = originalText;
+                    btn.classList.replace('bg-success-600', 'bg-zinc-800');
+                    btn.disabled = false;
+                }, 1000);
+            }, 1500);
+        }
+
+        function toggleSwitch(element) {
+            const bolita = element.querySelector('div');
+            
+            // Lógica para togglear azul o gris dependiendo si es el modal de alertas o config
+            if(element.classList.contains('bg-brand-600')) {
+                element.classList.replace('bg-brand-600', 'bg-zinc-300');
+                bolita.classList.replace('right-0.5', 'left-0.5'); // Para el modal pequeño
+                bolita.classList.replace('right-1', 'left-1'); // Para el modal grande
+            } else {
+                element.classList.replace('bg-zinc-300', 'bg-brand-600');
+                bolita.classList.replace('left-0.5', 'right-0.5'); 
+                bolita.classList.replace('left-1', 'right-1'); 
+            }
+            
+            // Efecto de opacidad visual para la fila entera de la fuente
+            const row = element.closest('.flex.items-center.justify-between.bg-white');
+            if(row) {
+                if(element.classList.contains('bg-brand-600')){
+                    row.classList.remove('opacity-60');
+                } else {
+                    row.classList.add('opacity-60');
+                }
+            }
+        }
+
+        function simulateSaveSettings(btn) {
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-check mr-2"></i> Listo';
+            btn.classList.replace('bg-zinc-800', 'bg-success-600');
+            setTimeout(() => {
+                btn.innerHTML = originalHtml;
+                btn.classList.replace('bg-success-600', 'bg-zinc-800');
+            }, 1500);
+        }
+
+        function simulateSaveFilters(btn) {
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-check mr-2 text-white"></i> ¡Guardado!';
+            btn.classList.remove('bg-brand-50', 'text-brand-700');
+            btn.classList.add('bg-brand-600', 'text-white');
+            setTimeout(() => {
+                btn.innerHTML = originalHtml;
+                btn.classList.remove('bg-brand-600', 'text-white');
+                btn.classList.add('bg-brand-50', 'text-brand-700');
+            }, 2000);
+        }
+
+        function simularNuevaBusqueda(btn) {
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Creando...';
+            setTimeout(() => {
+                btn.innerHTML = '<i class="fa-solid fa-check mr-1"></i> Creada';
+                setTimeout(() => {
+                    btn.innerHTML = originalHtml;
+                }, 1500);
+            }, 1000);
+        }
+
+        function cargarBusquedaGuardada(card) {
+            const h3 = card.querySelector('h3');
+            if(!h3) return;
+            const titulo = h3.innerText;
+            const tituloHtmlOriginal = h3.innerHTML;
+            h3.innerHTML = `${titulo} <i class="fa-solid fa-spinner fa-spin ml-2 text-zinc-400 text-sm"></i>`;
+            setTimeout(() => {
+                h3.innerHTML = tituloHtmlOriginal;
+                seleccionarFiltro('presupuesto', titulo.includes('Rust') ? 'Min: $3,000 USD' : 'Min: $500 USD');
+                switchSection('inbox');
+            }, 800);
+        }
+
+        function simularFacturacion(btn) {
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin w-6 text-brand-500"></i> Verificando suscripción...';
+            btn.disabled = true;
+            
+            setTimeout(() => {
+                btn.innerHTML = '<i class="fa-solid fa-check w-6 text-success-500"></i> Plan Premium Activo (Marca Blanca OK)';
+                btn.classList.replace('text-zinc-700', 'text-success-700');
+                btn.classList.add('bg-success-50', 'border-success-200');
+                
+                setTimeout(() => {
+                    btn.innerHTML = originalHtml;
+                    btn.classList.replace('text-success-700', 'text-zinc-700');
+                    btn.classList.remove('bg-success-50', 'border-success-200');
+                    btn.disabled = false;
+                }, 3000);
+            }, 1000);
+        }
+    </script>
+</body>
+</html>

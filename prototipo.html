@@ -1,0 +1,1611 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scrapperlanas - Dashboard</title>
+    <!-- Usamos Tailwind CSS via CDN para el diseño rápido y moderno -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome para los íconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Configuración personalizada de la paleta de colores en Tailwind -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            200: '#bfdbfe',
+                            400: '#60a5fa',
+                            500: '#3b82f6',
+                            600: '#2563eb', /* Azul corporativo primario */
+                            700: '#1d4ed8',
+                        },
+                        success: {
+                            50: '#f0fdf4',
+                            400: '#34d399', /* Verde vibrante para tema oscuro */
+                            500: '#10b981', 
+                            600: '#059669',
+                            700: '#047857',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Estilos base para scrollbars adaptadas al tema oscuro */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+        
+        /* Animación suave para transiciones */
+        .panel-transition { transition: all 0.3s ease-in-out; }
+        
+        /* Ocultamiento y RETRACCIÓN FÍSICA dinámica del sidebar */
+        .sidebar-collapsed { width: 5rem !important; } 
+        .sidebar-collapsed .sidebar-text { display: none !important; }
+        .sidebar-collapsed .nav-link { justify-content: center !important; padding-left: 0 !important; padding-right: 0 !important; }
+        .sidebar-collapsed .nav-icon { margin-right: 0 !important; }
+        .sidebar-collapsed .sidebar-logo-text { display: none !important; }
+        .sidebar-collapsed .sidebar-user-info { display: none !important; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-300 font-sans selection:bg-brand-500/30">
+
+    <!-- ========================================== -->
+    <!-- VISTA DE AUTENTICACIÓN (LOGIN / REGISTRO)  -->
+    <!-- ========================================== -->
+    <div id="auth-view" class="h-screen w-full flex items-center justify-center bg-slate-950 relative overflow-hidden">
+        <!-- Decoración de fondo Colorida y Neón -->
+        <div class="absolute top-[-10%] left-[-10%] w-96 h-96 bg-brand-600 rounded-full mix-blend-screen filter blur-[128px] opacity-40"></div>
+        <div class="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-fuchsia-600 rounded-full mix-blend-screen filter blur-[128px] opacity-30"></div>
+        <div class="absolute top-[20%] right-[10%] w-72 h-72 bg-emerald-600 rounded-full mix-blend-screen filter blur-[128px] opacity-20"></div>
+
+        <div class="bg-slate-900/80 backdrop-blur-xl p-8 rounded-2xl shadow-2xl shadow-black/50 w-full max-w-md z-10 border border-slate-800 relative">
+            <div class="text-center mb-8">
+                <i class="fa-solid fa-crosshairs text-brand-400 text-4xl mb-3 drop-shadow-[0_0_15px_rgba(96,165,250,0.5)]"></i>
+                <h1 class="text-white font-black text-2xl tracking-wider">Scrapper<span class="text-brand-400">lanas</span></h1>
+                <p id="auth-subtitle" class="text-sm text-slate-400 mt-1">Inicia sesión en tu cuenta operativa</p>
+            </div>
+
+            <div class="space-y-5">
+                <!-- Campo Correo -->
+                <div>
+                    <label class="block text-sm font-bold text-slate-300 mb-1">Correo Electrónico</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-envelope absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500"></i>
+                        <input type="email" value="contacto@usuario-negocio.com" class="w-full bg-slate-950 border border-slate-700 rounded-lg pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 text-white placeholder-slate-600 transition-colors shadow-inner">
+                    </div>
+                </div>
+
+                <!-- Campo Contraseña -->
+                <div>
+                    <label class="block text-sm font-bold text-slate-300 mb-1">Contraseña</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-lock absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500"></i>
+                        <input type="password" value="********" class="w-full bg-slate-950 border border-slate-700 rounded-lg pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 text-white placeholder-slate-600 transition-colors shadow-inner">
+                    </div>
+                </div>
+
+                <!-- NUEVO: Confirmar Contraseña (Oculto en Login) -->
+                <div id="auth-confirm-password-group" class="hidden">
+                    <label class="block text-sm font-bold text-slate-300 mb-1">Confirmar Contraseña</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-lock absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500"></i>
+                        <input type="password" placeholder="Mínimo 8 caracteres" class="w-full bg-slate-950 border border-slate-700 rounded-lg pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 text-white placeholder-slate-600 transition-colors shadow-inner">
+                    </div>
+                </div>
+
+                <!-- Opciones extra de Login -->
+                <div id="auth-options" class="flex items-center justify-between text-xs">
+                    <label class="flex items-center cursor-pointer text-slate-400 font-medium hover:text-slate-300 transition-colors">
+                        <input type="checkbox" checked class="mr-2 rounded bg-slate-950 border-slate-700 text-brand-500 focus:ring-brand-500 w-3.5 h-3.5">
+                        Recordarme
+                    </label>
+                    <a href="#" class="text-brand-400 hover:text-brand-300 font-bold transition-colors">¿Olvidaste tu contraseña?</a>
+                </div>
+
+                <!-- Botón Principal -->
+                <button id="btn-auth-action" onclick="simularLogin(this)" class="w-full bg-brand-600 hover:bg-brand-500 text-white font-bold py-3 rounded-lg shadow-lg shadow-brand-500/25 transition-all flex justify-center items-center mt-2">
+                    Iniciar Sesión
+                </button>
+            </div>
+
+            <!-- Toggle Login/Registro -->
+            <div class="mt-6 text-center text-sm text-slate-400">
+                <span id="auth-toggle-text">¿No tienes cuenta?</span> 
+                <button onclick="toggleAuthMode()" id="btn-auth-toggle" class="text-brand-400 font-bold hover:text-brand-300 hover:underline transition-colors focus:outline-none">Regístrate aquí</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ========================================== -->
+    <!-- VISTA DEL APLICATIVO (DASHBOARD COMPLETO)  -->
+    <!-- ========================================== -->
+    <div id="app-view" class="hidden h-screen w-full flex overflow-hidden">
+        
+        <!-- SIDEBAR (Menú de Navegación Lateral) -->
+        <aside id="main-sidebar" class="w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between z-30 shadow-xl panel-transition shrink-0 relative">
+            
+            <!-- Resplandor sutil en el sidebar para integrarlo al tema -->
+            <div class="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-brand-900/10 to-transparent pointer-events-none"></div>
+
+            <div class="relative z-10">
+                <!-- Logo / Título con Botón Hamburguesa -->
+                <div class="h-16 flex items-center justify-between px-4 border-b border-slate-800 overflow-hidden">
+                    <div class="flex items-center">
+                        <i class="fa-solid fa-crosshairs text-brand-400 text-xl mr-3 nav-icon drop-shadow-[0_0_8px_rgba(96,165,250,0.8)]"></i>
+                        <h1 class="text-white font-black text-lg tracking-wider sidebar-logo-text whitespace-nowrap">Scrapper<span class="text-brand-400">lanas</span></h1>
+                    </div>
+                    <!-- Botón para colapsar/expandir -->
+                    <button onclick="toggleSidebar()" class="text-slate-400 hover:text-brand-400 transition-colors p-2 rounded hover:bg-slate-800 focus:outline-none">
+                        <i class="fa-solid fa-bars text-lg"></i>
+                    </button>
+                </div>
+
+                <!-- Menú de enlaces -->
+                <nav class="p-4 space-y-2 overflow-x-hidden">
+                    <p class="text-xs text-slate-500 font-bold uppercase tracking-wider mb-2 ml-2 sidebar-text">Operación</p>
+                    <a id="nav-inbox" href="#" title="Dashboard (Inbox)" onclick="switchSection('inbox')" class="nav-link flex items-center px-4 py-3 bg-brand-500/20 border border-brand-500/30 text-brand-400 font-bold rounded-lg panel-transition shadow-[0_0_15px_rgba(59,130,246,0.15)]">
+                        <i class="fa-solid fa-inbox w-6 nav-icon text-center shrink-0 drop-shadow-[0_0_5px_rgba(96,165,250,0.5)]"></i>
+                        <span class="sidebar-text whitespace-nowrap ml-2">Dashboard (Inbox)</span>
+                    </a>
+                    <a id="nav-visualizacion" href="#" title="Visualización" onclick="switchSection('visualizacion')" class="nav-link flex items-center px-4 py-3 text-slate-400 hover:bg-slate-800 hover:text-white font-medium rounded-lg panel-transition border border-transparent">
+                        <i class="fa-solid fa-chart-pie w-6 nav-icon text-center shrink-0"></i>
+                        <span class="sidebar-text whitespace-nowrap ml-2">Visualización</span>
+                    </a>
+                    <a id="nav-historial" href="#" title="Historial / Pipeline" onclick="switchSection('historial')" class="nav-link flex items-center px-4 py-3 text-slate-400 hover:bg-slate-800 hover:text-white font-medium rounded-lg panel-transition border border-transparent">
+                        <i class="fa-solid fa-clock-rotate-left w-6 nav-icon text-center shrink-0"></i>
+                        <span class="sidebar-text whitespace-nowrap ml-2">Historial / Pipeline</span>
+                    </a>
+                    
+                    <p class="text-xs text-slate-500 font-bold uppercase tracking-wider mb-2 ml-2 mt-6 sidebar-text">Configuración</p>
+                    <a id="nav-busquedas" href="#" title="Búsquedas Guardadas" onclick="switchSection('busquedas')" class="nav-link flex items-center px-4 py-3 text-slate-400 hover:bg-slate-800 hover:text-white font-medium rounded-lg panel-transition border border-transparent">
+                        <i class="fa-solid fa-filter w-6 nav-icon text-center shrink-0"></i>
+                        <span class="sidebar-text whitespace-nowrap ml-2">Búsquedas Guardadas</span>
+                    </a>
+                    <a id="nav-alertas" href="#" title="Alertas (Correos)" onclick="switchSection('alertas')" class="nav-link flex items-center px-4 py-3 text-slate-400 hover:bg-slate-800 hover:text-white font-medium rounded-lg panel-transition border border-transparent">
+                        <i class="fa-solid fa-bell w-6 nav-icon text-center shrink-0"></i>
+                        <span class="sidebar-text whitespace-nowrap ml-2">Alertas (Correos)</span>
+                    </a>
+                </nav>
+            </div>
+
+            <!-- Perfil Usuario Abajo -->
+            <div class="p-4 border-t border-slate-800 bg-slate-900 flex justify-center overflow-hidden relative z-10">
+                <button onclick="openProfileModal()" class="flex items-center w-full hover:bg-slate-800 border border-transparent hover:border-slate-700 p-2 rounded-lg transition-all panel-transition text-left focus:outline-none">
+                    <div title="Usuario Negocio" class="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-brand-400 font-bold shadow-inner border border-slate-700 shrink-0 nav-icon">
+                        UN
+                    </div>
+                    <div class="ml-3 sidebar-user-info whitespace-nowrap">
+                        <p class="text-white font-bold text-sm">Usuario Negocio</p>
+                        <p class="text-emerald-400 text-xs font-medium"><i class="fa-solid fa-crown mr-1"></i>Plan Premium</p>
+                    </div>
+                </button>
+            </div>
+        </aside>
+
+        <!-- CONTENIDO CENTRAL PRINCIPAL -->
+        <main class="flex-1 flex flex-col h-full overflow-hidden bg-slate-950 relative">
+            
+            <!-- Decoración sutil de fondo en el área principal -->
+            <div class="absolute top-0 left-1/2 transform -translate-x-1/2 w-[800px] h-[400px] bg-brand-900/20 rounded-full mix-blend-screen filter blur-[100px] opacity-50 pointer-events-none"></div>
+
+            <!-- Top Bar / Filtros -->
+            <header class="h-16 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 flex items-center justify-between px-6 shadow-md z-20 shrink-0">
+                <div class="flex items-center space-x-4">
+                    
+                    <!-- Buscador Interactivo -->
+                    <div class="relative">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500"></i>
+                        <input type="text" onkeyup="simularBusqueda(this)" placeholder="Buscar en oportunidades..." class="bg-slate-950 border border-slate-700 text-white text-sm rounded-lg pl-10 pr-4 py-2 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 w-64 panel-transition shadow-inner placeholder-slate-600">
+                    </div>
+                    
+                    <!-- Filtro Presupuesto Interactivo -->
+                    <div class="relative dropdown-container hidden md:block">
+                        <div onclick="toggleDropdown('drop-presupuesto')" class="flex items-center space-x-2 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 cursor-pointer hover:border-slate-500 hover:bg-slate-700 panel-transition shadow-sm">
+                            <i class="fa-solid fa-sack-dollar text-emerald-400"></i>
+                            <span id="label-presupuesto" class="text-sm text-white font-medium">Min: $1,000 USD</span>
+                            <i class="fa-solid fa-chevron-down text-xs text-slate-400 ml-2"></i>
+                        </div>
+                        <div id="drop-presupuesto" class="dropdown-menu hidden absolute top-full left-0 mt-2 w-48 bg-slate-800 border border-slate-700 rounded-lg shadow-2xl shadow-black/50 z-50 py-1">
+                            <button onclick="seleccionarFiltro('presupuesto', 'Sin mínimo')" class="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">Sin mínimo</button>
+                            <button onclick="seleccionarFiltro('presupuesto', 'Min: $500 USD')" class="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">Min: $500 USD</button>
+                            <button onclick="seleccionarFiltro('presupuesto', 'Min: $1,000 USD')" class="w-full text-left px-4 py-2 text-sm text-white hover:bg-slate-700 hover:text-white transition-colors font-bold">Min: $1,000 USD</button>
+                            <button onclick="seleccionarFiltro('presupuesto', 'Min: $3,000 USD')" class="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">Min: $3,000 USD</button>
+                        </div>
+                    </div>
+
+                    <!-- Filtro Sector Interactivo -->
+                    <div class="relative dropdown-container hidden md:block">
+                        <div onclick="toggleDropdown('drop-sector')" class="flex items-center space-x-2 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 cursor-pointer hover:border-slate-500 hover:bg-slate-700 panel-transition shadow-sm">
+                            <i class="fa-solid fa-briefcase text-brand-400"></i>
+                            <span id="label-sector" class="text-sm text-white font-medium">Tecnología</span>
+                            <i class="fa-solid fa-chevron-down text-xs text-slate-400 ml-2"></i>
+                        </div>
+                        <div id="drop-sector" class="dropdown-menu hidden absolute top-full left-0 mt-2 w-40 bg-slate-800 border border-slate-700 rounded-lg shadow-2xl shadow-black/50 z-50 py-1">
+                            <button onclick="seleccionarFiltro('sector', 'Todos los Sectores')" class="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">Todos los Sectores</button>
+                            <button onclick="seleccionarFiltro('sector', 'Tecnología')" class="w-full text-left px-4 py-2 text-sm text-white hover:bg-slate-700 hover:text-white transition-colors font-bold">Tecnología</button>
+                            <button onclick="seleccionarFiltro('sector', 'Finanzas')" class="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">Finanzas</button>
+                            <button onclick="seleccionarFiltro('sector', 'SaaS')" class="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">SaaS</button>
+                        </div>
+                    </div>
+
+                    <!-- Botón Guardar Búsqueda -->
+                    <button onclick="simulateSaveFilters(this)" class="hidden xl:flex bg-brand-500/10 hover:bg-brand-500/20 text-brand-400 px-3 py-2 rounded-lg text-sm font-bold items-center panel-transition border border-brand-500/30 shadow-sm ml-2 justify-center">
+                        <i class="fa-solid fa-floppy-disk mr-2"></i> Guardar Filtros
+                    </button>
+
+                    <!-- Vistas Activas Dropdown (Historia 10) -->
+                    <div class="relative dropdown-container hidden xl:block">
+                        <button onclick="toggleDropdown('drop-vistas')" class="bg-slate-800 hover:bg-slate-700 text-white px-3 py-2 rounded-lg text-sm font-bold items-center panel-transition border border-slate-700 shadow-sm ml-2 flex focus:outline-none">
+                            <i class="fa-solid fa-bookmark text-brand-400 mr-2"></i> Vistas Activas
+                            <i class="fa-solid fa-chevron-down text-xs text-slate-400 ml-2"></i>
+                        </button>
+                        <div id="drop-vistas" class="dropdown-menu hidden absolute top-full right-0 mt-2 w-56 bg-slate-800 border border-slate-700 rounded-lg shadow-2xl shadow-black/50 z-50 py-1">
+                            <div class="px-4 py-2 text-xs text-slate-400 font-bold uppercase tracking-wider border-b border-slate-700 mb-1">Favoritos (US-10)</div>
+                            <button class="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"><i class="fa-solid fa-star text-amber-400 mr-2 text-xs"></i> Filtros de Hoy - React</button>
+                            <button class="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"><i class="fa-solid fa-star text-amber-400 mr-2 text-xs"></i> Alto Presupuesto US</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Botón Exportar abre Modal -->
+                <button onclick="openExportModal()" class="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center panel-transition border border-slate-700 shadow-sm">
+                    <i class="fa-solid fa-download mr-2 text-slate-400"></i> <span class="hidden sm:inline">Exportar</span>
+                </button>
+            </header>
+
+            <!-- AREA DE CONTENIDO -->
+            <div id="main-content-area" class="flex-1 flex flex-col overflow-hidden panel-transition relative z-10">
+                
+                <!-- SECCIÓN 1: INBOX -->
+                <div id="section-inbox" class="app-section flex-1 overflow-y-auto p-6 block">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-black text-white tracking-tight">Últimas Oportunidades</h2>
+                        <span id="counter-results" class="text-sm font-medium text-slate-300 bg-slate-800 px-3 py-1 rounded-full border border-slate-700 shadow-sm flex items-center">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 mr-2 animate-pulse"></span>
+                            0 resultados (Score > 80)
+                        </span>
+                    </div>
+
+                    <!-- Contenedor Dinámico del Inbox -->
+                    <div id="inbox-list" class="space-y-4 max-w-5xl">
+                        <!-- Las tarjetas se inyectan aquí con JS -->
+                    </div>
+                </div>
+
+                <!-- SECCIÓN 2: VISUALIZACIÓN (GRÁFICAS MEJORADAS Y COLOREADAS) -->
+                <div id="section-visualizacion" class="app-section flex-1 overflow-y-auto p-6 hidden">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-black text-white tracking-tight">Análisis Estratégico del Mercado</h2>
+                        <span class="text-sm font-bold text-slate-400 bg-slate-800 px-3 py-1 rounded-full border border-slate-700"><i class="fa-solid fa-calendar-alt mr-1 text-brand-400"></i> Últimos 30 días</span>
+                    </div>
+                    
+                    <!-- KPIs -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        
+                        <!-- Columna 1: Azul -->
+                        <div class="bg-gradient-to-br from-slate-900 to-brand-900/30 border border-brand-500/40 rounded-xl p-5 shadow-lg shadow-brand-900/20 flex items-center relative overflow-hidden group hover:border-brand-400 transition-colors">
+                            <div class="absolute top-0 right-0 w-24 h-24 bg-brand-500/10 rounded-bl-full"></div>
+                            <div class="w-12 h-12 rounded-full bg-slate-950 flex items-center justify-center text-brand-400 text-xl mr-4 border border-brand-500/30 group-hover:scale-110 transition-transform shadow-[0_0_10px_rgba(59,130,246,0.3)]"><i class="fa-solid fa-satellite-dish"></i></div>
+                            <div class="relative z-10">
+                                <p class="text-xs text-brand-200 font-bold uppercase tracking-wider opacity-80">Scraping Total</p>
+                                <p class="text-2xl font-black text-white">1,248 <span class="text-sm font-medium text-brand-400 ml-1"><i class="fa-solid fa-arrow-trend-up"></i> 12%</span></p>
+                            </div>
+                        </div>
+
+                        <!-- Columna 2: Púrpura -->
+                        <div class="bg-gradient-to-br from-slate-900 to-purple-900/30 border border-purple-500/40 rounded-xl p-5 shadow-lg shadow-purple-900/20 flex items-center relative overflow-hidden group hover:border-purple-400 transition-colors">
+                            <div class="absolute top-0 right-0 w-24 h-24 bg-purple-500/10 rounded-bl-full"></div>
+                            <div class="w-12 h-12 rounded-full bg-slate-950 flex items-center justify-center text-purple-400 text-xl mr-4 border border-purple-500/30 group-hover:scale-110 transition-transform shadow-[0_0_10px_rgba(168,85,247,0.3)]"><i class="fa-solid fa-filter-circle-dollar"></i></div>
+                            <div class="relative z-10">
+                                <p class="text-xs text-purple-200 font-bold uppercase tracking-wider opacity-80">Oportunidades Válidas</p>
+                                <p class="text-2xl font-black text-white">85 <span class="text-sm font-medium text-slate-400 ml-1 font-normal">(Score > 80)</span></p>
+                            </div>
+                        </div>
+
+                        <!-- Columna 3: Verde -->
+                        <div class="bg-gradient-to-br from-slate-900 to-emerald-900/30 border border-emerald-500/40 rounded-xl p-5 shadow-lg shadow-emerald-900/20 flex items-center relative overflow-hidden group hover:border-emerald-400 transition-colors">
+                            <div class="absolute -right-4 -bottom-4 opacity-10 text-emerald-500 group-hover:scale-110 transition-transform"><i class="fa-solid fa-sack-dollar text-8xl"></i></div>
+                            <div class="w-12 h-12 rounded-full bg-slate-950 flex items-center justify-center text-emerald-400 text-xl mr-4 border border-emerald-500/30 shadow-[0_0_10px_rgba(52,211,153,0.3)] z-10"><i class="fa-solid fa-money-bill-trend-up"></i></div>
+                            <div class="relative z-10">
+                                <p class="text-xs text-emerald-200 font-bold uppercase tracking-wider opacity-80">Cashflow Potencial</p>
+                                <p class="text-2xl font-black text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.4)]">$45.2k <span class="text-sm font-medium text-emerald-100/50 ml-1 font-normal drop-shadow-none">USD</span></p>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- Gráfica 1 rediseñada a Línea en SVG (Historia 11) -->
+                        <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-lg flex flex-col relative overflow-visible">
+                            <h3 class="text-lg font-bold text-white mb-1">Evolución de Oportunidades</h3>
+                            <p class="text-xs text-slate-400 mb-6">Gráfico de volumen mensual (Historia 11)</p>
+                            
+                            <div class="flex-1 relative w-full h-[200px] mt-4 border-b border-l border-slate-700">
+                                <!-- Grid Lines horizontales -->
+                                <div class="absolute w-full border-t border-slate-800/50 top-[25%] left-0"></div>
+                                <div class="absolute w-full border-t border-slate-800/50 top-[50%] left-0"></div>
+                                <div class="absolute w-full border-t border-slate-800/50 top-[75%] left-0"></div>
+
+                                <!-- SVG Line & Area -->
+                                <svg class="absolute inset-0 w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 100">
+                                    <defs>
+                                        <linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.4"/>
+                                            <stop offset="100%" stop-color="#3b82f6" stop-opacity="0"/>
+                                        </linearGradient>
+                                    </defs>
+                                    <polygon points="10,70 30,55 50,65 70,40 90,15 90,100 10,100" fill="url(#lineGrad)" />
+                                    <!-- Línea conectora -->
+                                    <polyline points="10,70 30,55 50,65 70,40 90,15" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="drop-shadow-[0_0_8px_rgba(59,130,246,0.8)]"/>
+                                </svg>
+
+                                <!-- Puntos interactivos (Data Points) -->
+                                <div class="absolute left-[10%] top-[70%] transform -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-brand-400 rounded-full border-[2.5px] border-slate-900 shadow-[0_0_10px_rgba(59,130,246,1)] cursor-pointer group hover:scale-150 transition-transform z-10">
+                                    <div class="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-white text-slate-900 text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity font-bold pointer-events-none whitespace-nowrap shadow-lg">45 Matches</div>
+                                    <div class="absolute top-4 left-1/2 transform -translate-x-1/2 text-[10px] text-slate-400 font-bold pointer-events-none">Ene</div>
+                                </div>
+                                <div class="absolute left-[30%] top-[55%] transform -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-brand-400 rounded-full border-[2.5px] border-slate-900 shadow-[0_0_10px_rgba(59,130,246,1)] cursor-pointer group hover:scale-150 transition-transform z-10">
+                                    <div class="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-white text-slate-900 text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity font-bold pointer-events-none whitespace-nowrap shadow-lg">68 Matches</div>
+                                    <div class="absolute top-4 left-1/2 transform -translate-x-1/2 text-[10px] text-slate-400 font-bold pointer-events-none">Feb</div>
+                                </div>
+                                <div class="absolute left-[50%] top-[65%] transform -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-brand-400 rounded-full border-[2.5px] border-slate-900 shadow-[0_0_10px_rgba(59,130,246,1)] cursor-pointer group hover:scale-150 transition-transform z-10">
+                                    <div class="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-white text-slate-900 text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity font-bold pointer-events-none whitespace-nowrap shadow-lg">52 Matches</div>
+                                    <div class="absolute top-4 left-1/2 transform -translate-x-1/2 text-[10px] text-slate-400 font-bold pointer-events-none">Mar</div>
+                                </div>
+                                <div class="absolute left-[70%] top-[40%] transform -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-brand-400 rounded-full border-[2.5px] border-slate-900 shadow-[0_0_10px_rgba(59,130,246,1)] cursor-pointer group hover:scale-150 transition-transform z-10">
+                                    <div class="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-white text-slate-900 text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity font-bold pointer-events-none whitespace-nowrap shadow-lg">85 Matches</div>
+                                    <div class="absolute top-4 left-1/2 transform -translate-x-1/2 text-[10px] text-slate-400 font-bold pointer-events-none">Abr</div>
+                                </div>
+                                <div class="absolute left-[90%] top-[15%] transform -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-emerald-400 rounded-full border-[2.5px] border-slate-900 shadow-[0_0_15px_rgba(52,211,153,1)] cursor-pointer group hover:scale-150 transition-transform z-10">
+                                    <div class="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-emerald-500 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity font-black pointer-events-none whitespace-nowrap shadow-[0_0_10px_rgba(52,211,153,0.4)]">124 Matches</div>
+                                    <div class="absolute top-4 left-1/2 transform -translate-x-1/2 text-[10px] text-emerald-400 font-black pointer-events-none drop-shadow-[0_0_5px_rgba(52,211,153,0.5)]">May</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Gráfica 2: Tree Map -->
+                        <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-lg flex flex-col">
+                            <h3 class="text-lg font-bold text-white mb-1">Rentabilidad por Sector</h3>
+                            <p class="text-xs text-slate-400 mb-4">Concentración de presupuesto en el pipeline activo</p>
+                            
+                            <div class="flex-1 flex flex-col gap-3 min-h-[200px]">
+                                <div class="flex h-1/2 gap-3">
+                                    <div class="bg-gradient-to-br from-brand-600 to-brand-800 rounded-lg flex-1 flex flex-col items-center justify-center text-white shadow-md hover:scale-[1.02] panel-transition cursor-pointer border border-brand-500/50">
+                                        <i class="fa-solid fa-building-columns text-2xl mb-1 opacity-80"></i>
+                                        <span class="font-black tracking-wide">FinTech</span>
+                                        <span class="text-xs font-medium bg-black/30 px-2 py-0.5 rounded mt-1">45% ($20k)</span>
+                                    </div>
+                                    <div class="bg-gradient-to-br from-emerald-600 to-emerald-800 rounded-lg w-1/3 flex flex-col items-center justify-center text-white shadow-md hover:scale-[1.02] panel-transition cursor-pointer border border-emerald-500/50">
+                                        <i class="fa-solid fa-cart-shopping text-xl mb-1 opacity-80"></i>
+                                        <span class="font-bold">E-commerce</span>
+                                        <span class="text-xs font-medium mt-1">25%</span>
+                                    </div>
+                                </div>
+                                <div class="flex h-1/2 gap-3">
+                                    <div class="bg-gradient-to-br from-amber-500 to-amber-700 rounded-lg w-1/3 flex flex-col items-center justify-center text-white shadow-md hover:scale-[1.02] panel-transition cursor-pointer border border-amber-500/50">
+                                        <i class="fa-solid fa-heart-pulse text-lg mb-1 opacity-80"></i>
+                                        <span class="font-bold text-sm">HealthTech</span>
+                                        <span class="text-xs">15%</span>
+                                    </div>
+                                    <div class="bg-gradient-to-br from-slate-700 to-slate-800 rounded-lg flex-1 flex flex-col items-center justify-center text-white shadow-md hover:scale-[1.02] panel-transition cursor-pointer border border-slate-600">
+                                        <i class="fa-solid fa-cloud text-xl mb-1 opacity-80"></i>
+                                        <span class="font-bold">SaaS B2B</span>
+                                        <span class="text-xs">10%</span>
+                                    </div>
+                                    <div class="bg-gradient-to-br from-fuchsia-600 to-fuchsia-800 rounded-lg w-1/4 flex flex-col items-center justify-center text-white shadow-md hover:scale-[1.02] panel-transition cursor-pointer border border-fuchsia-500/50">
+                                        <i class="fa-solid fa-robot text-lg mb-1 opacity-80"></i>
+                                        <span class="font-bold text-sm">AI/ML</span>
+                                        <span class="text-xs">5%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECCIÓN 3: HISTORIAL / PIPELINE (ESTADOS OFICIALES) -->
+                <div id="section-historial" class="app-section flex-1 overflow-y-auto p-6 hidden">
+                    <h2 class="text-2xl font-black text-white tracking-tight mb-2">Pipeline Operativo</h2>
+                    <p class="text-slate-400 mb-6">Seguimiento de estados persistentes según UML y Scrum Board.</p>
+                    
+                    <!-- Kanban Dinámico (7 Estados Oficiales con DropZones para Drag & Drop) -->
+                    <div class="flex gap-4 overflow-x-auto pb-4 h-[calc(100vh-180px)]">
+                        
+                        <div class="bg-slate-900 border border-brand-500/20 rounded-lg w-80 flex-shrink-0 flex flex-col shadow-lg backdrop-blur-sm" ondragover="allowDrop(event)" ondrop="drop(event, 'Interesante')">
+                            <div class="p-3 border-b border-brand-500/20 bg-brand-900/20 rounded-t-lg font-bold text-brand-400 flex justify-between items-center">
+                                <span class="flex items-center"><i class="fa-solid fa-star text-brand-400 mr-2 text-sm"></i> Interesante</span> 
+                                <span id="count-Interesante" class="bg-brand-500/20 text-brand-300 text-xs px-2 py-1 rounded-full border border-brand-500/40">0</span>
+                            </div>
+                            <div id="kanban-Interesante" class="p-3 space-y-3 flex-1 overflow-y-auto bg-slate-900/50 rounded-b-lg min-h-[100px]"></div>
+                        </div>
+
+                        <div class="bg-slate-900 border border-teal-500/20 rounded-lg w-80 flex-shrink-0 flex flex-col shadow-lg backdrop-blur-sm" ondragover="allowDrop(event)" ondrop="drop(event, 'Respondido')">
+                            <div class="p-3 border-b border-teal-500/20 bg-teal-900/20 rounded-t-lg font-bold text-teal-400 flex justify-between items-center">
+                                <span class="flex items-center"><i class="fa-solid fa-reply text-teal-400 mr-2 text-sm"></i> Respondido</span> 
+                                <span id="count-Respondido" class="bg-teal-500/20 text-teal-300 text-xs px-2 py-1 rounded-full border border-teal-500/40">0</span>
+                            </div>
+                            <div id="kanban-Respondido" class="p-3 space-y-3 flex-1 overflow-y-auto bg-slate-900/50 rounded-b-lg min-h-[100px]"></div>
+                        </div>
+
+                        <div class="bg-slate-900 border border-purple-500/20 rounded-lg w-80 flex-shrink-0 flex flex-col shadow-lg backdrop-blur-sm" ondragover="allowDrop(event)" ondrop="drop(event, 'Aplicado')">
+                            <div class="p-3 border-b border-purple-500/20 bg-purple-900/20 rounded-t-lg font-bold text-purple-400 flex justify-between items-center">
+                                <span class="flex items-center"><i class="fa-solid fa-paper-plane text-purple-400 mr-2 text-sm"></i> Aplicado</span> 
+                                <span id="count-Aplicado" class="bg-purple-500/20 text-purple-300 text-xs px-2 py-1 rounded-full border border-purple-500/40">0</span>
+                            </div>
+                            <div id="kanban-Aplicado" class="p-3 space-y-3 flex-1 overflow-y-auto bg-slate-900/50 rounded-b-lg min-h-[100px]"></div>
+                        </div>
+
+                        <div class="bg-slate-900 border border-amber-500/20 rounded-lg w-80 flex-shrink-0 flex flex-col shadow-lg backdrop-blur-sm" ondragover="allowDrop(event)" ondrop="drop(event, 'Follow-up')">
+                            <div class="p-3 border-b border-amber-500/20 bg-amber-900/20 rounded-t-lg font-bold text-amber-400 flex justify-between items-center">
+                                <span class="flex items-center"><i class="fa-solid fa-comments text-amber-400 mr-2 text-sm"></i> Follow-up</span> 
+                                <span id="count-Follow-up" class="bg-amber-500/20 text-amber-300 text-xs px-2 py-1 rounded-full border border-amber-500/40">0</span>
+                            </div>
+                            <div id="kanban-Follow-up" class="p-3 space-y-3 flex-1 overflow-y-auto bg-slate-900/50 rounded-b-lg min-h-[100px]"></div>
+                        </div>
+
+                        <!-- Estado Ganado -->
+                        <div class="bg-slate-900 border border-emerald-500/20 rounded-lg w-80 flex-shrink-0 flex flex-col shadow-lg backdrop-blur-sm" ondragover="allowDrop(event)" ondrop="drop(event, 'Ganado')">
+                            <div class="p-3 border-b border-emerald-500/20 bg-emerald-900/20 rounded-t-lg font-bold text-emerald-400 flex justify-between items-center">
+                                <span class="flex items-center"><i class="fa-solid fa-handshake text-emerald-400 mr-2 text-sm"></i> Ganado</span> 
+                                <span id="count-Ganado" class="bg-emerald-500/20 text-emerald-300 text-xs px-2 py-1 rounded-full border border-emerald-500/40">0</span>
+                            </div>
+                            <div id="kanban-Ganado" class="p-3 space-y-3 flex-1 overflow-y-auto bg-slate-900/50 rounded-b-lg min-h-[100px]"></div>
+                        </div>
+
+                        <!-- Estado Perdido -->
+                        <div class="bg-slate-900/40 border border-slate-700 rounded-lg w-80 flex-shrink-0 flex flex-col shadow-sm opacity-70 hover:opacity-100 transition-opacity" ondragover="allowDrop(event)" ondrop="drop(event, 'Perdido')">
+                            <div class="p-3 border-b border-slate-700 bg-slate-800/40 rounded-t-lg font-bold text-slate-400 flex justify-between items-center">
+                                <span class="flex items-center"><i class="fa-solid fa-folder-minus mr-2 text-sm"></i> Perdido</span> 
+                                <span id="count-Perdido" class="bg-slate-800 text-slate-500 text-xs px-2 py-1 rounded-full border border-slate-600">0</span>
+                            </div>
+                            <div id="kanban-Perdido" class="p-3 space-y-3 flex-1 overflow-y-auto bg-slate-900/30 rounded-b-lg min-h-[100px]"></div>
+                        </div>
+
+                        <!-- Estado Sospechoso -->
+                        <div class="bg-slate-900/40 border border-orange-500/30 rounded-lg w-80 flex-shrink-0 flex flex-col shadow-sm opacity-70 hover:opacity-100 transition-opacity" ondragover="allowDrop(event)" ondrop="drop(event, 'Sospechoso')">
+                            <div class="p-3 border-b border-orange-500/30 bg-orange-900/20 rounded-t-lg font-bold text-orange-400 flex justify-between items-center">
+                                <span class="flex items-center"><i class="fa-solid fa-triangle-exclamation mr-2 text-sm"></i> Sospechoso</span> 
+                                <span id="count-Sospechoso" class="bg-orange-900/50 text-orange-500 text-xs px-2 py-1 rounded-full border border-orange-700">0</span>
+                            </div>
+                            <div id="kanban-Sospechoso" class="p-3 space-y-3 flex-1 overflow-y-auto bg-slate-900/30 rounded-b-lg min-h-[100px]"></div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- SECCIÓN 4: BÚSQUEDAS GUARDADAS -->
+                <div id="section-busquedas" class="app-section flex-1 overflow-y-auto p-6 hidden">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-black text-white tracking-tight">Búsquedas Guardadas y Filtros</h2>
+                        <button onclick="simularNuevaBusqueda(this)" class="bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-[0_0_15px_rgba(37,99,235,0.3)] transition-all">
+                            <i class="fa-solid fa-plus mr-1"></i> Nueva Búsqueda
+                        </button>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div onclick="cargarBusquedaGuardada(this)" class="bg-slate-900 border border-slate-800 rounded-lg p-5 shadow-lg hover:border-brand-500/50 hover:bg-slate-800/50 transition-all cursor-pointer group">
+                            <div class="flex justify-between items-start mb-3">
+                                <h3 class="font-bold text-lg text-white group-hover:text-brand-400 transition-colors">Rust Remoto Sr.</h3>
+                                <i class="fa-solid fa-star text-amber-400 drop-shadow-[0_0_5px_rgba(251,191,36,0.5)]"></i>
+                            </div>
+                            <p class="text-xs text-slate-400 mb-3"><i class="fa-solid fa-filter mr-1"></i> Sector: Tecnología | Min: $4k</p>
+                            <div class="text-xs font-mono bg-slate-950 text-slate-300 p-2 rounded border border-slate-800">Keywords: rust, postgres, backend</div>
+                        </div>
+
+                        <div onclick="cargarBusquedaGuardada(this)" class="bg-slate-900 border border-slate-800 rounded-lg p-5 shadow-lg hover:border-brand-500/50 hover:bg-slate-800/50 transition-all cursor-pointer group">
+                            <div class="flex justify-between items-start mb-3">
+                                <h3 class="font-bold text-lg text-white group-hover:text-brand-400 transition-colors">n8n Consultoría</h3>
+                                <i class="fa-solid fa-star text-amber-400 drop-shadow-[0_0_5px_rgba(251,191,36,0.5)]"></i>
+                            </div>
+                            <p class="text-xs text-slate-400 mb-3"><i class="fa-solid fa-filter mr-1"></i> Sector: Automatización | Min: $500</p>
+                            <div class="text-xs font-mono bg-slate-950 text-slate-300 p-2 rounded border border-slate-800">Keywords: n8n, make, automation</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECCIÓN 5: ALERTAS -->
+                <div id="section-alertas" class="app-section flex-1 overflow-y-auto p-6 hidden">
+                    <h2 class="text-2xl font-black text-white tracking-tight mb-6">Configuración de Alertas</h2>
+                    
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-lg max-w-2xl relative overflow-hidden">
+                        <!-- Glow effect -->
+                        <div class="absolute -right-10 -top-10 w-32 h-32 bg-brand-500/10 rounded-full blur-2xl"></div>
+
+                        <div class="flex items-center justify-between border-b border-slate-800 pb-4 mb-4 relative z-10">
+                            <div>
+                                <h4 class="font-bold text-white text-lg">Notificaciones por Correo</h4>
+                                <p class="text-sm text-slate-400">Recibe un aviso directo a tu inbox cuando un bot detecte un match superior a Score 85.</p>
+                            </div>
+                            <div id="toggle-correo" onclick="toggleSwitch(this)" class="w-11 h-6 bg-brand-600 rounded-full relative cursor-pointer panel-transition shadow-[0_0_10px_rgba(37,99,235,0.4)]">
+                                <div class="w-4 h-4 bg-white rounded-full absolute top-1 right-1 shadow-sm panel-transition"></div>
+                            </div>
+                        </div>
+
+                        <div class="space-y-4 relative z-10">
+                            <label class="block">
+                                <span class="text-sm font-bold text-slate-300">Frecuencia de Notificación</span>
+                                <select class="mt-1 block w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
+                                    <option>En tiempo real (Al instante)</option>
+                                    <option>Resumen Diario (Daily Digest)</option>
+                                    <option>Resumen Semanal</option>
+                                </select>
+                            </label>
+                            <label class="block">
+                                <span class="text-sm font-bold text-slate-300">Correo Destino</span>
+                                <input type="email" value="contacto@usuario-negocio.com" class="mt-1 block w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
+                            </label>
+                        </div>
+                        <div class="mt-6 relative z-10">
+                            <button onclick="simulateSaveSettings(this)" class="bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 hover:border-slate-600 px-4 py-2.5 rounded-lg text-sm font-bold shadow-md w-40 justify-center flex panel-transition">
+                                Guardar Cambios
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div> <!-- Fin Area de Contenido -->
+
+        </main>
+
+        <!-- PANEL DE DETALLE LATERAL -->
+        <aside id="detail-aside" class="w-[420px] bg-slate-900 border-l border-slate-800 flex flex-col shadow-2xl z-40 transition-all duration-300 origin-right shrink-0 hidden">
+            <div class="p-6 border-b border-slate-800 bg-slate-900/50 relative">
+                <!-- Botón para cerrar el panel -->
+                <button onclick="cerrarPanelDetalle()" class="absolute top-4 right-4 text-slate-500 hover:text-red-400 hover:bg-slate-800 rounded-full w-8 h-8 flex items-center justify-center transition-colors focus:outline-none">
+                    <i class="fa-solid fa-times text-lg"></i>
+                </button>
+                
+                <div class="flex justify-between items-start mb-4 pr-8">
+                    <span id="detail-id" class="bg-slate-800 text-slate-300 text-[10px] font-mono px-2 py-1 rounded border border-slate-700">ID: ----</span>
+                    <span id="detail-state" class="bg-blue-500/20 text-blue-400 text-xs font-bold px-2 py-1 rounded uppercase tracking-wider border border-blue-500/30">Estado: --</span>
+                </div>
+                <h2 id="detail-title" class="text-xl font-black text-white leading-tight mb-2">Selecciona una oportunidad</h2>
+                <a href="#" onclick="alert('Abriendo fuente original en una nueva pestaña segura...'); return false;" class="text-sm text-brand-400 hover:text-brand-300 hover:underline flex items-center font-medium transition-colors w-fit">
+                    <i class="fa-solid fa-arrow-up-right-from-square mr-1 text-xs"></i> Ver post original
+                </a>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-6 space-y-6">
+                
+                <!-- Resumen IA Destacado -->
+                <div class="bg-fuchsia-500/10 rounded-lg border border-fuchsia-500/20 p-5 shadow-sm relative overflow-hidden group">
+                    <div class="absolute -right-4 -top-4 opacity-5 text-fuchsia-500 group-hover:scale-110 transition-transform duration-500"><i class="fa-solid fa-brain text-8xl"></i></div>
+                    <h3 class="text-xs font-black text-fuchsia-400 uppercase tracking-wider mb-3 flex items-center relative z-10">
+                        <i class="fa-solid fa-robot mr-2 text-lg drop-shadow-[0_0_5px_rgba(217,70,239,0.5)]"></i> Análisis IA (Ollama)
+                    </h3>
+                    <p id="detail-ai-summary" class="text-sm text-slate-300 leading-relaxed font-medium relative z-10">...</p>
+                    <div class="mt-4 pt-4 border-t border-fuchsia-500/20 relative z-10">
+                        <p class="text-sm" id="detail-ai-advantage">...</p>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Banderas Operativas</h3>
+                    <div id="detail-risk-box" class="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-4 flex items-start space-x-3">
+                        <i id="detail-risk-icon" class="fa-solid fa-shield-check text-emerald-400 mt-0.5 text-lg"></i>
+                        <div>
+                            <p id="detail-risk-title" class="text-sm text-emerald-400 font-bold">...</p>
+                            <p id="detail-risk-desc" class="text-xs text-emerald-300/80 mt-1 font-medium">...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Texto Original (Extracto)</h3>
+                    <div id="job-description-text" class="bg-slate-950 rounded-lg p-4 font-mono text-xs text-slate-400 whitespace-pre-line border border-slate-800 shadow-inner">...</div>
+                </div>
+            </div>
+
+            <div class="p-5 border-t border-slate-800 bg-slate-900 space-y-3 shrink-0 relative z-10">
+                <button onclick="moverOportunidad(tarjetaActualId, 'Interesante')" class="w-full bg-brand-600 hover:bg-brand-500 text-white font-bold py-3 px-4 rounded-lg shadow-[0_0_15px_rgba(37,99,235,0.3)] hover:shadow-[0_0_20px_rgba(37,99,235,0.5)] panel-transition flex justify-center items-center">
+                    <i class="fa-solid fa-star mr-2 drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]"></i> Marcar como Interesante
+                </button>
+                <div class="flex space-x-3">
+                    <button onclick="openApplyModal()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-bold py-2.5 px-4 rounded-lg panel-transition text-sm border border-slate-700 flex justify-center items-center shadow-sm">
+                        <i class="fa-solid fa-paper-plane mr-2 text-brand-400"></i> Aplicar
+                    </button>
+                    <button onclick="openDiscardModal()" class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-red-400 font-bold py-2.5 px-4 rounded-lg panel-transition text-sm flex justify-center items-center shadow-sm">
+                        <i class="fa-solid fa-xmark mr-2"></i> Descartar
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+    </div> <!-- FIN APP VIEW -->
+
+    <!-- ========================================== -->
+    <!-- MODALES GLOBALES                           -->
+    <!-- ========================================== -->
+
+    <!-- Modal de Aplicación -->
+    <div id="apply-modal" class="fixed inset-0 bg-slate-950/80 hidden items-center justify-center z-50 backdrop-blur-sm transition-opacity">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 w-full max-w-sm shadow-2xl shadow-black/80">
+            <div class="flex justify-between items-center mb-4 border-b border-slate-800 pb-3">
+                <h3 class="text-lg font-black text-white"><i class="fa-solid fa-paper-plane text-brand-400 mr-2 drop-shadow-[0_0_5px_rgba(96,165,250,0.5)]"></i> Aplicar a Oportunidad</h3>
+                <button onclick="closeApplyModal()" class="text-slate-500 hover:text-white transition-colors"><i class="fa-solid fa-times text-xl"></i></button>
+            </div>
+
+            <p class="text-sm text-slate-400 mb-4">¿Deseas enviar tu propuesta para esta oportunidad? Puedes agregar una nota rápida para tu historial.</p>
+
+            <div class="space-y-4 mb-6">
+                <label class="block">
+                    <span class="text-sm font-bold text-slate-300">Nota interna (Opcional)</span>
+                    <textarea id="apply-note" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm focus:outline-none focus:border-brand-500 text-white placeholder-slate-600 shadow-inner" rows="3" placeholder="Ej. Mandé mensaje por DM con mi portafolio..."></textarea>
+                </label>
+            </div>
+
+            <div class="flex justify-end space-x-3">
+                <button onclick="closeApplyModal()" class="px-4 py-2 text-sm font-bold text-slate-400 hover:text-white transition-colors">Cancelar</button>
+                <button onclick="confirmarAplicacion()" class="bg-brand-600 hover:bg-brand-500 text-white px-6 py-2 rounded-lg text-sm font-bold transition-colors shadow-[0_0_10px_rgba(37,99,235,0.3)]">
+                    Confirmar Envío
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Exportación -->
+    <div id="export-modal" class="fixed inset-0 bg-slate-950/80 hidden items-center justify-center z-50 backdrop-blur-sm transition-opacity">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 w-full max-w-md shadow-2xl shadow-black/80">
+            <div class="flex justify-between items-center mb-4 border-b border-slate-800 pb-3">
+                <h3 class="text-lg font-black text-white"><i class="fa-solid fa-file-export text-slate-400 mr-2"></i> Exportar Reporte</h3>
+                <button onclick="closeExportModal()" class="text-slate-500 hover:text-red-400 transition-colors"><i class="fa-solid fa-times text-xl"></i></button>
+            </div>
+            
+            <p class="text-sm font-bold text-slate-300 mb-2">1. Selecciona el formato</p>
+            <div class="grid grid-cols-3 gap-3 mb-6">
+                <button onclick="seleccionarFormatoReporte(this)" class="format-btn bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white py-3 rounded-lg font-bold text-sm flex flex-col items-center justify-center transition-colors">
+                    <i class="fa-solid fa-file-pdf text-red-400 text-2xl mb-1"></i> PDF
+                </button>
+                <button onclick="seleccionarFormatoReporte(this)" class="format-btn bg-brand-500/20 border border-brand-500/50 text-white py-3 rounded-lg font-bold text-sm flex flex-col items-center justify-center transition-colors">
+                    <i class="fa-solid fa-file-csv text-emerald-400 text-2xl mb-1"></i> CSV
+                </button>
+                <button onclick="seleccionarFormatoReporte(this)" class="format-btn bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white py-3 rounded-lg font-bold text-sm flex flex-col items-center justify-center transition-colors">
+                    <i class="fa-solid fa-file-excel text-emerald-500 text-2xl mb-1"></i> Excel
+                </button>
+            </div>
+
+            <p class="text-sm font-bold text-slate-300 mb-2">2. Personalización (Premium)</p>
+            <div class="bg-slate-800 border border-slate-700 rounded-lg p-3 flex items-center justify-between mb-6">
+                <div>
+                    <p class="text-sm font-bold text-white flex items-center"><i class="fa-solid fa-crown text-amber-400 mr-2"></i> Marca Blanca</p>
+                    <p class="text-xs text-slate-400">Incluir logo de tu empresa en el reporte</p>
+                </div>
+                <div onclick="toggleSwitch(this)" class="w-11 h-6 bg-slate-600 rounded-full relative cursor-pointer panel-transition">
+                    <div class="w-4 h-4 bg-white rounded-full absolute top-1 left-1 shadow-sm panel-transition"></div>
+                </div>
+            </div>
+
+            <div class="flex justify-end space-x-3">
+                <button onclick="closeExportModal()" class="px-4 py-2 text-sm font-bold text-slate-400 hover:text-white transition-colors">Cancelar</button>
+                <button id="btn-descargar-reporte" onclick="simularDescarga(this)" class="bg-brand-600 hover:bg-brand-500 text-white px-6 py-2 rounded-lg text-sm font-bold transition-colors shadow-md w-32 justify-center flex">
+                    Descargar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Motivo de Descarte -->
+    <div id="discard-modal" class="fixed inset-0 bg-slate-950/80 hidden items-center justify-center z-50 backdrop-blur-sm transition-opacity">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 w-full max-w-sm shadow-2xl shadow-black/80">
+            <div class="flex justify-between items-center mb-4 border-b border-slate-800 pb-3">
+                <h3 class="text-lg font-black text-white"><i class="fa-solid fa-trash-can text-red-400 mr-2"></i> Descartar Oportunidad</h3>
+                <button onclick="closeDiscardModal()" class="text-slate-500 hover:text-white transition-colors"><i class="fa-solid fa-times text-xl"></i></button>
+            </div>
+            
+            <p class="text-sm text-slate-400 mb-4">Por favor, selecciona el motivo de cierre para mantener el registro de auditoría.</p>
+            
+            <div class="space-y-2 mb-6">
+                <!-- Se va a PERDIDO -->
+                <label class="flex items-center p-3 bg-slate-800 border border-slate-700 rounded-lg cursor-pointer hover:bg-slate-700 transition-colors">
+                    <input type="radio" name="discard_reason" class="w-4 h-4 text-red-500 bg-slate-950 focus:ring-red-500 border-slate-600">
+                    <span class="ml-3 text-sm font-bold text-slate-200">Presupuesto insuficiente</span>
+                </label>
+                <!-- Se va a PERDIDO -->
+                <label class="flex items-center p-3 bg-slate-800 border border-slate-700 rounded-lg cursor-pointer hover:bg-slate-700 transition-colors">
+                    <input type="radio" name="discard_reason" class="w-4 h-4 text-red-500 bg-slate-950 focus:ring-red-500 border-slate-600">
+                    <span class="ml-3 text-sm font-bold text-slate-200">Stack tecnológico incorrecto</span>
+                </label>
+                <!-- Se va a SOSPECHOSO -->
+                <label class="flex items-center p-3 bg-slate-800 border border-slate-700 rounded-lg cursor-pointer hover:bg-slate-700 transition-colors">
+                    <input type="radio" name="discard_reason" class="w-4 h-4 text-red-500 bg-slate-950 focus:ring-red-500 border-slate-600">
+                    <span class="ml-3 text-sm font-bold text-slate-200">Sospecha de fraude / Scam</span>
+                </label>
+            </div>
+
+            <div class="flex justify-end space-x-3">
+                <button onclick="closeDiscardModal()" class="px-4 py-2 text-sm font-bold text-slate-400 hover:text-white transition-colors">Cancelar</button>
+                <button onclick="confirmarDescarteFisico()" class="bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500 hover:text-white px-6 py-2 rounded-lg text-sm font-bold transition-colors">
+                    Confirmar Descarte
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Perfil de Usuario -->
+    <div id="profile-modal" class="fixed inset-0 bg-slate-950/80 hidden items-center justify-center z-50 backdrop-blur-sm transition-opacity">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 w-full max-w-sm shadow-2xl shadow-black/80">
+            <div class="flex justify-between items-center mb-4 border-b border-slate-800 pb-3">
+                <h3 class="text-lg font-black text-white"><i class="fa-solid fa-user-circle text-brand-400 mr-2 drop-shadow-[0_0_5px_rgba(96,165,250,0.5)]"></i> Perfil de Usuario</h3>
+                <button onclick="closeProfileModal()" class="text-slate-500 hover:text-red-400 transition-colors"><i class="fa-solid fa-times text-xl"></i></button>
+            </div>
+            
+            <!-- Resumen de cuenta -->
+            <div class="flex flex-col items-center mb-6">
+                <div class="w-20 h-20 rounded-full bg-slate-800 flex items-center justify-center text-brand-400 font-bold text-2xl shadow-inner border border-slate-700 mb-3">
+                    UN
+                </div>
+                <h4 class="text-xl font-bold text-white">Usuario Negocio</h4>
+                <p class="text-sm text-slate-400">contacto@usuario-negocio.com</p>
+                <span class="mt-2 bg-brand-500/20 text-brand-300 text-xs font-bold px-3 py-1 rounded-full border border-brand-500/30 uppercase tracking-wider shadow-[0_0_10px_rgba(59,130,246,0.2)]">Plan Premium</span>
+            </div>
+
+            <!-- Botones de acciones -->
+            <div class="space-y-2 mb-6">
+                <button onclick="openConfigModal()" class="w-full text-left p-3 bg-slate-800 border border-slate-700 rounded-lg hover:bg-slate-700 hover:border-slate-600 transition-colors flex items-center text-sm font-bold text-slate-200">
+                    <i class="fa-solid fa-sliders w-6 text-brand-400"></i> Configuración del Motor (Keywords)
+                </button>
+                <button onclick="simularFacturacion(this)" class="w-full text-left p-3 bg-slate-800 border border-slate-700 rounded-lg hover:bg-slate-700 hover:border-slate-600 transition-colors flex items-center text-sm font-bold text-slate-200 panel-transition">
+                    <i class="fa-solid fa-credit-card w-6 text-slate-400"></i> Facturación y Planes
+                </button>
+            </div>
+
+            <!-- Cerrar sesión -->
+            <div class="flex justify-center border-t border-slate-800 pt-4">
+                <button onclick="simularLogout()" class="text-red-400 hover:text-red-300 text-sm font-bold transition-colors flex items-center">
+                    <i class="fa-solid fa-sign-out-alt mr-2"></i> Cerrar Sesión
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Configuración en Vivo -->
+    <div id="config-modal" class="fixed inset-0 bg-slate-950/80 hidden items-center justify-center z-[60] backdrop-blur-sm transition-opacity">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 w-full max-w-lg shadow-2xl shadow-black/80 overflow-y-auto max-h-[90vh]">
+            <div class="flex justify-between items-center mb-4 border-b border-slate-800 pb-3">
+                <h3 class="text-lg font-black text-white"><i class="fa-solid fa-server text-brand-400 mr-2 drop-shadow-[0_0_5px_rgba(96,165,250,0.5)]"></i> Ajustes del Orquestador</h3>
+                <button onclick="closeConfigModal()" class="text-slate-500 hover:text-red-400 transition-colors"><i class="fa-solid fa-times text-xl"></i></button>
+            </div>
+            
+            <p class="text-sm text-slate-400 mb-5">Define las reglas globales de ingesta (sin tocar código). Estos parámetros se sincronizan con n8n y Rust.</p>
+            
+            <div class="space-y-5">
+                <div>
+                    <label class="block text-sm font-bold text-slate-300 mb-2"><i class="fa-solid fa-tags text-slate-500 mr-1"></i> Keywords (Palabras Clave)</label>
+                    <textarea class="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm focus:outline-none focus:border-brand-500 text-brand-300 font-mono shadow-inner" rows="2">rust, postgresql, python, data engineer, n8n, scraping</textarea>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-bold text-slate-300 mb-2"><i class="fa-solid fa-hand-holding-dollar text-slate-500 mr-1"></i> Rango de Pago Mínimo (Umbral)</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-dollar-sign absolute left-4 top-1/2 transform -translate-y-1/2 text-emerald-400"></i>
+                        <input type="number" value="1000" class="w-full bg-slate-950 border border-slate-700 rounded-lg pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-brand-500 font-bold text-white shadow-inner">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-slate-300 mb-2"><i class="fa-solid fa-briefcase text-slate-500 mr-1"></i> Sectores de Interés</label>
+                    <div class="grid grid-cols-2 gap-3 bg-slate-950 p-3 rounded-lg border border-slate-800">
+                        <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" checked class="rounded bg-slate-800 border-slate-700 text-brand-500 focus:ring-brand-500 w-4 h-4"><span class="text-sm font-medium text-slate-300">Tecnología</span></label>
+                        <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" checked class="rounded bg-slate-800 border-slate-700 text-brand-500 focus:ring-brand-500 w-4 h-4"><span class="text-sm font-medium text-slate-300">SaaS B2B</span></label>
+                        <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" checked class="rounded bg-slate-800 border-slate-700 text-brand-500 focus:ring-brand-500 w-4 h-4"><span class="text-sm font-medium text-slate-300">Finanzas / FinTech</span></label>
+                        <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" class="rounded bg-slate-800 border-slate-700 text-brand-500 focus:ring-brand-500 w-4 h-4"><span class="text-sm font-medium text-slate-300">E-commerce</span></label>
+                    </div>
+                </div>
+
+                <!-- Fuentes de Ingesta -->
+                <div class="pt-4 border-t border-slate-800">
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="block text-sm font-bold text-slate-300"><i class="fa-solid fa-network-wired text-slate-500 mr-1"></i> Fuentes de Ingesta (Source Policy Registry)</label>
+                        <button onclick="alert('Abriendo formulario para añadir nueva fuente a n8n...')" class="text-xs text-brand-400 hover:text-brand-300 font-bold bg-brand-500/10 px-2 py-1 rounded transition-colors border border-brand-500/20"><i class="fa-solid fa-plus"></i> Añadir</button>
+                    </div>
+                    
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between bg-slate-800 border border-slate-700 rounded p-2 shadow-sm hover:border-slate-600 transition-colors">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-8 h-8 rounded bg-[#ff4500]/20 text-[#ff4500] flex items-center justify-center"><i class="fa-brands fa-reddit-alien"></i></div>
+                                <div class="flex flex-col">
+                                    <span class="text-xs font-bold text-white">r/forhire (Reddit API)</span>
+                                    <span class="text-[10px] text-slate-400">Frecuencia: 30 min | Riesgo: Bajo</span>
+                                </div>
+                            </div>
+                            <div onclick="toggleSwitch(this)" class="w-8 h-4 bg-brand-600 rounded-full relative cursor-pointer panel-transition shrink-0 shadow-[0_0_8px_rgba(37,99,235,0.4)]">
+                                <div class="w-3 h-3 bg-white rounded-full absolute top-0.5 right-0.5 shadow-sm panel-transition"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center justify-between bg-slate-800 border border-slate-700 rounded p-2 shadow-sm hover:border-slate-600 transition-colors">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-8 h-8 rounded bg-[#0077b5]/20 text-[#0077b5] flex items-center justify-center"><i class="fa-solid fa-briefcase"></i></div>
+                                <div class="flex flex-col">
+                                    <span class="text-xs font-bold text-white">Greenhouse ATS (Webhook)</span>
+                                    <span class="text-[10px] text-slate-400">Frecuencia: Real-time | Riesgo: Medio</span>
+                                </div>
+                            </div>
+                            <div onclick="toggleSwitch(this)" class="w-8 h-4 bg-brand-600 rounded-full relative cursor-pointer panel-transition shrink-0 shadow-[0_0_8px_rgba(37,99,235,0.4)]">
+                                <div class="w-3 h-3 bg-white rounded-full absolute top-0.5 right-0.5 shadow-sm panel-transition"></div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between bg-slate-800 border border-slate-700 rounded p-2 shadow-sm hover:border-slate-600 transition-colors opacity-50">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-8 h-8 rounded bg-[#14a800]/20 text-[#14a800] flex items-center justify-center"><i class="fa-solid fa-upwork"></i></div>
+                                <div class="flex flex-col">
+                                    <span class="text-xs font-bold text-white">Upwork RSS Feed</span>
+                                    <span class="text-[10px] text-slate-400">Frecuencia: 60 min | Riesgo: Alto</span>
+                                </div>
+                            </div>
+                            <div onclick="toggleSwitch(this)" class="w-8 h-4 bg-slate-600 rounded-full relative cursor-pointer panel-transition shrink-0">
+                                <div class="w-3 h-3 bg-slate-300 rounded-full absolute top-0.5 left-0.5 shadow-sm panel-transition"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="flex justify-end space-x-3 mt-6 pt-4 border-t border-slate-800">
+                <button onclick="closeConfigModal()" class="px-4 py-2 text-sm font-bold text-slate-400 hover:text-white transition-colors">Cancelar</button>
+                <button onclick="simularGuardarConfigMotor(this)" class="bg-brand-600 hover:bg-brand-500 text-white px-6 py-2 rounded-lg text-sm font-bold transition-colors shadow-[0_0_10px_rgba(37,99,235,0.3)] flex items-center justify-center min-w-[160px]">
+                    Sincronizar Reglas
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script de Navegación y Datos Dinámicos -->
+    <script>
+        let tarjetaActualId = null;
+        let sidebarExpanded = true;
+        let isLoginMode = true;
+
+        // ==========================================
+        // FUNCIONES DE DRAG & DROP (HTML5)
+        // ==========================================
+        function allowDrop(ev) {
+            ev.preventDefault();
+        }
+
+        function drag(ev, id) {
+            ev.dataTransfer.setData("card_id", id);
+        }
+
+        function drop(ev, nuevoEstado) {
+            ev.preventDefault();
+            const id = ev.dataTransfer.getData("card_id");
+            if(id) {
+                moverOportunidad(id, nuevoEstado);
+            }
+        }
+
+        // ==========================================
+        // FUNCIONES DE AUTENTICACIÓN (LOGIN/LOGOUT)
+        // ==========================================
+        function simularLogin(btn) {
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Verificando...';
+            btn.disabled = true;
+            
+            setTimeout(() => {
+                document.getElementById('auth-view').classList.add('hidden');
+                document.getElementById('app-view').classList.remove('hidden');
+                
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                
+                renderInbox();
+                renderKanban();
+            }, 1500);
+        }
+
+        function simularLogout() {
+            closeProfileModal();
+            document.getElementById('app-view').classList.add('hidden');
+            document.getElementById('auth-view').classList.remove('hidden');
+        }
+
+        function toggleAuthMode() {
+            isLoginMode = !isLoginMode;
+            const btnAction = document.getElementById('btn-auth-action');
+            const toggleText = document.getElementById('auth-toggle-text');
+            const btnToggle = document.getElementById('btn-auth-toggle');
+            const subtitle = document.getElementById('auth-subtitle');
+            const extraOptions = document.getElementById('auth-options');
+            const confirmPassGroup = document.getElementById('auth-confirm-password-group'); 
+
+            if(isLoginMode) {
+                btnAction.innerHTML = 'Iniciar Sesión';
+                toggleText.innerText = '¿No tienes cuenta?';
+                btnToggle.innerText = 'Regístrate aquí';
+                subtitle.innerText = 'Inicia sesión en tu cuenta operativa';
+                extraOptions.classList.remove('hidden');
+                confirmPassGroup.classList.add('hidden');
+            } else {
+                btnAction.innerHTML = 'Crear Cuenta';
+                toggleText.innerText = '¿Ya tienes cuenta?';
+                btnToggle.innerText = 'Inicia sesión';
+                subtitle.innerText = 'Crea tu cuenta para empezar a automatizar';
+                extraOptions.classList.add('hidden');
+                confirmPassGroup.classList.remove('hidden');
+            }
+        }
+
+
+        // ==========================================
+        // DATA DINÁMICA DE OPORTUNIDADES CON ESTADOS 
+        // ==========================================
+        const oportunidadesData = {
+            1: {
+                id: "8A9B-234F",
+                estadoPipeline: "Inbox",
+                fuente: "r/forhire",
+                fuenteIcon: "fa-brands fa-reddit-alien",
+                fuenteClass: "bg-[#ff4500]/20 text-[#ff4500] border border-[#ff4500]/30",
+                tiempo: "Hace 15 min",
+                titulo: "Desarrollador Backend Rust + PostgreSQL Urgente",
+                tags: ["Rust", "Backend"],
+                presupuesto: "Est. $3,500 - $5,000",
+                score: 95,
+                scoreClass: "text-emerald-400 drop-shadow-[0_0_5px_rgba(52,211,153,0.5)]",
+                estadoTxt: "Estado: Nuevo",
+                estadoClass: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+                aiSummary: "El cliente busca un desarrollador Senior en <span class='text-white font-bold bg-slate-700 px-1 rounded'>Rust</span> para refactorizar un monolito actual. Tienen presupuesto aprobado y están listos para contratar esta semana. Requieren conocimiento comprobable en <span class='text-white font-bold bg-slate-700 px-1 rounded'>PostgreSQL</span> para optimización de consultas complejas.",
+                aiAdvantage: "<span class='text-emerald-400 font-bold'><i class='fa-solid fa-check-circle mr-1'></i> Ventaja:</span> Match perfecto con tu stack actual (Rust/Postgres).",
+                riskTitle: "Bajo Riesgo",
+                riskDesc: "El usuario de Reddit tiene 4 años de antigüedad y posts previos contratando freelancers de forma exitosa.",
+                riskClassBox: "bg-emerald-500/10 border-emerald-500/20",
+                riskClassIcon: "fa-shield-check text-emerald-400",
+                riskClassTextTitle: "text-emerald-400",
+                riskClassTextDesc: "text-emerald-300/80",
+                originalText: "Hey everyone,\n\nWe are a fintech startup looking for a strong Rust developer to help us decouple our current Node.js monolith into performant microservices. Database is PostgreSQL.\n\nBudget is around $3.5k - $5k depending on experience. Please DM with your Github and a brief intro. Need to start next Monday."
+            },
+            2: {
+                id: "9C2D-551A",
+                estadoPipeline: "Inbox",
+                fuente: "Greenhouse ATS",
+                fuenteIcon: "fa-solid fa-briefcase",
+                fuenteClass: "bg-[#0077b5]/20 text-[#0077b5] border border-[#0077b5]/30",
+                tiempo: "Hace 2 horas",
+                titulo: "Senior Python Data Engineer (Remoto)",
+                tags: ["Python", "Data"],
+                presupuesto: "Tarifa a convenir",
+                score: 88,
+                scoreClass: "text-emerald-500",
+                estadoTxt: "Estado: Visto",
+                estadoClass: "bg-slate-800 text-slate-300 border-slate-700",
+                aiSummary: "Empresa buscando un ingeniero de datos experimentado en <span class='text-white font-bold bg-slate-700 px-1 rounded'>Python</span> para integrarse a su equipo. El rol es 100% remoto y gestionado a través de Greenhouse ATS. Buscan a alguien que pueda empezar a más tardar el próximo mes.",
+                aiAdvantage: "<span class='text-emerald-400 font-bold'><i class='fa-solid fa-check-circle mr-1'></i> Oportunidad:</span> Excelente trabajo a largo plazo y rol estable.",
+                riskTitle: "Riesgo Moderado",
+                riskDesc: "Oferta de ATS estándar. No se especifica rango salarial exacto, lo que podría requerir negociación inicial fuerte para asegurar cashflow.",
+                riskClassBox: "bg-amber-500/10 border-amber-500/20",
+                riskClassIcon: "fa-circle-info text-amber-400",
+                riskClassTextTitle: "text-amber-400",
+                riskClassTextDesc: "text-amber-500",
+                originalText: "Role: Senior Data Engineer\nLocation: Remote\n\nWe are actively hiring a Data Engineer with 5+ years of Python experience. You will be responsible for building scalable data pipelines.\n\nPlease apply through our Greenhouse portal."
+            },
+            3: {
+                id: "1F4E-998X",
+                estadoPipeline: "Inbox",
+                fuente: "r/slavelabour",
+                fuenteIcon: "fa-brands fa-reddit-alien",
+                fuenteClass: "bg-[#ff4500]/20 text-[#ff4500] border border-[#ff4500]/30",
+                tiempo: "Hace 5 horas",
+                titulo: "Necesito bot de scraping ASAP pago hoy",
+                tags: ["Python", "Web Scraping"],
+                presupuesto: "Est. < $500",
+                score: 45,
+                scoreClass: "text-red-400",
+                estadoTxt: "Estado: Nuevo",
+                estadoClass: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+                aiSummary: "El usuario solicita con extrema urgencia un bot de web scraping construido en <span class='text-white font-bold bg-slate-700 px-1 rounded'>Python</span>. El presupuesto parece ser muy bajo en relación al requerimiento. El lenguaje de la oferta denota urgencia y poca estructura técnica.",
+                aiAdvantage: "<span class='text-amber-400 font-bold'><i class='fa-solid fa-bolt mr-1'></i> Dinero Rápido:</span> Viable solo si ya tienes un script pre-hecho que se adapte.",
+                riskTitle: "Alto Riesgo (Posible Scam/Lowball)",
+                riskDesc: "Publicado en r/slavelabour. Pagos el mismo día sin sistema de escrow (intermediario) suelen resultar problemáticos. Presupuesto irreal.",
+                riskClassBox: "bg-red-500/10 border-red-500/20",
+                riskClassIcon: "fa-triangle-exclamation text-red-400",
+                riskClassTextTitle: "text-red-400",
+                riskClassTextDesc: "text-red-500",
+                originalText: "I need a scraping bot right now to get data from a directory. I will pay $50 today via crypto once it works.\n\nDM me if you can do it in 2 hours. Must be Python."
+            },
+            4: {
+                id: "B883-M9X2",
+                estadoPipeline: "Inbox",
+                fuente: "Upwork API",
+                fuenteIcon: "fa-solid fa-upwork",
+                fuenteClass: "bg-[#14a800]/20 text-[#14a800] border border-[#14a800]/30",
+                tiempo: "Hace 30 min",
+                titulo: "Integración n8n + OpenAI para CRM Inmobiliario",
+                tags: ["n8n", "OpenAI", "CRM"],
+                presupuesto: "Est. $1,500 Fijo",
+                score: 92,
+                scoreClass: "text-emerald-400 drop-shadow-[0_0_5px_rgba(52,211,153,0.5)]",
+                estadoTxt: "Estado: Nuevo",
+                estadoClass: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+                aiSummary: "El cliente necesita a alguien experto en automatizaciones con <span class='text-white font-bold bg-slate-700 px-1 rounded'>n8n</span> para conectar su CRM con la API de OpenAI y procesar correos entrantes automáticamente. Piden muestras de trabajos anteriores.",
+                aiAdvantage: "<span class='text-emerald-400 font-bold'><i class='fa-solid fa-check-circle mr-1'></i> Encaje Ideal:</span> Proyecto cerrado con requerimientos muy claros y técnicos.",
+                riskTitle: "Bajo Riesgo",
+                riskDesc: "Cliente verificado en Upwork con más de $10k gastados en la plataforma.",
+                riskClassBox: "bg-emerald-500/10 border-emerald-500/20",
+                riskClassIcon: "fa-shield-check text-emerald-400",
+                riskClassTextTitle: "text-emerald-400",
+                riskClassTextDesc: "text-emerald-300/80",
+                originalText: "We are a real estate agency looking to automate our lead processing. We need an expert in n8n to connect our CRM to OpenAI and parse incoming emails to extract client needs and budget. Fixed price $1,500. Please show previous n8n workflows."
+            },
+            5: {
+                id: "C4X1-7L0P",
+                estadoPipeline: "Inbox",
+                fuente: "r/forhire",
+                fuenteIcon: "fa-brands fa-reddit-alien",
+                fuenteClass: "bg-[#ff4500]/20 text-[#ff4500] border border-[#ff4500]/30",
+                tiempo: "Hace 1 hora",
+                titulo: "API Data Extraction Expert en C#",
+                tags: ["C#", "Scraping", ".NET"],
+                presupuesto: "Est. $40/hr",
+                score: 80,
+                scoreClass: "text-emerald-500",
+                estadoTxt: "Estado: Nuevo",
+                estadoClass: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+                aiSummary: "Petición para desarrollar una herramienta en <span class='text-white font-bold bg-slate-700 px-1 rounded'>C#</span> que extraiga datos de una API gubernamental y los exporte a un archivo local de Excel diariamente.",
+                aiAdvantage: "<span class='text-emerald-400 font-bold'><i class='fa-solid fa-check-circle mr-1'></i> Matching Skill:</span> Habilidad listada en tu perfil (.NET/C#).",
+                riskTitle: "Riesgo Bajo",
+                riskDesc: "Usuario regular solicitando trabajo técnico estándar.",
+                riskClassBox: "bg-emerald-500/10 border-emerald-500/20",
+                riskClassIcon: "fa-shield-check text-emerald-400",
+                riskClassTextTitle: "text-emerald-400",
+                riskClassTextDesc: "text-emerald-300/80",
+                originalText: "Hiring a C# dev to build a small app that calls a public gov API every morning at 6 AM and saves the JSON payload to an Excel sheet. Will pay $40/hr, should take about 10 hours."
+            },
+            6: {
+                id: "K-001", estadoPipeline: "Interesante", score: 82, tiempo: "Hace 1 día",
+                titulo: "Scraper de Amazon", presupuesto: "Est. $800",
+                fuente: "r/slavelabour", fuenteIcon: "fa-brands fa-reddit-alien",
+                estadoTxt: "Estado: Interesante", estadoClass: "bg-brand-500/20 text-brand-400 border-brand-500/30",
+                aiSummary: "El usuario busca un script ligero para raspar reseñas de un listado específico de ASINs en Amazon.",
+                aiAdvantage: "Ventaja: Tarea rápida si reutilizas librerías de scraping existentes.",
+                riskTitle: "Riesgo Moderado", riskDesc: "Amazon actualiza su DOM frecuentemente. Posible mantenimiento futuro no pagado.",
+                riskClassBox: "bg-amber-500/10 border-amber-500/20", riskClassIcon: "fa-circle-info text-amber-400",
+                riskClassTextTitle: "text-amber-400", riskClassTextDesc: "text-amber-500",
+                originalText: "Need a quick script to scrape reviews from 100 Amazon ASINs and output to CSV. Budget is $800."
+            },
+            7: {
+                id: "K-002", estadoPipeline: "Respondido", score: 79, tiempo: "Hace 2 días",
+                titulo: "Data Engineer para Startup", presupuesto: "Tarifa a convenir",
+                fuente: "Greenhouse ATS", fuenteIcon: "fa-solid fa-briefcase",
+                estadoTxt: "Estado: Respondido", estadoClass: "bg-teal-500/20 text-teal-400 border-teal-500/30",
+                aiSummary: "Puesto estable remoto enfocado en modelado de datos y ETL usando Python y dbt.",
+                aiAdvantage: "Ventaja: Ingreso recurrente. La empresa acaba de levantar serie A.",
+                riskTitle: "Riesgo Bajo", riskDesc: "Empresa verificada y fondeada.",
+                riskClassBox: "bg-emerald-500/10 border-emerald-500/20", riskClassIcon: "fa-shield-check text-emerald-400",
+                riskClassTextTitle: "text-emerald-400", riskClassTextDesc: "text-emerald-300/80",
+                originalText: "Looking for a mid-level Data Engineer to build ETL pipelines. Python, SQL, and dbt required."
+            },
+            8: {
+                id: "K-003", estadoPipeline: "Aplicado", score: 90, tiempo: "12/Oct",
+                titulo: "API Integration Expert", presupuesto: "Est. $2,000",
+                fuente: "Upwork API", fuenteIcon: "fa-solid fa-upwork",
+                estadoTxt: "Estado: Aplicado", estadoClass: "bg-purple-500/20 text-purple-400 border-purple-500/30",
+                aiSummary: "Integración de Stripe y un CRM local mediante webhooks y lambdas.",
+                aiAdvantage: "Ventaja: Flujo muy directo y bien documentado por el cliente.",
+                riskTitle: "Riesgo Bajo", riskDesc: "Cliente confiable con historial de pagos en la plataforma.",
+                riskClassBox: "bg-emerald-500/10 border-emerald-500/20", riskClassIcon: "fa-shield-check text-emerald-400",
+                riskClassTextTitle: "text-emerald-400", riskClassTextDesc: "text-emerald-300/80",
+                originalText: "Need an expert to hook up our custom CRM with Stripe webhooks for automated billing."
+            },
+            9: {
+                id: "K-004", estadoPipeline: "Ganado", score: 99, tiempo: "Ayer",
+                titulo: "Bot de Telegram en Python", presupuesto: "$1,200 USD Asegurados",
+                fuente: "r/forhire", fuenteIcon: "fa-brands fa-reddit-alien",
+                estadoTxt: "Estado: Ganado", estadoClass: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+                aiSummary: "Bot de Telegram interactivo para consulta de precios en crypto.",
+                aiAdvantage: "Ventaja: Match perfecto de skills y disponibilidad inmediata.",
+                riskTitle: "Riesgo Bajo", riskDesc: "Presupuesto ya asignado y aceptado en el milestone.",
+                riskClassBox: "bg-emerald-500/10 border-emerald-500/20", riskClassIcon: "fa-shield-check text-emerald-400",
+                riskClassTextTitle: "text-emerald-400", riskClassTextDesc: "text-emerald-300/80",
+                originalText: "Hiring python dev to build a Telegram bot that queries Binance API for alerts. $1200 fixed."
+            }
+        };
+
+        // ==========================================
+        // MOTOR DE RENDERIZADO DINÁMICO
+        // ==========================================
+        function renderInbox() {
+            const inboxContainer = document.getElementById("inbox-list");
+            if(!inboxContainer) return;
+            inboxContainer.innerHTML = ""; 
+            let contador = 0;
+
+            for (const key in oportunidadesData) {
+                const data = oportunidadesData[key];
+                if (data.estadoPipeline === "Inbox") {
+                    contador++;
+                    const isActive = (tarjetaActualId == key) ? "border-l-4 border-l-brand-500" : "border-slate-800 hover:border-brand-500/50 hover:bg-slate-800/50 transition-all duration-300";
+                    
+                    const cardHTML = `
+                    <div id="card-${key}" class="bg-slate-900 border rounded-lg p-5 cursor-pointer hover:shadow-lg shadow-black/20 ${isActive}" onclick="showDetails('${key}')">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <div class="flex items-center space-x-2 mb-2">
+                                    <span class="${data.fuenteClass} text-xs font-bold px-2 py-0.5 rounded flex items-center">
+                                        <i class="${data.fuenteIcon} mr-1"></i> ${data.fuente}
+                                    </span>
+                                    <span class="text-slate-500 text-xs font-medium"><i class="fa-regular fa-clock mr-1"></i> ${data.tiempo}</span>
+                                </div>
+                                <h3 class="text-lg font-bold text-white group-hover:text-brand-400 transition-colors">${data.titulo}</h3>
+                                <div class="mt-3 flex space-x-2">
+                                    ${data.tags ? data.tags.map(t => `<span class="text-xs bg-slate-800 border border-slate-700 text-slate-300 px-2 py-1 rounded font-medium">${t}</span>`).join('') : ''}
+                                    <span class="text-xs text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20 font-bold"><i class="fa-solid fa-money-bill-wave mr-1"></i> ${data.presupuesto}</span>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-3xl font-black ${data.scoreClass}">${data.score}</div>
+                                <div class="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">Score</div>
+                            </div>
+                        </div>
+                    </div>`;
+                    inboxContainer.insertAdjacentHTML('beforeend', cardHTML);
+                }
+            }
+            const countEl = document.getElementById("counter-results");
+            if(countEl) countEl.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400 mr-2 animate-pulse"></span>${contador} resultados (Score > 80)`;
+        }
+
+        function renderKanban() {
+            const columnas = ["Interesante", "Respondido", "Aplicado", "Follow-up", "Ganado", "Perdido", "Sospechoso"];
+            
+            columnas.forEach(col => {
+                const container = document.getElementById(`kanban-${col}`);
+                const contadorBadge = document.getElementById(`count-${col}`);
+                if (!container) return;
+                
+                container.innerHTML = ""; 
+                let itemsEnColumna = 0;
+
+                for (const key in oportunidadesData) {
+                    const data = oportunidadesData[key];
+                    if (data.estadoPipeline === col) {
+                        itemsEnColumna++;
+                        
+                        let cardStyle = "bg-slate-900 border border-slate-700 rounded p-3 shadow-lg shadow-black/30 text-sm cursor-pointer hover:border-brand-500 hover:shadow-[0_0_15px_rgba(59,130,246,0.2)] transition-all";
+                        let extraData = `<p class="text-xs text-slate-400 mt-1 font-mono">Score: <span class="text-emerald-400">${data.score}</span> | ${data.tiempo}</p>`;
+                        
+                        if (col === "Respondido") {
+                            cardStyle = "bg-slate-900 border border-slate-700 rounded p-3 shadow-lg shadow-black/30 text-sm border-l-4 border-l-teal-500 cursor-pointer hover:border-teal-400 hover:shadow-[0_0_15px_rgba(20,184,166,0.2)] transition-all";
+                        } else if (col === "Aplicado") {
+                            cardStyle = "bg-slate-900 border border-slate-700 rounded p-3 shadow-lg shadow-black/30 text-sm border-l-4 border-l-purple-500 cursor-pointer hover:border-purple-400 hover:shadow-[0_0_15px_rgba(168,85,247,0.2)] transition-all";
+                            extraData = `<p class="text-xs text-slate-400 mt-1 font-mono">Aplicado: ${data.tiempo} | Score: <span class="text-emerald-400">${data.score}</span></p>`;
+                        } else if (col === "Ganado") {
+                            cardStyle = "bg-slate-900 border border-slate-700 rounded p-3 shadow-lg shadow-black/30 text-sm border-l-4 border-l-emerald-500 cursor-pointer hover:border-emerald-400 hover:shadow-[0_0_15px_rgba(52,211,153,0.2)] transition-all";
+                            extraData = `<p class="text-xs text-emerald-400 font-bold mt-1 drop-shadow-[0_0_5px_rgba(52,211,153,0.3)]"><i class="fa-solid fa-sack-dollar mr-1"></i> ${data.presupuesto}</p>`;
+                        } else if (col === "Perdido") {
+                            cardStyle = "bg-slate-900 border border-slate-800 rounded p-3 shadow-sm shadow-black/30 text-sm border-l-4 border-l-slate-600 cursor-pointer hover:border-slate-500 transition-all opacity-70 hover:opacity-100";
+                        } else if (col === "Sospechoso") {
+                            cardStyle = "bg-slate-900 border border-slate-800 rounded p-3 shadow-sm shadow-black/30 text-sm border-l-4 border-l-orange-500 cursor-pointer hover:border-orange-500 transition-all opacity-70 hover:opacity-100";
+                        }
+
+                        const kCardHTML = `
+                        <div class="${cardStyle}" draggable="true" ondragstart="drag(event, '${key}')" onclick="showDetails('${key}')">
+                            <h4 class="font-bold text-white">${data.titulo}</h4>
+                            ${extraData}
+                            ${data.notaInterna ? `<p class="text-[10px] text-slate-500 mt-2 italic border-t border-slate-800 pt-1">Nota: ${data.notaInterna}</p>` : ''}
+                        </div>`;
+                        container.insertAdjacentHTML('beforeend', kCardHTML);
+                    }
+                }
+                
+                if(contadorBadge) contadorBadge.innerText = itemsEnColumna;
+
+                if (itemsEnColumna === 0 && col !== "Perdido" && col !== "Sospechoso") {
+                    container.innerHTML = `<div class="flex items-center justify-center border-2 border-dashed border-slate-700 m-3 rounded h-20 pointer-events-none"><p class="text-sm text-slate-500 italic">Arrastra tarjetas aquí</p></div>`;
+                } else if (itemsEnColumna === 0 && (col === "Perdido" || col === "Sospechoso")) {
+                     container.innerHTML = `<div class="flex items-center justify-center m-3 rounded h-10 pointer-events-none"><p class="text-xs text-slate-500 italic">Lista vacía</p></div>`;
+                }
+            });
+        }
+
+        function moverOportunidad(idAfectado, nuevoEstado) {
+            if (!idAfectado || !oportunidadesData[idAfectado]) return;
+            oportunidadesData[idAfectado].estadoPipeline = nuevoEstado;
+            
+            if(nuevoEstado === 'Interesante') {
+                oportunidadesData[idAfectado].estadoTxt = 'Estado: Interesante';
+                oportunidadesData[idAfectado].estadoClass = 'bg-brand-500/20 text-brand-400 border-brand-500/30';
+            } else if(nuevoEstado === 'Respondido') {
+                oportunidadesData[idAfectado].estadoTxt = 'Estado: Respondido';
+                oportunidadesData[idAfectado].estadoClass = 'bg-teal-500/20 text-teal-400 border-teal-500/30';
+            } else if(nuevoEstado === 'Aplicado') {
+                oportunidadesData[idAfectado].estadoTxt = 'Estado: Aplicado';
+                oportunidadesData[idAfectado].estadoClass = 'bg-purple-500/20 text-purple-400 border-purple-500/30';
+            } else if(nuevoEstado === 'Ganado') {
+                oportunidadesData[idAfectado].estadoTxt = 'Estado: Ganado';
+                oportunidadesData[idAfectado].estadoClass = 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+            } else if(nuevoEstado === 'Perdido') {
+                 oportunidadesData[idAfectado].estadoTxt = 'Estado: Perdido';
+                 oportunidadesData[idAfectado].estadoClass = 'bg-slate-800 text-slate-300 border-slate-700';
+            } else if(nuevoEstado === 'Sospechoso') {
+                 oportunidadesData[idAfectado].estadoTxt = 'Estado: Sospechoso';
+                 oportunidadesData[idAfectado].estadoClass = 'bg-orange-500/20 text-orange-400 border-orange-500/30';
+            }
+
+            renderInbox();
+            renderKanban();
+            cerrarPanelDetalle();
+            tarjetaActualId = null;
+        }
+
+        function confirmarDescarteFisico() {
+            const opciones = document.getElementsByName('discard_reason');
+            let motivo = "Sin motivo especificado";
+            let destinoPipeline = 'Perdido'; 
+
+            for (let i = 0; i < opciones.length; i++) {
+                if (opciones[i].checked) {
+                    motivo = opciones[i].nextElementSibling.innerText;
+                    if(motivo.includes('fraude') || motivo.includes('Scam')) {
+                        destinoPipeline = 'Sospechoso';
+                    }
+                    break;
+                }
+            }
+            
+            if (tarjetaActualId && oportunidadesData[tarjetaActualId]) {
+                 oportunidadesData[tarjetaActualId].notaInterna = "Motivo: " + motivo;
+            }
+
+            closeDiscardModal();
+            moverOportunidad(tarjetaActualId, destinoPipeline);
+        }
+        
+        function confirmarAplicacion() {
+            const nota = document.getElementById('apply-note').value;
+            if (tarjetaActualId && oportunidadesData[tarjetaActualId]) {
+                 oportunidadesData[tarjetaActualId].notaInterna = nota;
+            }
+            closeApplyModal();
+            moverOportunidad(tarjetaActualId, 'Aplicado');
+        }
+
+        window.onload = function() {
+            renderInbox();
+            renderKanban();
+        };
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('main-sidebar');
+            if(sidebarExpanded) {
+                sidebar.classList.add('sidebar-collapsed');
+            } else {
+                sidebar.classList.remove('sidebar-collapsed');
+            }
+            sidebarExpanded = !sidebarExpanded;
+        }
+
+        function cerrarPanelDetalle() {
+            const detailPanel = document.getElementById('detail-aside');
+            if(detailPanel) {
+                detailPanel.classList.add('hidden');
+                detailPanel.classList.remove('flex');
+            }
+            renderInbox(); 
+        }
+
+        function switchSection(sectionId) {
+            document.querySelectorAll('.app-section').forEach(el => {
+                el.classList.add('hidden');
+                el.classList.remove('block');
+            });
+            const sec = document.getElementById('section-' + sectionId);
+            if(sec) {
+                sec.classList.remove('hidden');
+                sec.classList.add('block');
+            }
+
+            document.querySelectorAll('.nav-link').forEach(el => {
+                el.className = "nav-link flex items-center px-4 py-3 text-slate-400 hover:bg-slate-800 hover:text-white font-medium rounded-lg panel-transition border border-transparent";
+            });
+            const nav = document.getElementById('nav-' + sectionId);
+            if(nav) {
+                nav.className = "nav-link flex items-center px-4 py-3 bg-brand-500/20 border border-brand-500/30 text-brand-400 font-bold rounded-lg panel-transition shadow-[0_0_15px_rgba(59,130,246,0.15)]";
+            }
+
+            const detailPanel = document.getElementById('detail-aside');
+            if(sectionId === 'inbox' && tarjetaActualId && oportunidadesData[tarjetaActualId].estadoPipeline === 'Inbox') {
+                if(detailPanel) {
+                    detailPanel.classList.remove('hidden');
+                    detailPanel.classList.add('flex');
+                }
+            } else if (sectionId === 'historial' && tarjetaActualId && oportunidadesData[tarjetaActualId].estadoPipeline !== 'Inbox') {
+                if(detailPanel) {
+                    detailPanel.classList.remove('hidden');
+                    detailPanel.classList.add('flex');
+                }
+            } else {
+                if(detailPanel) {
+                    detailPanel.classList.add('hidden');
+                    detailPanel.classList.remove('flex');
+                }
+            }
+        }
+
+        function showDetails(id) {
+            tarjetaActualId = id; 
+            const data = oportunidadesData[id];
+            if(!data) return;
+
+            document.getElementById("detail-id").innerText = "ID: " + data.id;
+            document.getElementById("detail-title").innerText = data.titulo;
+            document.getElementById("detail-ai-summary").innerHTML = data.aiSummary;
+            document.getElementById("detail-ai-advantage").innerHTML = data.aiAdvantage;
+            document.getElementById("detail-risk-title").innerText = data.riskTitle;
+            document.getElementById("detail-risk-desc").innerText = data.riskDesc;
+            document.getElementById("job-description-text").innerText = data.originalText;
+            
+            const stateLabel = document.getElementById("detail-state");
+            if(stateLabel) {
+                stateLabel.innerText = data.estadoTxt;
+                stateLabel.className = `text-xs font-bold px-2 py-1 rounded uppercase tracking-wider border ${data.estadoClass}`;
+            }
+
+            const riskBox = document.getElementById("detail-risk-box");
+            if(riskBox) riskBox.className = `rounded-lg p-4 flex items-start space-x-3 border ${data.riskClassBox}`;
+            
+            const riskIcon = document.getElementById("detail-risk-icon");
+            if(riskIcon) riskIcon.className = `fa-solid mt-0.5 text-lg ${data.riskClassIcon}`;
+
+            const riskTitleEl = document.getElementById("detail-risk-title");
+            if(riskTitleEl) riskTitleEl.className = `text-sm font-bold ${data.riskClassTextTitle}`;
+            
+            const riskDescEl = document.getElementById("detail-risk-desc");
+            if(riskDescEl) riskDescEl.className = `text-xs mt-1 font-medium ${data.riskClassTextDesc}`;
+
+            renderInbox();
+
+            const detailPanel = document.getElementById('detail-aside');
+            if(detailPanel) {
+                detailPanel.classList.remove('hidden');
+                detailPanel.classList.add('flex');
+            }
+        }
+
+        function toggleDropdown(dropdownId) {
+            document.querySelectorAll('.dropdown-menu').forEach(el => {
+                if(el.id !== dropdownId) el.classList.add('hidden');
+            });
+            const dropdown = document.getElementById(dropdownId);
+            if(dropdown) dropdown.classList.toggle('hidden');
+        }
+
+        window.onclick = function(event) {
+            if (!event.target.closest('.dropdown-container')) {
+                document.querySelectorAll('.dropdown-menu').forEach(el => el.classList.add('hidden'));
+            }
+        }
+
+        function seleccionarFiltro(tipo, valorTxt) {
+            const label = document.getElementById('label-' + tipo);
+            if(label) label.innerText = valorTxt;
+            const drop = document.getElementById('drop-' + tipo);
+            if(drop) drop.classList.add('hidden');
+            simularCargaDatos();
+        }
+
+        function simularBusqueda(inputElement) {
+            if (inputElement.value.length > 2 || inputElement.value.length === 0) {
+                simularCargaDatos();
+            }
+        }
+
+        function simularCargaDatos() {
+            const mainContent = document.getElementById('main-content-area');
+            if(!mainContent) return;
+            mainContent.style.opacity = '0.3';
+            setTimeout(() => {
+                mainContent.style.opacity = '1';
+            }, 350);
+        }
+
+        function openApplyModal() {
+            document.getElementById('apply-note').value = ""; 
+            document.getElementById('apply-modal').classList.remove('hidden');
+            document.getElementById('apply-modal').classList.add('flex');
+        }
+        function closeApplyModal() {
+            document.getElementById('apply-modal').classList.add('hidden');
+            document.getElementById('apply-modal').classList.remove('flex');
+        }
+        
+        function openExportModal() {
+            document.getElementById('export-modal').classList.remove('hidden');
+            document.getElementById('export-modal').classList.add('flex');
+        }
+        function closeExportModal() {
+            document.getElementById('export-modal').classList.add('hidden');
+            document.getElementById('export-modal').classList.remove('flex');
+        }
+        function openDiscardModal() {
+            const opciones = document.getElementsByName('discard_reason');
+            for(let i = 0; i < opciones.length; i++){
+                opciones[i].checked = false;
+            }
+            document.getElementById('discard-modal').classList.remove('hidden');
+            document.getElementById('discard-modal').classList.add('flex');
+        }
+        function closeDiscardModal() {
+            document.getElementById('discard-modal').classList.add('hidden');
+            document.getElementById('discard-modal').classList.remove('flex');
+        }
+
+        function openProfileModal() {
+            document.getElementById('profile-modal').classList.remove('hidden');
+            document.getElementById('profile-modal').classList.add('flex');
+        }
+        function closeProfileModal() {
+            document.getElementById('profile-modal').classList.add('hidden');
+            document.getElementById('profile-modal').classList.remove('flex');
+        }
+
+        function openConfigModal() {
+            closeProfileModal(); 
+            document.getElementById('config-modal').classList.remove('hidden');
+            document.getElementById('config-modal').classList.add('flex');
+        }
+        
+        function closeConfigModal() {
+            document.getElementById('config-modal').classList.add('hidden');
+            document.getElementById('config-modal').classList.remove('flex');
+        }
+
+        function simularGuardarConfigMotor(btn) {
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Sincronizando...';
+            btn.disabled = true;
+            
+            setTimeout(() => {
+                btn.innerHTML = '<i class="fa-solid fa-check mr-2"></i> Reglas Actualizadas';
+                btn.classList.replace('bg-brand-600', 'bg-success-600');
+                btn.classList.replace('hover:bg-brand-500', 'hover:bg-success-500');
+                
+                setTimeout(() => {
+                    closeConfigModal();
+                    btn.innerHTML = originalHtml;
+                    btn.classList.replace('bg-success-600', 'bg-brand-600');
+                    btn.classList.replace('hover:bg-success-500', 'hover:bg-brand-500');
+                    btn.disabled = false;
+                }, 1500);
+            }, 1200);
+        }
+
+        function seleccionarFormatoReporte(btn) {
+            document.querySelectorAll('.format-btn').forEach(b => {
+                b.classList.remove('border-brand-500/50', 'bg-brand-500/20', 'text-white');
+                b.classList.add('bg-slate-800', 'border-slate-700', 'text-slate-300');
+            });
+            btn.classList.remove('bg-slate-800', 'border-slate-700', 'text-slate-300');
+            btn.classList.add('border-brand-500/50', 'bg-brand-500/20', 'text-white');
+        }
+
+        function simularDescarga(btn) {
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Procesando';
+            btn.disabled = true;
+            setTimeout(() => {
+                btn.innerHTML = '<i class="fa-solid fa-check mr-2"></i> ¡Descargado!';
+                btn.classList.replace('bg-brand-600', 'bg-success-600');
+                btn.classList.replace('hover:bg-brand-500', 'hover:bg-success-500');
+                setTimeout(() => {
+                    closeExportModal();
+                    btn.innerHTML = originalText;
+                    btn.classList.replace('bg-success-600', 'bg-brand-600');
+                    btn.classList.replace('hover:bg-success-500', 'hover:bg-brand-500');
+                    btn.disabled = false;
+                }, 1000);
+            }, 1500);
+        }
+
+        function toggleSwitch(element) {
+            const bolita = element.querySelector('div');
+            
+            if(element.classList.contains('bg-brand-600')) {
+                element.classList.replace('bg-brand-600', 'bg-slate-600');
+                bolita.classList.replace('right-0.5', 'left-0.5'); 
+                bolita.classList.replace('right-1', 'left-1'); 
+                bolita.classList.replace('bg-white', 'bg-slate-300');
+                element.classList.remove('shadow-[0_0_8px_rgba(37,99,235,0.4)]', 'shadow-[0_0_10px_rgba(37,99,235,0.4)]');
+            } else {
+                element.classList.replace('bg-slate-600', 'bg-brand-600');
+                bolita.classList.replace('left-0.5', 'right-0.5'); 
+                bolita.classList.replace('left-1', 'right-1'); 
+                bolita.classList.replace('bg-slate-300', 'bg-white');
+                if(element.id === 'toggle-correo'){
+                     element.classList.add('shadow-[0_0_10px_rgba(37,99,235,0.4)]');
+                } else {
+                     element.classList.add('shadow-[0_0_8px_rgba(37,99,235,0.4)]');
+                }
+            }
+            
+            const row = element.closest('.flex.items-center.justify-between.bg-slate-800');
+            if(row) {
+                if(element.classList.contains('bg-brand-600')){
+                    row.classList.remove('opacity-50');
+                } else {
+                    row.classList.add('opacity-50');
+                }
+            }
+        }
+
+        function simulateSaveSettings(btn) {
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-check mr-2"></i> Listo';
+            btn.classList.replace('bg-slate-800', 'bg-success-600');
+            setTimeout(() => {
+                btn.innerHTML = originalHtml;
+                btn.classList.replace('bg-success-600', 'bg-slate-800');
+            }, 1500);
+        }
+
+        function simulateSaveFilters(btn) {
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-check mr-2 text-white"></i> ¡Guardado!';
+            btn.classList.remove('bg-brand-500/10', 'text-brand-400', 'border-brand-500/30');
+            btn.classList.add('bg-brand-600', 'text-white', 'shadow-[0_0_10px_rgba(37,99,235,0.3)]');
+            setTimeout(() => {
+                btn.innerHTML = originalHtml;
+                btn.classList.remove('bg-brand-600', 'text-white', 'shadow-[0_0_10px_rgba(37,99,235,0.3)]');
+                btn.classList.add('bg-brand-500/10', 'text-brand-400', 'border-brand-500/30');
+            }, 2000);
+        }
+
+        function simularNuevaBusqueda(btn) {
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Creando...';
+            setTimeout(() => {
+                btn.innerHTML = '<i class="fa-solid fa-check mr-1"></i> Creada';
+                setTimeout(() => {
+                    btn.innerHTML = originalHtml;
+                }, 1500);
+            }, 1000);
+        }
+
+        function cargarBusquedaGuardada(card) {
+            const h3 = card.querySelector('h3');
+            if(!h3) return;
+            const titulo = h3.innerText;
+            const tituloHtmlOriginal = h3.innerHTML;
+            h3.innerHTML = `${titulo} <i class="fa-solid fa-spinner fa-spin ml-2 text-slate-400 text-sm"></i>`;
+            setTimeout(() => {
+                h3.innerHTML = tituloHtmlOriginal;
+                seleccionarFiltro('presupuesto', titulo.includes('Rust') ? 'Min: $3,000 USD' : 'Min: $500 USD');
+                switchSection('inbox');
+            }, 800);
+        }
+
+        function simularFacturacion(btn) {
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin w-6 text-brand-400"></i> Verificando suscripción...';
+            btn.disabled = true;
+            
+            setTimeout(() => {
+                btn.innerHTML = '<i class="fa-solid fa-check w-6 text-emerald-400"></i> Plan Premium Activo';
+                btn.classList.replace('text-slate-200', 'text-emerald-400');
+                btn.classList.replace('bg-slate-800', 'bg-emerald-500/10');
+                btn.classList.replace('border-slate-700', 'border-emerald-500/20');
+                
+                setTimeout(() => {
+                    btn.innerHTML = originalHtml;
+                    btn.classList.replace('text-emerald-400', 'text-slate-200');
+                    btn.classList.replace('bg-emerald-500/10', 'bg-slate-800');
+                    btn.classList.replace('border-emerald-500/20', 'border-slate-700');
+                    btn.disabled = false;
+                }, 3000);
+            }, 1000);
+        }
+    </script>
+</body>
+</html>

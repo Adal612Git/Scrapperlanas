@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+{% block title %}Detalle | Scrapperlanas{% endblock %}
+{% block page_kicker %}Revision{% endblock %}
+{% block page_title %}Detalle de oportunidad{% endblock %}
+{% block page_description %}Lectura completa, criterio IA y movimiento de pipeline dentro de una vista de decision con el lenguaje visual del prototipo oficial.{% endblock %}
+{% block page_status %}
+  <span class="rounded-full border border-blue-500/30 bg-blue-500/15 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-blue-200">Detalle vivo</span>
+  <span class="rounded-full px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] {{ opportunity.state_badge_class }}">{{ opportunity.state }}</span>
+{% endblock %}
+{% block page_actions %}
+  <a href="{{ opportunity.url }}" target="_blank" rel="noreferrer" class="inline-flex items-center gap-2 rounded-2xl border border-slate-700 bg-slate-900 px-4 py-2.5 text-sm font-bold text-slate-200 hover:border-slate-600 hover:bg-slate-800">
+    <i class="fa-solid fa-arrow-up-right-from-square text-blue-300"></i>
+    Abrir fuente
+  </a>
+  <a href="{{ url_for('main.dashboard') }}" class="inline-flex items-center gap-2 rounded-2xl border border-slate-700 bg-slate-900 px-4 py-2.5 text-sm font-bold text-slate-200 hover:border-slate-600 hover:bg-slate-800">
+    <i class="fa-solid fa-arrow-left"></i>
+    Volver al inbox
+  </a>
+{% endblock %}
+{% block content %}
+  <section class="grid gap-4 xl:grid-cols-[minmax(0,1.55fr)_420px]">
+    <article class="space-y-4">
+      <section class="rounded-[28px] border border-slate-800 bg-slate-900/90 p-6 shadow-xl shadow-black/20">
+        <div class="flex flex-col gap-4 border-b border-slate-800 pb-5 md:flex-row md:items-start md:justify-between">
+          <div>
+            <div class="flex flex-wrap gap-2">
+              <span class="rounded-full border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-slate-300">ID {{ opportunity.id }}</span>
+              <span class="rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] {{ opportunity.state_badge_class }}">{{ opportunity.state }}</span>
+            </div>
+            <h2 class="mt-4 text-3xl font-black leading-tight text-white">{{ opportunity.title }}</h2>
+            <p class="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-sm text-slate-400">
+              <span>{{ opportunity.source_label }}</span>
+              <span>{{ opportunity.company or "Empresa no identificada" }}</span>
+              <span>{{ opportunity.budget_display }}</span>
+            </p>
+          </div>
+
+          <div class="w-fit rounded-[24px] border border-blue-500/20 bg-blue-500/10 px-5 py-4 text-center">
+            <small class="block text-[11px] font-bold uppercase tracking-[0.24em] text-slate-400">Score</small>
+            <strong class="mt-2 block text-5xl font-black leading-none text-white">{{ opportunity.score }}</strong>
+          </div>
+        </div>
+
+        <div class="mt-5 rounded-[24px] border border-fuchsia-500/20 bg-fuchsia-500/10 p-5">
+          <p class="text-xs font-bold uppercase tracking-[0.24em] text-fuchsia-200">Resumen IA</p>
+          <p class="mt-3 text-sm leading-7 text-slate-200">{{ opportunity.ai_summary }}</p>
+        </div>
+
+        <div class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <article class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+            <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Prioridad real</p>
+            <p class="mt-2 text-xl font-black text-white">{{ opportunity.priority_tier }} / {{ opportunity.priority_label }}</p>
+          </article>
+          <article class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+            <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Confianza IA</p>
+            <p class="mt-2 text-xl font-black text-white">{{ opportunity.analysis.confidence or 0 }}/100</p>
+          </article>
+          <article class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+            <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Match semantico</p>
+            <p class="mt-2 text-xl font-black text-white">{% if opportunity.analysis.semantic_score is not none %}{{ opportunity.analysis.semantic_score }}/100{% else %}Sin dato{% endif %}</p>
+          </article>
+          <article class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+            <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Canal</p>
+            <p class="mt-2 text-xl font-black text-white">{{ opportunity.application_host }}</p>
+          </article>
+          <article class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+            <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Frescura</p>
+            <p class="mt-2 text-xl font-black text-white">{{ opportunity.freshness_label }}</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="grid gap-4 lg:grid-cols-2">
+        <article class="rounded-[28px] border border-emerald-500/20 bg-emerald-500/10 p-6 shadow-xl shadow-black/20">
+          <p class="text-xs font-bold uppercase tracking-[0.24em] text-emerald-200">Plan de ataque</p>
+          <div class="mt-4 flex flex-wrap gap-2">
+            <span class="rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] {{ opportunity.priority_badge_class }}">{{ opportunity.priority_tier }}</span>
+            <span class="rounded-full border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-slate-200">{{ opportunity.action_label }}</span>
+            {% if opportunity.analysis.fit_label %}
+              <span class="rounded-full border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-slate-200">{{ opportunity.fit_label_display }}</span>
+            {% endif %}
+          </div>
+          <p class="mt-4 text-sm leading-7 text-slate-200">{{ opportunity.priority_reason }}</p>
+          <p class="mt-3 text-sm text-slate-300">Siguiente paso: {{ opportunity.action_summary }}</p>
+          <div class="mt-5 grid gap-3 md:grid-cols-2">
+            <div class="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+              <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Publicado</p>
+              <p class="mt-2 text-sm font-semibold text-white">{{ opportunity.posted_display }}</p>
+            </div>
+            <div class="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+              <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Sector</p>
+              <p class="mt-2 text-sm font-semibold text-white">{{ opportunity.sector or "Pendiente" }}</p>
+            </div>
+          </div>
+        </article>
+
+        <article class="rounded-[28px] border border-slate-800 bg-slate-900/90 p-6 shadow-xl shadow-black/20">
+          <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Respuesta sugerida</p>
+          <p class="mt-4 text-sm leading-7 text-slate-300">{{ opportunity.suggested_reply }}</p>
+        </article>
+
+        <article class="rounded-[28px] border border-slate-800 bg-slate-900/90 p-6 shadow-xl shadow-black/20">
+          <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Veredicto IA</p>
+          <div class="mt-4 flex flex-wrap gap-2">
+            {% if opportunity.analysis.fit_label %}
+              <span class="rounded-full border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-slate-200">{{ opportunity.fit_label_display }}</span>
+            {% endif %}
+            {% if opportunity.analysis.recommended_action %}
+              <span class="rounded-full border border-blue-500/30 bg-blue-500/15 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-blue-200">{{ opportunity.action_label }}</span>
+            {% endif %}
+            {% if opportunity.analysis.recommended_state %}
+              <span class="rounded-full border border-fuchsia-500/30 bg-fuchsia-500/15 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-fuchsia-200">{{ opportunity.analysis.recommended_state }}</span>
+            {% endif %}
+          </div>
+          <p class="mt-4 text-sm text-slate-400">
+            Confianza {{ opportunity.analysis.confidence or 0 }}/100
+            {% if opportunity.analysis.semantic_score is not none %}
+              / Match {{ opportunity.analysis.semantic_score }}/100
+            {% endif %}
+          </p>
+          {% if opportunity.analysis.fit_reason %}
+            <p class="mt-4 text-sm leading-7 text-slate-300">{{ opportunity.analysis.fit_reason }}</p>
+          {% endif %}
+          {% if opportunity.analysis.missing_info %}
+            <p class="mt-3 text-sm text-slate-400">Falta validar: {{ opportunity.analysis.missing_info }}</p>
+          {% endif %}
+        </article>
+
+        <article class="rounded-[28px] border border-slate-800 bg-slate-900/90 p-6 shadow-xl shadow-black/20">
+          <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Banderas operativas</p>
+          <div class="mt-4 flex flex-wrap gap-2">
+            <span class="rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] {{ opportunity.risk_badge_class }}">{{ opportunity.risk_level }}</span>
+            {% for stack in opportunity.stack %}
+              <span class="rounded-full border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs font-semibold text-slate-300">{{ stack }}</span>
+            {% endfor %}
+          </div>
+          {% if opportunity.risk_reasons %}
+            <ul class="mt-4 list-disc space-y-1 pl-5 text-sm text-slate-400">
+              {% for reason in opportunity.risk_reasons %}
+                <li>{{ reason }}</li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p class="mt-4 text-sm text-slate-400">Sin alertas adicionales en este momento.</p>
+          {% endif %}
+        </article>
+
+        <article class="rounded-[28px] border border-slate-800 bg-slate-900/90 p-6 shadow-xl shadow-black/20">
+          <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Texto capturado</p>
+          <pre class="mt-4 overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/80 p-4 text-xs leading-6 text-slate-400">{{ opportunity.raw_text }}</pre>
+        </article>
+      </section>
+    </article>
+
+    <aside class="space-y-4">
+      <section class="rounded-[28px] border border-slate-800 bg-slate-900/95 p-6 shadow-xl shadow-black/20 xl:sticky xl:top-28">
+        <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Actualizar estado</p>
+        <div class="mt-5 grid gap-2">
+          {% for action in quick_actions %}
+            <form method="post">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="state" value="{{ action.state }}">
+              <input type="hidden" name="note" value="{{ action.note }}">
+              <button type="submit" class="inline-flex w-full items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-bold transition {{ action.button_class }}">
+                <i class="{{ action.icon }}"></i>
+                {{ action.label }}
+              </button>
+            </form>
+          {% endfor %}
+        </div>
+        <form method="post" class="mt-5 grid gap-4">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <label class="block">
+            <span class="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Estado</span>
+            <select name="state" required class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
+              {% for state in pipeline_states %}
+                <option value="{{ state }}" {% if opportunity.state == state %}selected{% endif %}>{{ state }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label class="block">
+            <span class="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Nota</span>
+            <textarea name="note" rows="5" placeholder="Motivo, siguiente paso o comentario operativo..." class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"></textarea>
+          </label>
+          <button type="submit" class="inline-flex items-center justify-center gap-2 rounded-2xl border border-blue-500/30 bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-500">
+            <i class="fa-solid fa-floppy-disk"></i>
+            Guardar movimiento
+          </button>
+        </form>
+      </section>
+
+      <section class="rounded-[28px] border border-slate-800 bg-slate-900/90 p-6 shadow-xl shadow-black/20">
+        <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Trazabilidad</p>
+        <h3 class="mt-2 text-2xl font-black text-white">Historial operativo</h3>
+        <div class="mt-5 space-y-3">
+          {% for event in events %}
+            <article class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+              <div class="flex items-start justify-between gap-3">
+                <strong class="text-sm text-white">{{ event.event_type }}</strong>
+                <span class="text-xs text-slate-500">{{ event.created_at }}</span>
+              </div>
+              <p class="mt-2 text-xs uppercase tracking-[0.16em] text-slate-500">
+                {{ event.actor_email or "Sistema" }}
+                {% if event.previous_state or event.new_state %}
+                  / {{ event.previous_state or "-" }} -> {{ event.new_state or "-" }}
+                {% endif %}
+              </p>
+              {% if event.note %}
+                <p class="mt-3 text-sm leading-6 text-slate-300">{{ event.note }}</p>
+              {% endif %}
+            </article>
+          {% else %}
+            <div class="rounded-2xl border border-dashed border-slate-700 bg-slate-950/40 p-4 text-sm text-slate-500">Sin eventos registrados.</div>
+          {% endfor %}
+        </div>
+      </section>
+    </aside>
+  </section>
+{% endblock %}

@@ -1,0 +1,75 @@
+{
+  "name": "Scrapperlanas Scheduler",
+  "active": true,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": "__N8N_SCHEDULER_INTERVAL_MINUTES__"
+            }
+          ]
+        }
+      },
+      "id": "a09f4f71-6f0b-43ef-baf6-4e555b6eb15c",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        260,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "__SCRAPPERLANAS_BASE_URL__/internal/cron/ingest",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer __CRON_SECRET__"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "c8323db7-ee4e-4d2c-8681-ea6bb1ed712a",
+      "name": "Run Due Ingestion",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        540,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Run Due Ingestion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "versionId": "7c8a5016-683b-4c15-8fdb-b05c5ffed0cc",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "scrapperlanas-scheduler",
+  "tags": []
+}

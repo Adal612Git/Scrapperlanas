@@ -1,0 +1,619 @@
+{% extends "base.html" %}
+{% block title %}Dashboard | Scrapperlanas{% endblock %}
+{% block page_kicker %}Operacion{% endblock %}
+{% block page_title %}Dashboard (Inbox){% endblock %}
+{% block page_description %}El prototipo oficial ahora vive sobre la app real: filtros, lecturas, pipeline, vistas y alertas dentro de la misma consola operativa.{% endblock %}
+{% block page_status %}
+  <span class="rounded-full border border-cyan-500/30 bg-cyan-500/15 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-cyan-200">{{ automation_summary.mode_label }}</span>
+  <span class="rounded-full border border-blue-500/30 bg-blue-500/15 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-blue-200">Live inbox</span>
+  <span class="rounded-full border border-slate-700 bg-slate-900 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-slate-300">{{ items|length }} visibles</span>
+{% endblock %}
+{% block page_actions %}
+  <form action="{{ url_for('main.ingest_now') }}" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="inline-flex items-center gap-2 rounded-2xl border border-blue-500/30 bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-[0_0_18px_rgba(37,99,235,0.28)] hover:bg-blue-500">
+      <i class="fa-solid fa-satellite-dish"></i>
+      Ejecutar ingesta ahora
+    </button>
+  </form>
+  <a href="{{ url_for('main.export_csv', **filters) }}" class="inline-flex items-center gap-2 rounded-2xl border border-slate-700 bg-slate-900 px-4 py-2.5 text-sm font-bold text-white hover:border-slate-600 hover:bg-slate-800">
+    <i class="fa-solid fa-download text-slate-400"></i>
+    Exportar CSV
+  </a>
+{% endblock %}
+{% block content %}
+  <section class="rounded-[28px] border border-slate-800 bg-slate-900/80 p-4 shadow-2xl shadow-black/20 backdrop-blur xl:p-6">
+    <div class="grid gap-4 xl:grid-cols-12">
+      <form method="get" class="xl:col-span-9">
+        <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+          <label class="block xl:col-span-2">
+            <span class="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Busqueda</span>
+            <div class="relative">
+              <i class="fa-solid fa-magnifying-glass pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
+              <input type="text" name="q" value="{{ filters.q }}" placeholder="Buscar en oportunidades..." class="w-full rounded-2xl border border-slate-700 bg-slate-950 py-3 pl-11 pr-4 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
+            </div>
+          </label>
+          <label class="block">
+            <span class="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Estado</span>
+            <select name="state" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
+              <option value="">Todos</option>
+              {% for state in pipeline_states %}
+                <option value="{{ state }}" {% if filters.state == state %}selected{% endif %}>{{ state }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label class="block">
+            <span class="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Fuente</span>
+            <select name="source" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
+              <option value="">Todas</option>
+              {% for source in available_sources %}
+                <option value="{{ source }}" {% if filters.source == source %}selected{% endif %}>{{ source }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label class="block">
+            <span class="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Sector</span>
+            <input type="text" name="sector" value="{{ filters.sector }}" placeholder="Tecnologia, SaaS, FinTech" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
+          </label>
+          <label class="block">
+            <span class="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Riesgo</span>
+            <select name="risk" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
+              <option value="">Todos</option>
+              {% for risk in ["low", "medium", "high"] %}
+                <option value="{{ risk }}" {% if filters.risk == risk %}selected{% endif %}>{{ risk }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label class="block">
+            <span class="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Min budget</span>
+            <input type="number" name="min_budget" value="{{ filters.min_budget }}" min="0" step="100" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
+          </label>
+        </div>
+
+        <div class="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <p class="text-sm text-slate-400">Todos los filtros siguen activos al exportar y al guardar una vista.</p>
+          <div class="flex flex-wrap gap-2">
+            <button type="submit" class="inline-flex items-center gap-2 rounded-2xl border border-blue-500/30 bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-500">
+              <i class="fa-solid fa-filter"></i>
+              Aplicar filtros
+            </button>
+            <a href="{{ url_for('main.dashboard') }}" class="inline-flex items-center gap-2 rounded-2xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm font-bold text-slate-200 hover:border-slate-600 hover:bg-slate-800">
+              <i class="fa-solid fa-rotate-left"></i>
+              Limpiar
+            </a>
+          </div>
+        </div>
+      </form>
+
+      <form action="{{ url_for('main.save_view') }}" method="post" class="xl:col-span-3">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="query_string" value="{{ active_query_string }}">
+        <div class="h-full rounded-[26px] border border-slate-800 bg-slate-950/80 p-5">
+          <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Persistencia de criterio</p>
+          <h2 class="mt-2 text-xl font-black text-white">Guardar vista operativa</h2>
+          <p class="mt-2 text-sm leading-6 text-slate-400">Recupera el mismo enfoque sin volver a construir la combinacion de filtros.</p>
+          <label class="mt-5 block">
+            <span class="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Nombre</span>
+            <input type="text" name="name" placeholder="Rust remoto high-score" class="w-full rounded-2xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
+          </label>
+          <button type="submit" class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-blue-500/30 bg-blue-500/15 px-4 py-3 text-sm font-bold text-blue-200 hover:bg-blue-500/20">
+            <i class="fa-solid fa-floppy-disk"></i>
+            Guardar filtros
+          </button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <section class="mt-6 grid gap-4 xl:grid-cols-3">
+    <article class="rounded-[28px] border border-slate-800 bg-slate-900/90 p-6 shadow-xl shadow-black/20 xl:col-span-2">
+      <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Automatizacion</p>
+          <h2 class="mt-2 text-2xl font-black text-white">{{ automation_summary.headline }}</h2>
+          <p class="mt-3 text-sm leading-6 text-slate-400">{{ automation_summary.summary }}</p>
+        </div>
+        <span class="inline-flex w-fit items-center gap-2 rounded-full border px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] {% if automation_summary.automation_ready %}border-emerald-500/30 bg-emerald-500/15 text-emerald-200{% else %}border-amber-500/30 bg-amber-500/15 text-amber-200{% endif %}">
+          <i class="fa-solid {% if automation_summary.automation_ready %}fa-bolt{% else %}fa-triangle-exclamation{% endif %}"></i>
+          {% if automation_summary.automation_ready %}Scheduler listo{% else %}Revisar config{% endif %}
+        </span>
+      </div>
+
+      <div class="mt-6 grid gap-4 md:grid-cols-3">
+        <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+          <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Fuentes activas</p>
+          <p class="mt-3 text-3xl font-black text-white">{{ automation_summary.enabled_count }}</p>
+          <p class="mt-2 text-sm text-slate-400">Politicas habilitadas para trabajar.</p>
+        </div>
+        <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+          <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Listas ahora</p>
+          <p class="mt-3 text-3xl font-black text-white">{{ automation_summary.due_count }}</p>
+          <p class="mt-2 text-sm text-slate-400">Fuentes ya vencidas segun su frecuencia.</p>
+        </div>
+        <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+          <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Siguiente ventana</p>
+          <p class="mt-3 text-3xl font-black text-white">{{ automation_summary.next_due_label }}</p>
+          <p class="mt-2 text-sm text-slate-400">Proxima fuente a disparar en automatico.</p>
+        </div>
+      </div>
+
+      <div class="mt-4 grid gap-4 md:grid-cols-3">
+        <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+          <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Runs 24h</p>
+          <p class="mt-3 text-3xl font-black text-white">{{ automation_summary.stability.total_runs }}</p>
+          <p class="mt-2 text-sm text-slate-400">{{ automation_summary.stability.successful_runs }} ok / {{ automation_summary.stability.failed_runs }} error.</p>
+        </div>
+        <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+          <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Duracion promedio</p>
+          <p class="mt-3 text-3xl font-black text-white">{{ automation_summary.stability.average_duration_ms }} ms</p>
+          <p class="mt-2 text-sm text-slate-400">Promedio de las corridas registradas.</p>
+        </div>
+        <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+          <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Ultima salud</p>
+          <p class="mt-3 text-sm font-bold text-white">{{ automation_summary.runtime.last_success_at or "sin corridas" }}</p>
+          <p class="mt-2 text-sm text-slate-400">{% if automation_summary.runtime.last_error %}Error: {{ automation_summary.runtime.last_error }}{% else %}Sin error activo.{% endif %}</p>
+        </div>
+      </div>
+
+      <p class="mt-6 text-sm leading-6 text-slate-400">La IA no corre “todo el tiempo”: corre dentro de cada ingesta. Para no castigar fuentes ni llenar el dashboard, el scheduler solo debe disparar fuentes vencidas y el boton manual se usa como override puntual. Log local: {{ automation_summary.runtime.log_path }}.</p>
+    </article>
+
+    <article class="rounded-[28px] border border-slate-800 bg-slate-900/90 p-6 shadow-xl shadow-black/20">
+      <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Ritmo por fuente</p>
+      <h2 class="mt-2 text-2xl font-black text-white">Proximas corridas</h2>
+      <div class="mt-6 space-y-3">
+        {% for policy in automation_summary.policies[:5] %}
+          <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <p class="text-sm font-bold text-white">{{ policy.display_name }}</p>
+                <p class="mt-1 text-xs uppercase tracking-[0.16em] text-slate-500">cada {{ policy.frequency_minutes }} min</p>
+              </div>
+              <span class="rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.16em] {% if policy.is_due %}border border-emerald-500/30 bg-emerald-500/15 text-emerald-200{% else %}border border-slate-700 bg-slate-900 text-slate-300{% endif %}">
+                {% if policy.is_due %}lista{% else %}en cola{% endif %}
+              </span>
+            </div>
+            <p class="mt-3 text-sm text-slate-400">Ultima corrida: {{ policy.last_run_display }}</p>
+            <p class="mt-1 text-sm text-slate-400">Siguiente: {{ policy.next_run_display }}</p>
+          </div>
+        {% else %}
+          <div class="rounded-2xl border border-dashed border-slate-700 bg-slate-950/40 p-4 text-sm text-slate-500">No hay fuentes activas.</div>
+        {% endfor %}
+      </div>
+    </article>
+  </section>
+
+  <section class="mt-6 rounded-[28px] border border-slate-800 bg-slate-900/90 p-5 shadow-xl shadow-black/20">
+    <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div>
+        <p class="text-xs font-bold uppercase tracking-[0.28em] text-slate-500">Objetivos reales</p>
+        <h2 class="mt-2 text-2xl font-black tracking-tight text-white">Plan de ataque de hoy</h2>
+        <p class="mt-2 text-sm text-slate-400">Esta capa ya no es solo inbox: prioriza lo que vale tiempo comercial hoy mismo.</p>
+      </div>
+      <span class="rounded-full border border-emerald-500/30 bg-emerald-500/15 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-emerald-200">{{ daily_plan.focus_now }} targets A1/A2</span>
+    </div>
+
+    <div class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <article class="rounded-[24px] border border-emerald-500/20 bg-gradient-to-br from-slate-950 to-emerald-900/20 p-5">
+        <p class="text-xs font-bold uppercase tracking-[0.18em] text-emerald-200/80">Aplicar hoy</p>
+        <p class="mt-3 text-4xl font-black text-white">{{ daily_plan.apply_now }}</p>
+        <p class="mt-2 text-sm text-slate-300">Matches donde la recomendacion ya es avanzar.</p>
+      </article>
+      <article class="rounded-[24px] border border-blue-500/20 bg-gradient-to-br from-slate-950 to-blue-900/20 p-5">
+        <p class="text-xs font-bold uppercase tracking-[0.18em] text-blue-200/80">Resolver hoy</p>
+        <p class="mt-3 text-4xl font-black text-white">{{ daily_plan.review_today }}</p>
+        <p class="mt-2 text-sm text-slate-300">Necesitan lectura completa y decision en el mismo dia.</p>
+      </article>
+      <article class="rounded-[24px] border border-fuchsia-500/20 bg-gradient-to-br from-slate-950 to-fuchsia-900/20 p-5">
+        <p class="text-xs font-bold uppercase tracking-[0.18em] text-fuchsia-200/80">Muy frescas</p>
+        <p class="mt-3 text-4xl font-black text-white">{{ daily_plan.fresh }}</p>
+        <p class="mt-2 text-sm text-slate-300">Publicadas hace poco, con mejor chance de entrar temprano.</p>
+      </article>
+      <article class="rounded-[24px] border border-amber-500/20 bg-gradient-to-br from-slate-950 to-amber-900/20 p-5">
+        <p class="text-xs font-bold uppercase tracking-[0.18em] text-amber-200/80">Foco real</p>
+        <p class="mt-3 text-4xl font-black text-white">{{ daily_plan.focus_now }}</p>
+        <p class="mt-2 text-sm text-slate-300">Cuantas merecen energia inmediata antes que el resto.</p>
+      </article>
+    </div>
+
+    <div class="mt-6 grid gap-4 xl:grid-cols-2">
+      {% for item in focus_items %}
+        <article class="rounded-[26px] border border-slate-800 bg-slate-950/70 p-5 transition hover:border-blue-500/30">
+          <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div class="min-w-0">
+              <div class="flex flex-wrap gap-2">
+                <span class="rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] {{ item.priority_badge_class }}">{{ item.priority_tier }} / {{ item.priority_label }}</span>
+                <span class="rounded-full border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-slate-300">{{ item.freshness_label }}</span>
+              </div>
+              <h3 class="mt-4 text-xl font-black leading-tight text-white">
+                <a href="{{ url_for('main.opportunity_detail', opportunity_id=item.id) }}" class="transition hover:text-blue-300">{{ item.title }}</a>
+              </h3>
+              <p class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-sm text-slate-400">
+                <span>{{ item.company or "Empresa no identificada" }}</span>
+                <span>{{ item.source_label }}</span>
+                <span>{{ item.application_host }}</span>
+              </p>
+              <p class="mt-4 text-sm leading-7 text-slate-300">{{ item.priority_reason }}</p>
+              <p class="mt-3 text-sm text-slate-400">Siguiente paso: {{ item.action_summary }}</p>
+            </div>
+
+            <div class="w-fit rounded-[22px] border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-center">
+              <small class="block text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">Prioridad</small>
+              <strong class="mt-2 block text-3xl font-black leading-none text-white">{{ item.priority_score }}</strong>
+            </div>
+          </div>
+
+          <div class="mt-4 flex flex-wrap gap-2">
+            <span class="rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] {{ item.state_badge_class }}">{{ item.state }}</span>
+            <span class="rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] {{ item.risk_badge_class }}">{{ item.risk_level }}</span>
+            <span class="rounded-full border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-slate-200">{{ item.action_label }}</span>
+            {% if item.analysis.fit_label %}
+              <span class="rounded-full border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-slate-200">{{ item.fit_label_display }}</span>
+            {% endif %}
+          </div>
+
+          <div class="mt-5 flex flex-wrap gap-3">
+            <a href="{{ url_for('main.opportunity_detail', opportunity_id=item.id) }}" class="inline-flex items-center gap-2 rounded-2xl border border-blue-500/30 bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-500">
+              <i class="fa-solid fa-bullseye"></i>
+              Abrir plan
+            </a>
+            <a href="{{ item.url }}" target="_blank" rel="noreferrer" class="inline-flex items-center gap-2 rounded-2xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm font-bold text-slate-200 hover:border-slate-600 hover:bg-slate-800">
+              <i class="fa-solid fa-arrow-up-right-from-square text-blue-300"></i>
+              Aplicar / revisar
+            </a>
+          </div>
+        </article>
+      {% else %}
+        <article class="rounded-[28px] border border-dashed border-slate-700 bg-slate-950/40 p-10 text-center text-sm text-slate-500 xl:col-span-2">
+          No hay objetivos priorizados con los filtros actuales.
+        </article>
+      {% endfor %}
+    </div>
+  </section>
+
+  <div id="section-inbox" class="app-section mt-6 block">
+    <div class="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div>
+        <p class="text-xs font-bold uppercase tracking-[0.28em] text-slate-500">Inbox vivo</p>
+        <h2 class="mt-2 text-2xl font-black tracking-tight text-white">Ultimas oportunidades</h2>
+      </div>
+      <span class="inline-flex w-fit items-center gap-2 rounded-full border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-medium text-slate-300">
+        <span class="h-2 w-2 animate-pulse rounded-full bg-emerald-400"></span>
+        {{ items|length }} resultados visibles
+      </span>
+    </div>
+
+    <div class="grid gap-4">
+      {% for item in items %}
+        <article class="rounded-[28px] border border-slate-800 bg-slate-900/90 p-5 shadow-xl shadow-black/20 transition hover:border-blue-500/30 hover:bg-slate-900">
+          <div class="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+            <div class="min-w-0 flex-1">
+              <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                <div class="min-w-0">
+                  <p class="text-xs font-bold uppercase tracking-[0.28em] text-slate-500">{{ item.source_label }}</p>
+                  <h3 class="mt-2 text-2xl font-black leading-tight text-white">
+                    <a href="{{ url_for('main.opportunity_detail', opportunity_id=item.id) }}" class="transition hover:text-blue-300">{{ item.title }}</a>
+                  </h3>
+                  <p class="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-sm text-slate-400">
+                    <span>{{ item.company or "Empresa no identificada" }}</span>
+                    <span>{{ item.sector or "Sector pendiente" }}</span>
+                    <span>{{ item.budget_display }}</span>
+                  </p>
+                </div>
+
+                <div class="w-fit rounded-[24px] border border-blue-500/20 bg-blue-500/10 px-5 py-4 text-center">
+                  <small class="block text-[11px] font-bold uppercase tracking-[0.24em] text-slate-400">Score</small>
+                  <strong class="mt-2 block text-4xl font-black leading-none text-white">{{ item.score }}</strong>
+                </div>
+              </div>
+
+              <p class="mt-4 text-sm leading-7 text-slate-300">{{ item.ai_summary }}</p>
+
+              <div class="mt-4 flex flex-wrap gap-2">
+                <span class="rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] {{ item.priority_badge_class }}">{{ item.priority_tier }}</span>
+                <span class="rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] {{ item.state_badge_class }}">{{ item.state }}</span>
+                <span class="rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] {{ item.risk_badge_class }}">{{ item.risk_level }}</span>
+                {% if item.analysis.fit_label %}
+                  <span class="rounded-full border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-slate-200">{{ item.fit_label_display }}</span>
+                {% endif %}
+                {% for stack in item.stack[:4] %}
+                  <span class="rounded-full border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs font-semibold text-slate-300">{{ stack }}</span>
+                {% endfor %}
+              </div>
+
+              {% if item.analysis.recommended_action or item.analysis.semantic_score is not none %}
+                <p class="mt-4 text-sm text-slate-400">
+                  {% if item.analysis.recommended_action %}Accion IA: {{ item.action_label }}{% endif %}
+                  {% if item.analysis.recommended_action and item.analysis.semantic_score is not none %} / {% endif %}
+                  {% if item.analysis.semantic_score is not none %}Match semantico: {{ item.analysis.semantic_score }}/100{% endif %}
+                </p>
+              {% endif %}
+              <p class="mt-2 text-sm text-slate-500">Canal: {{ item.application_host }} / Frescura: {{ item.freshness_label }}</p>
+
+              {% if item.risk_reasons %}
+                <ul class="mt-4 list-disc space-y-1 pl-5 text-sm text-slate-400">
+                  {% for reason in item.risk_reasons[:2] %}
+                    <li>{{ reason }}</li>
+                  {% endfor %}
+                </ul>
+              {% endif %}
+            </div>
+
+            <div class="flex flex-wrap gap-3 xl:w-48 xl:flex-col">
+              <a href="{{ url_for('main.opportunity_detail', opportunity_id=item.id) }}" class="inline-flex items-center justify-center gap-2 rounded-2xl border border-blue-500/30 bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-500">
+                <i class="fa-solid fa-eye"></i>
+                Ver detalle
+              </a>
+              <a href="{{ item.url }}" target="_blank" rel="noreferrer" class="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm font-bold text-slate-200 hover:border-slate-600 hover:bg-slate-800">
+                <i class="fa-solid fa-arrow-up-right-from-square text-blue-300"></i>
+                Fuente
+              </a>
+            </div>
+          </div>
+        </article>
+      {% else %}
+        <article class="rounded-[28px] border border-slate-800 bg-slate-900/90 p-10 text-center shadow-xl shadow-black/20">
+          <p class="text-xs font-bold uppercase tracking-[0.28em] text-slate-500">Sin coincidencias</p>
+          <h3 class="mt-3 text-2xl font-black text-white">No hay oportunidades para estos filtros.</h3>
+          <p class="mt-3 text-sm text-slate-400">Fuerza una ingesta manual o espera a que el scheduler dispare la siguiente fuente vencida.</p>
+        </article>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div id="section-visualizacion" class="app-section mt-6 hidden">
+    <div class="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div>
+        <p class="text-xs font-bold uppercase tracking-[0.28em] text-slate-500">Visualizacion</p>
+        <h2 class="mt-2 text-2xl font-black tracking-tight text-white">Analisis estrategico del mercado</h2>
+      </div>
+      <span class="inline-flex w-fit items-center gap-2 rounded-full border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-medium text-slate-300">
+        <i class="fa-solid fa-calendar-days text-blue-300"></i>
+        Ultimos 7 cortes
+      </span>
+    </div>
+
+    <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <article class="rounded-[28px] border border-blue-500/20 bg-gradient-to-br from-slate-900 to-blue-900/30 p-5 shadow-xl shadow-black/20">
+        <p class="text-xs font-bold uppercase tracking-[0.24em] text-blue-200/80">Scraping total</p>
+        <p class="mt-3 text-4xl font-black text-white">{{ metrics.total }}</p>
+        <p class="mt-2 text-sm text-slate-300">Inventario completo del radar operativo.</p>
+      </article>
+      <article class="rounded-[28px] border border-emerald-500/20 bg-gradient-to-br from-slate-900 to-emerald-900/30 p-5 shadow-xl shadow-black/20">
+        <p class="text-xs font-bold uppercase tracking-[0.24em] text-emerald-200/80">Pipeline activo</p>
+        <p class="mt-3 text-4xl font-black text-white">{{ metrics.active }}</p>
+        <p class="mt-2 text-sm text-slate-300">{{ high_priority_ratio }}% del radar actual ya supera score 70.</p>
+      </article>
+      <article class="rounded-[28px] border border-fuchsia-500/20 bg-gradient-to-br from-slate-900 to-fuchsia-900/30 p-5 shadow-xl shadow-black/20">
+        <p class="text-xs font-bold uppercase tracking-[0.24em] text-fuchsia-200/80">Score promedio</p>
+        <p class="mt-3 text-4xl font-black text-white">{{ score_average }}</p>
+        <p class="mt-2 text-sm text-slate-300">{{ metrics.high_score }} oportunidades estan en la franja alta.</p>
+      </article>
+      <article class="rounded-[28px] border border-amber-500/20 bg-gradient-to-br from-slate-900 to-amber-900/30 p-5 shadow-xl shadow-black/20">
+        <p class="text-xs font-bold uppercase tracking-[0.24em] text-amber-200/80">Cashflow potencial</p>
+        <p class="mt-3 text-4xl font-black text-white">${{ "{:,.0f}".format(metrics.cashflow) }}</p>
+        <p class="mt-2 text-sm text-slate-300">Valor agregado sobre pipeline priorizado.</p>
+      </article>
+    </div>
+
+    <div class="mt-6 grid gap-4 xl:grid-cols-3">
+      <article class="rounded-[28px] border border-slate-800 bg-slate-900/90 p-5 shadow-xl shadow-black/20 xl:col-span-2">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Tendencia</p>
+            <h3 class="mt-2 text-xl font-black text-white">Volumen por fecha</h3>
+          </div>
+          <span class="rounded-full border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-slate-300">{{ trend_summary|length }} marcas</span>
+        </div>
+        <div class="mt-6 space-y-4">
+          {% for row in trend_summary %}
+            {% set width = ((row.total / metrics.total) * 100) if metrics.total else 0 %}
+            <div>
+              <div class="mb-2 flex items-center justify-between text-sm">
+                <span class="font-semibold text-slate-300">{{ row.day }}</span>
+                <span class="text-slate-500">{{ row.total }} oportunidades</span>
+              </div>
+              <div class="h-3 rounded-full bg-slate-950">
+                <div class="h-3 rounded-full bg-gradient-to-r from-blue-500 to-cyan-400 shadow-[0_0_14px_rgba(56,189,248,0.25)]" style="width: {{ width }}%"></div>
+              </div>
+            </div>
+          {% else %}
+            <p class="text-sm text-slate-400">Aun no hay suficiente historico para mostrar tendencia.</p>
+          {% endfor %}
+        </div>
+      </article>
+
+      <div class="grid gap-4">
+        <article class="rounded-[28px] border border-slate-800 bg-slate-900/90 p-5 shadow-xl shadow-black/20">
+          <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Cobertura</p>
+          <h3 class="mt-2 text-xl font-black text-white">Fuentes</h3>
+          <div class="mt-5 space-y-4">
+            {% for row in source_summary %}
+              {% set width = ((row.total / metrics.total) * 100) if metrics.total else 0 %}
+              <div>
+                <div class="mb-2 flex items-center justify-between gap-3 text-sm">
+                  <span class="font-medium text-slate-300">{{ row.source_label }}</span>
+                  <span class="text-slate-500">{{ row.total }}</span>
+                </div>
+                <div class="h-2 rounded-full bg-slate-950">
+                  <div class="h-2 rounded-full bg-blue-500" style="width: {{ width }}%"></div>
+                </div>
+              </div>
+            {% else %}
+              <p class="text-sm text-slate-400">Todavia sin datos.</p>
+            {% endfor %}
+          </div>
+        </article>
+
+        <article class="rounded-[28px] border border-slate-800 bg-slate-900/90 p-5 shadow-xl shadow-black/20">
+          <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Sectores</p>
+          <h3 class="mt-2 text-xl font-black text-white">Rentabilidad y volumen</h3>
+          <div class="mt-5 space-y-4">
+            {% for row in sector_summary %}
+              <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                <div class="flex items-start justify-between gap-3">
+                  <div>
+                    <p class="text-sm font-bold text-white">{{ row.sector_label }}</p>
+                    <p class="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">{{ row.total }} oportunidades</p>
+                  </div>
+                  <span class="text-sm font-semibold text-emerald-300">${{ "{:,.0f}".format(row.budget_total) }}</span>
+                </div>
+              </div>
+            {% else %}
+              <p class="text-sm text-slate-400">Sin sectores priorizados todavia.</p>
+            {% endfor %}
+          </div>
+        </article>
+      </div>
+    </div>
+  </div>
+
+  <div id="section-historial" class="app-section mt-6 hidden">
+    <div class="mb-6">
+      <p class="text-xs font-bold uppercase tracking-[0.28em] text-slate-500">Pipeline</p>
+      <h2 class="mt-2 text-2xl font-black tracking-tight text-white">Estados persistentes del flujo</h2>
+      <p class="mt-2 text-sm text-slate-400">Vista kanban alineada a los estados reales del motor.</p>
+    </div>
+
+    <div class="flex gap-4 overflow-x-auto pb-2">
+      {% for column in kanban_columns %}
+        <article class="w-80 shrink-0 rounded-[28px] border bg-slate-900/90 shadow-xl shadow-black/20 {{ column.panel_class }}">
+          <div class="flex items-center justify-between rounded-t-[28px] border-b px-4 py-4 {{ column.header_class }}">
+            <span class="flex items-center gap-2 text-sm font-bold uppercase tracking-[0.18em]">
+              <i class="{{ column.icon }}"></i>
+              {{ column.label }}
+            </span>
+            <span class="rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] {{ column.count_class }}">{{ pipeline_board[column.state]|length }}</span>
+          </div>
+          <div class="max-h-[34rem] space-y-3 overflow-y-auto p-4">
+            {% for item in pipeline_board[column.state] %}
+              <a href="{{ url_for('main.opportunity_detail', opportunity_id=item.id) }}" class="block rounded-2xl border border-slate-800 bg-slate-950/80 p-4 transition hover:border-blue-500/30 hover:bg-slate-950">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0">
+                    <p class="truncate text-sm font-bold text-white">{{ item.title }}</p>
+                    <p class="mt-1 text-xs text-slate-500">{{ item.company or item.source_label }}</p>
+                  </div>
+                  <span class="rounded-full border border-slate-700 bg-slate-900 px-2.5 py-1 text-xs font-bold text-slate-200">{{ item.score }}</span>
+                </div>
+                <div class="mt-3 flex flex-wrap gap-2">
+                  <span class="rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.16em] {{ item.risk_badge_class }}">{{ item.risk_level }}</span>
+                  {% if item.sector %}
+                    <span class="rounded-full border border-slate-700 bg-slate-900 px-2.5 py-1 text-[11px] font-semibold text-slate-300">{{ item.sector }}</span>
+                  {% endif %}
+                </div>
+              </a>
+            {% else %}
+              <div class="rounded-2xl border border-dashed border-slate-700 bg-slate-950/40 p-4 text-sm text-slate-500">Sin tarjetas en esta columna.</div>
+            {% endfor %}
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div id="section-busquedas" class="app-section mt-6 hidden">
+    <div class="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div>
+        <p class="text-xs font-bold uppercase tracking-[0.28em] text-slate-500">Memoria de trabajo</p>
+        <h2 class="mt-2 text-2xl font-black tracking-tight text-white">Busquedas guardadas y filtros</h2>
+      </div>
+      <span class="rounded-full border border-slate-700 bg-slate-900 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-slate-300">{{ saved_views|length }} vistas</span>
+    </div>
+
+    <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {% for view in saved_views %}
+        <article class="rounded-[28px] border border-slate-800 bg-slate-900/90 p-5 shadow-xl shadow-black/20 transition hover:border-blue-500/30">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <h3 class="text-xl font-black text-white">{{ view.name }}</h3>
+              <p class="mt-2 text-sm leading-6 text-slate-400">Atajo persistente para recuperar el mismo enfoque comercial.</p>
+            </div>
+            <i class="fa-solid fa-star text-amber-400"></i>
+          </div>
+          <div class="mt-4 rounded-2xl border border-slate-800 bg-slate-950/70 p-3 font-mono text-xs text-slate-400">{{ view.query_string or "Sin parametros" }}</div>
+          <div class="mt-5 flex flex-wrap gap-2">
+            <a href="{{ url_for('main.dashboard') }}?{{ view.query_string }}" class="inline-flex items-center gap-2 rounded-2xl border border-blue-500/30 bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-500">
+              <i class="fa-solid fa-bolt"></i>
+              Cargar vista
+            </a>
+            <a href="{{ url_for('main.settings') }}" class="inline-flex items-center gap-2 rounded-2xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm font-bold text-slate-200 hover:border-slate-600 hover:bg-slate-800">
+              <i class="fa-solid fa-gear"></i>
+              Gestionar
+            </a>
+          </div>
+        </article>
+      {% else %}
+        <article class="rounded-[28px] border border-slate-800 bg-slate-900/90 p-10 text-center shadow-xl shadow-black/20 md:col-span-2 xl:col-span-3">
+          <p class="text-xs font-bold uppercase tracking-[0.28em] text-slate-500">Sin memoria guardada</p>
+          <h3 class="mt-3 text-2xl font-black text-white">Todavia no hay vistas persistidas.</h3>
+          <p class="mt-3 text-sm text-slate-400">Guarda la combinacion actual desde el bloque superior para reutilizarla despues.</p>
+        </article>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div id="section-alertas" class="app-section mt-6 hidden">
+    <div class="mb-6">
+      <p class="text-xs font-bold uppercase tracking-[0.28em] text-slate-500">Alertas</p>
+      <h2 class="mt-2 text-2xl font-black tracking-tight text-white">Resumen de notificaciones y criterio personal</h2>
+      <p class="mt-2 text-sm text-slate-400">La configuracion fina vive en Ajustes, pero este panel resume el criterio activo del operador.</p>
+    </div>
+
+    <div class="grid gap-4 xl:grid-cols-3">
+      <article class="rounded-[28px] border border-slate-800 bg-slate-900/90 p-6 shadow-xl shadow-black/20 xl:col-span-2">
+        <div class="flex items-start justify-between gap-4 border-b border-slate-800 pb-4">
+          <div>
+            <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Canal principal</p>
+            <h3 class="mt-2 text-xl font-black text-white">Notificaciones por correo</h3>
+            <p class="mt-2 text-sm leading-6 text-slate-400">La salida recomendada para este prototipo es un aviso directo cuando el radar detecta matches de alto valor.</p>
+          </div>
+          <span class="inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/15 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-blue-200">
+            <i class="fa-solid fa-bell"></i>
+            Enfocado
+          </span>
+        </div>
+
+        <div class="mt-6 grid gap-4 md:grid-cols-2">
+          <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+            <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Correo destino</p>
+            <p class="mt-2 text-sm font-semibold text-white">{{ g.user.email }}</p>
+          </div>
+          <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+            <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Pago minimo activo</p>
+            <p class="mt-2 text-sm font-semibold text-white">
+              {% if g.user.min_budget %}${{ "{:,.0f}".format(g.user.min_budget) }}{% else %}Sin minimo{% endif %}
+            </p>
+          </div>
+          <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+            <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Sectores</p>
+            <p class="mt-2 text-sm leading-6 text-slate-300">{{ g.user.sectors or "Sin sectores definidos" }}</p>
+          </div>
+          <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+            <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Keywords</p>
+            <p class="mt-2 text-sm leading-6 text-slate-300">{{ g.user.keywords or "Sin keywords personalizadas" }}</p>
+          </div>
+        </div>
+      </article>
+
+      <article class="rounded-[28px] border border-slate-800 bg-slate-900/90 p-6 shadow-xl shadow-black/20">
+        <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Siguiente paso</p>
+        <h3 class="mt-2 text-xl font-black text-white">Ajustar reglas</h3>
+        <p class="mt-3 text-sm leading-6 text-slate-400">Desde Ajustes puedes editar politicas de fuente, frecuencia, riesgo y la configuracion JSON de cada conector.</p>
+        <div class="mt-5 space-y-3">
+          <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+            <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Fuentes detectadas</p>
+            <p class="mt-2 text-2xl font-black text-white">{{ source_summary|length }}</p>
+          </div>
+          <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+            <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Vistas guardadas</p>
+            <p class="mt-2 text-2xl font-black text-white">{{ saved_views|length }}</p>
+          </div>
+        </div>
+        <a href="{{ url_for('main.settings') }}" class="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-blue-500/30 bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-500">
+          <i class="fa-solid fa-sliders"></i>
+          Abrir ajustes
+        </a>
+      </article>
+    </div>
+  </div>
+{% endblock %}
