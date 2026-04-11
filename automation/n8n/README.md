@@ -10,10 +10,11 @@ Scrapperlanas ya hace el trabajo pesado en Python:
 
 n8n debe orquestar, no rehacer esa logica.
 
-Este repo ya trae bootstrap automatico para dos workflows empaquetados:
+Este repo ya trae bootstrap automatico para tres workflows empaquetados:
 
 - `Scrapperlanas Scheduler`
 - `Scrapperlanas Import Webhook`
+- `Scrapperlanas Email Alerts IMAP`
 
 Cuando levantas `docker compose up --build`, `n8n` importa esos workflows al arranque y los deja activos.
 
@@ -102,6 +103,58 @@ Notas:
 - `email_alerts` soporta `min_score` y `max_age_days` en su politica para no meter ruido.
 - Para marketplaces con mejor probabilidad freelance, usa alertas oficiales por correo de Upwork y Workana y canalizalas aqui; es mas estable que scrapear HTML privado.
 - Si quieres reimportar los workflows empaquetados, levanta `n8n` con `N8N_BOOTSTRAP_FORCE=true`.
+
+## Workflow minimo para email_alerts por IMAP
+
+El workflow `Scrapperlanas Email Alerts IMAP`:
+
+1. lee mensajes no leidos del buzón IMAP configurado en n8n
+2. usa el asunto como `title`
+3. intenta extraer la primera `url` del cuerpo
+4. concatena asunto + cuerpo como `raw_text`
+5. manda el payload a `POST /internal/import/opportunities`
+
+Credencial que debes crear en n8n:
+
+- Tipo: `IMAP`
+- Nombre sugerido: `Scrapperlanas IMAP`
+- Host: el host IMAP de tu proveedor
+- Puerto: `993` si usas SSL/TLS
+- Usuario: tu buzón dedicado
+- Password: tu password o app password
+- SSL/TLS: `true` en la mayoría de proveedores modernos
+
+Si usas Gmail:
+
+- Host: `imap.gmail.com`
+- Puerto: `993`
+- SSL/TLS: `true`
+- Credencial: app password, no la contraseña normal si tu cuenta tiene 2FA
+
+Payload final que el workflow manda a Scrapperlanas:
+
+```json
+{
+  "source_key": "email_alerts",
+  "source_label": "Alertas por Correo",
+  "items": [
+    {
+      "external_id": "message-id-o-uid",
+      "title": "Asunto del correo",
+      "company": "Remitente",
+      "url": "https://enlace-detectado-si-existe",
+      "raw_text": "asunto + cuerpo plano",
+      "posted_at": "2026-04-09T00:00:00.000Z",
+      "budget_min": null,
+      "budget_max": null,
+      "currency": "USD",
+      "stack": [],
+      "risk_level": "low",
+      "risk_reasons": []
+    }
+  ]
+}
+```
 
 ## Reglas practicas
 

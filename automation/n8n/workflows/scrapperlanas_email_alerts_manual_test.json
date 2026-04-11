@@ -1,0 +1,85 @@
+{
+  "name": "Scrapperlanas Email Alerts Manual Test",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "a1d0b6f4-7b71-4c8d-9f7c-0a7b0d1d0a01",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    subject: 'Manual test: Automation engineer contract',\n    from: { text: 'Acme Talent <alerts@acme.example>' },\n    date: '2026-04-09T12:00:00.000Z',\n    text: 'Remote contract. Need Python, n8n and APIs. Budget USD 2500. https://example.com/jobs/automation-engineer',\n    textPlain: 'Remote contract. Need Python, n8n and APIs. Budget USD 2500. https://example.com/jobs/automation-engineer',\n    body: 'Remote contract. Need Python, n8n and APIs. Budget USD 2500. https://example.com/jobs/automation-engineer',\n    messageId: 'manual-test-email-alerts-001',\n    uid: 'manual-test-email-alerts-001',\n    id: 'manual-test-email-alerts-001'\n  }\n}];"
+      },
+      "id": "a1d0b6f4-7b71-4c8d-9f7c-0a7b0d1d0a02",
+      "name": "Seed Email Sample",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [520, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const sourceKey = 'email_alerts';\nconst sourceLabel = 'Alertas por Correo';\n\nconst subject = String($json.subject ?? $json.headers?.subject ?? 'Sin asunto').trim() || 'Sin asunto';\nconst from = String($json.from?.text ?? $json.from ?? $json.headers?.from ?? '').trim();\nconst dateValue = $json.date ?? $json.internalDate ?? $json.headers?.date ?? null;\nconst rawBody = [\n  $json.text,\n  $json.textPlain,\n  $json.body,\n  $json.html,\n].filter(Boolean).join('\\n\\n').trim();\n\nconst urlMatch = rawBody.match(/https?:\\/\\/[^\\s<>\"]+/i);\nconst url = urlMatch ? urlMatch[0].replace(/[)\\].,;]+$/, '') : '';\nconst budgetMatch = rawBody.match(/(?:usd|us\\$|\\$)\\s*([0-9][0-9,]*(?:\\.[0-9]+)?)/i);\nconst budgetValue = budgetMatch ? Number(String(budgetMatch[1]).replace(/,/g, '')) : null;\n\nreturn [{\n  json: {\n    source_key: sourceKey,\n    source_label: sourceLabel,\n    items: [\n      {\n        external_id: String($json.messageId ?? $json.uid ?? $json.id ?? subject),\n        title: subject,\n        company: from,\n        url,\n        raw_text: rawBody || subject,\n        posted_at: dateValue ? new Date(dateValue).toISOString() : new Date().toISOString(),\n        budget_min: budgetValue,\n        budget_max: budgetValue,\n        budget_text: budgetValue ? `USD ${budgetValue}` : '',\n        currency: 'USD',\n        stack: [],\n        risk_level: 'low',\n        risk_reasons: [],\n      },\n    ],\n  },\n}];"
+      },
+      "id": "a1d0b6f4-7b71-4c8d-9f7c-0a7b0d1d0a03",
+      "name": "Normalize Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [800, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "__SCRAPPERLANAS_BASE_URL__/internal/import/opportunities",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer __CRON_SECRET__"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{$json}}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "a1d0b6f4-7b71-4c8d-9f7c-0a7b0d1d0a04",
+      "name": "Import Into Scrapperlanas",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1080, 300]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [[{ "node": "Seed Email Sample", "type": "main", "index": 0 }]]
+    },
+    "Seed Email Sample": {
+      "main": [[{ "node": "Normalize Email", "type": "main", "index": 0 }]]
+    },
+    "Normalize Email": {
+      "main": [[{ "node": "Import Into Scrapperlanas", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "versionId": "a1d0b6f4-7b71-4c8d-9f7c-0a7b0d1d0a05",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "scrapperlanas-email-alerts-manual-test",
+  "tags": [
+    {
+      "name": "temporary"
+    }
+  ]
+}

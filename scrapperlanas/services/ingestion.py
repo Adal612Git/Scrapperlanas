@@ -289,6 +289,7 @@ class RedditConnector(BaseConnector):
 
         normalized: list[NormalizedOpportunity] = []
         successful_responses = 0
+        blocked_responses = 0
         logical_urls = [*urls, *search_urls, *DEFAULT_REDDIT_URLS]
         seen_logical_urls: set[str] = set()
 
@@ -307,6 +308,11 @@ class RedditConnector(BaseConnector):
                     )
                     response.raise_for_status()
                     payload = response.json()
+                except requests.HTTPError as exc:
+                    status_code = getattr(exc.response, "status_code", None)
+                    if status_code in {401, 403, 429}:
+                        blocked_responses += 1
+                    continue
                 except Exception:
                     continue
 
@@ -352,6 +358,10 @@ class RedditConnector(BaseConnector):
                 )
 
         if successful_responses == 0:
+            if blocked_responses:
+                raise RuntimeError(
+                    "Reddit endpoints are blocking this runtime (HTTP 403/429)."
+                )
             raise RuntimeError("Reddit endpoints blocked or unreachable from this runtime.")
 
         normalized = self._dedupe_by_url(normalized)

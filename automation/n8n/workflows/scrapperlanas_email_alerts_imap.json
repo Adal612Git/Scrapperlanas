@@ -1,0 +1,80 @@
+{
+  "name": "Scrapperlanas Email Alerts IMAP",
+  "active": true,
+  "nodes": [
+    {
+      "parameters": {
+        "mailbox": "INBOX",
+        "postProcessAction": "markSeen",
+        "options": {
+          "downloadAttachments": false,
+          "searchCriteria": "UNSEEN"
+        }
+      },
+      "id": "4b2e1c9e-5c4a-4f0a-8a96-8f6b1f2e3f21",
+      "name": "IMAP Email Trigger",
+      "type": "n8n-nodes-base.emailReadImap",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "credentials": {
+        "imap": {
+          "name": "Scrapperlanas IMAP"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const sourceKey = 'email_alerts';\nconst sourceLabel = 'Alertas por Correo';\n\nconst subject = String($json.subject ?? $json.headers?.subject ?? 'Sin asunto').trim() || 'Sin asunto';\nconst from = String($json.from?.text ?? $json.from ?? $json.headers?.from ?? '').trim();\nconst dateValue = $json.date ?? $json.internalDate ?? $json.headers?.date ?? null;\nconst rawBody = [\n  $json.text,\n  $json.textPlain,\n  $json.body,\n  $json.html,\n].filter(Boolean).join('\\n\\n').trim();\n\nconst urlMatch = rawBody.match(/https?:\\/\\/[^\\s<>\"]+/i);\nconst url = urlMatch ? urlMatch[0].replace(/[)\\].,;]+$/, '') : '';\nconst budgetMatch = rawBody.match(/(?:usd|us\\$|\\$)\\s*([0-9][0-9,]*(?:\\.[0-9]+)?)/i);\nconst budgetValue = budgetMatch ? Number(String(budgetMatch[1]).replace(/,/g, '')) : null;\n\nreturn [{\n  json: {\n    source_key: sourceKey,\n    source_label: sourceLabel,\n    items: [\n      {\n        external_id: String($json.messageId ?? $json.uid ?? $json.id ?? subject),\n        title: subject,\n        company: from,\n        url,\n        raw_text: rawBody || subject,\n        posted_at: dateValue ? new Date(dateValue).toISOString() : new Date().toISOString(),\n        budget_min: budgetValue,\n        budget_max: budgetValue,\n        budget_text: budgetValue ? `USD ${budgetValue}` : '',\n        currency: 'USD',\n        stack: [],\n        risk_level: 'low',\n        risk_reasons: [],\n      },\n    ],\n  },\n}];"
+      },
+      "id": "9f8c616e-1e4e-4f0c-8e23-c3f0f9e8ac12",
+      "name": "Normalize Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [520, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "__SCRAPPERLANAS_BASE_URL__/internal/import/opportunities",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer __CRON_SECRET__"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{$json}}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "c1bc2d84-0eac-4df6-9a58-13c2f7c4d7b4",
+      "name": "Import Into Scrapperlanas",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [820, 300]
+    }
+  ],
+  "connections": {
+    "IMAP Email Trigger": {
+      "main": [[{ "node": "Normalize Email", "type": "main", "index": 0 }]]
+    },
+    "Normalize Email": {
+      "main": [[{ "node": "Import Into Scrapperlanas", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "versionId": "f3c4f8f0-1f3b-4b29-8e36-0fd4d0c0c1ab",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "id": "scrapperlanas-email-alerts-imap",
+  "tags": []
+}

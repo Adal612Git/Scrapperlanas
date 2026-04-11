@@ -2,7 +2,7 @@
 {% block title %}Detalle | Scrapperlanas{% endblock %}
 {% block page_kicker %}Revision{% endblock %}
 {% block page_title %}Detalle de oportunidad{% endblock %}
-{% block page_description %}Lectura completa, criterio IA y movimiento de pipeline dentro de una vista de decision con el lenguaje visual del prototipo oficial.{% endblock %}
+{% block page_description %}Lectura completa, criterio IA y movimiento interno dentro de una vista de decision con el lenguaje visual del prototipo oficial.{% endblock %}
 {% block page_status %}
   <span class="rounded-full border border-blue-500/30 bg-blue-500/15 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-blue-200">Detalle vivo</span>
   <span class="rounded-full px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] {{ opportunity.state_badge_class }}">{{ opportunity.state }}</span>
@@ -14,7 +14,7 @@
   </a>
   <a href="{{ url_for('main.dashboard') }}" class="inline-flex items-center gap-2 rounded-2xl border border-slate-700 bg-slate-900 px-4 py-2.5 text-sm font-bold text-slate-200 hover:border-slate-600 hover:bg-slate-800">
     <i class="fa-solid fa-arrow-left"></i>
-    Volver al inbox
+    Volver al dashboard
   </a>
 {% endblock %}
 {% block content %}
@@ -28,10 +28,14 @@
               <span class="rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] {{ opportunity.state_badge_class }}">{{ opportunity.state }}</span>
             </div>
             <h2 class="mt-4 text-3xl font-black leading-tight text-white">{{ opportunity.title }}</h2>
-            <p class="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-sm text-slate-400">
-              <span>{{ opportunity.source_label }}</span>
-              <span>{{ opportunity.company or "Empresa no identificada" }}</span>
-              <span>{{ opportunity.budget_display }}</span>
+            <p class="mt-3 flex flex-wrap gap-x-3 gap-y-2 text-sm text-slate-400">
+              <span class="min-w-0 break-words">{{ opportunity.source_label }}</span>
+              <span class="rounded-full border border-slate-700 bg-slate-950 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-300">{{ opportunity.source_key }}</span>
+              <span class="rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] {% if opportunity.source_key == 'sample_feed' %}border border-amber-500/30 bg-amber-500/15 text-amber-200{% else %}border border-emerald-500/30 bg-emerald-500/15 text-emerald-200{% endif %}">
+                {% if opportunity.source_key == 'sample_feed' %}DEMO{% else %}REAL{% endif %}
+              </span>
+              <span class="min-w-0 break-words">{{ opportunity.company or "Empresa no identificada" }}</span>
+              <span class="min-w-0 break-words">{{ opportunity.budget_display }}</span>
             </p>
           </div>
 
@@ -74,10 +78,10 @@
         <article class="rounded-[28px] border border-emerald-500/20 bg-emerald-500/10 p-6 shadow-xl shadow-black/20">
           <p class="text-xs font-bold uppercase tracking-[0.24em] text-emerald-200">Plan de ataque</p>
           <div class="mt-4 flex flex-wrap gap-2">
-            <span class="rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] {{ opportunity.priority_badge_class }}">{{ opportunity.priority_tier }}</span>
-            <span class="rounded-full border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-slate-200">{{ opportunity.action_label }}</span>
+            <span class="max-w-full rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] leading-tight {{ opportunity.priority_badge_class }}">{{ opportunity.priority_tier }}</span>
+            <span class="max-w-full rounded-full border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] leading-tight text-slate-200">{{ opportunity.action_label }}</span>
             {% if opportunity.analysis.fit_label %}
-              <span class="rounded-full border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-slate-200">{{ opportunity.fit_label_display }}</span>
+              <span class="max-w-full rounded-full border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] leading-tight text-slate-200">{{ opportunity.fit_label_display }}</span>
             {% endif %}
           </div>
           <p class="mt-4 text-sm leading-7 text-slate-200">{{ opportunity.priority_reason }}</p>
@@ -154,7 +158,8 @@
 
     <aside class="space-y-4">
       <section class="rounded-[28px] border border-slate-800 bg-slate-900/95 p-6 shadow-xl shadow-black/20 xl:sticky xl:top-28">
-        <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Actualizar estado</p>
+        <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Estado interno / kanban</p>
+        <p class="mt-2 text-sm leading-6 text-slate-400">Estos botones solo cambian el estado dentro del kanban. No aplican automaticamente en la fuente externa.</p>
         <div class="mt-5 grid gap-2">
           {% for action in quick_actions %}
             <form method="post">
@@ -170,14 +175,6 @@
         </div>
         <form method="post" class="mt-5 grid gap-4">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <label class="block">
-            <span class="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Estado</span>
-            <select name="state" required class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
-              {% for state in pipeline_states %}
-                <option value="{{ state }}" {% if opportunity.state == state %}selected{% endif %}>{{ state }}</option>
-              {% endfor %}
-            </select>
-          </label>
           <label class="block">
             <span class="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Nota</span>
             <textarea name="note" rows="5" placeholder="Motivo, siguiente paso o comentario operativo..." class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"></textarea>

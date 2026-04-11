@@ -14,8 +14,17 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
-  const activateSection = (sectionId) => {
+  const activateSection = (sectionId, shouldScroll = false) => {
+    if (sectionId === "top") {
+      activateSection("inbox", false);
+      if (shouldScroll) {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+      return;
+    }
+
     const safeId = sections.some((section) => section.id === `section-${sectionId}`) ? sectionId : "inbox";
+    const activeSection = sections.find((section) => section.id === `section-${safeId}`);
 
     sections.forEach((section) => {
       const isActive = section.id === `section-${safeId}`;
@@ -27,6 +36,12 @@ document.addEventListener("DOMContentLoaded", () => {
       const isActive = link.dataset.sectionTarget === safeId;
       link.classList.toggle("is-nav-active", isActive);
     });
+
+    if (activeSection && shouldScroll) {
+      requestAnimationFrame(() => {
+        activeSection.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
   };
 
   const readHash = () => window.location.hash.replace(/^#/, "");
@@ -38,15 +53,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (linkUrl.pathname === window.location.pathname) {
         event.preventDefault();
-        activateSection(target);
-        window.history.replaceState(null, "", `#${target}`);
+        activateSection(target, true);
+        window.history.pushState(null, "", `#${target}`);
       }
     });
   });
 
+  window.addEventListener("popstate", () => {
+    activateSection(readHash());
+  });
   window.addEventListener("hashchange", () => {
     activateSection(readHash());
   });
 
-  activateSection(readHash() || "inbox");
+  const initialHash = readHash();
+  activateSection(initialHash || "inbox", Boolean(initialHash));
 });

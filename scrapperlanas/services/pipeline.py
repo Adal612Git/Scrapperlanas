@@ -346,11 +346,14 @@ def import_opportunities(
         if not isinstance(item, dict):
             invalid_items += 1
             continue
-        opportunity = _normalized_opportunity_from_payload(item, policy)
+        prepared_item = _prepare_import_payload_item(item, policy)
+        opportunity = _normalized_opportunity_from_payload(prepared_item, policy)
         if opportunity is None:
             invalid_items += 1
             continue
         normalized.append(opportunity)
+
+    normalized = _dedupe_import_payloads(normalized)
 
     stats = {
         "policies_run": 1,
@@ -773,7 +776,7 @@ def _normalized_opportunity_from_payload(item: dict, policy: dict) -> Normalized
 
     stack = _coerce_list(item.get("stack"))
     risk_reasons = _coerce_list(item.get("risk_reasons"))
-    company = str(item.get("company", "") or "").strip()
+    company = _clean_email_sender(str(item.get("company", "") or "").strip())
     title = str(item.get("title", "") or "").strip() or "Sin titulo"
     body_parts = (
         title,
@@ -782,6 +785,20 @@ def _normalized_opportunity_from_payload(item: dict, policy: dict) -> Normalized
         str(item.get("location", "") or "").strip(),
     )
     raw_text = "\n".join(part for part in body_parts if part)
+    budget_min = _safe_int_or_none(item.get("budget_min"))
+    budget_max = _safe_int_or_none(item.get("budget_max"))
+    budget_text = str(item.get("budget_text", "") or "").strip()
+    currency = str(item.get("currency", "") or "USD").strip() or "USD"
+    if not budget_text and raw_text:
+        inferred_min, inferred_max, inferred_text, inferred_currency = extract_budget(raw_text)
+        if budget_min is None:
+            budget_min = inferred_min
+        if budget_max is None:
+            budget_max = inferred_max
+        if inferred_text:
+            budget_text = inferred_text
+        if currency == "USD" and inferred_currency:
+            currency = inferred_currency
     risk_level = str(item.get("risk_level", "") or "").strip().lower()
     if risk_level not in {"low", "medium", "high"}:
         risk_level = str(policy.get("risk_level", "low") or "low").strip().lower()
@@ -794,17 +811,118 @@ def _normalized_opportunity_from_payload(item: dict, policy: dict) -> Normalized
         company=company,
         url=url,
         raw_text=raw_text or title,
-        budget_min=_safe_int_or_none(item.get("budget_min")),
-        budget_max=_safe_int_or_none(item.get("budget_max")),
-        budget_text=str(item.get("budget_text", "") or "").strip(),
-        currency=str(item.get("currency", "") or "USD").strip() or "USD",
+        budget_min=budget_min,
+        budget_max=budget_max,
+        budget_text=budget_text,
+        currency=currency,
         sector=str(item.get("sector", "") or "").strip(),
         stack=stack,
-        posted_at=str(item.get("posted_at", "") or "").strip() or None,
+        posted_at=_normalize_posted_at(item.get("posted_at")),
         risk_level=risk_level,
         risk_reasons=risk_reasons,
         is_suspicious=bool(item.get("is_suspicious")),
     )
+
+
+def _prepare_import_payload_item(item: dict, policy: dict) -> dict:
+    source_key = str(item.get("source_key", "") or policy["source_key"]).strip() or policy["source_key"]
+    if source_key != "email_alerts":
+        return item
+
+    subject = str(item.get("title", "") or item.get("subject", "") or "").strip()
+    from_value = item.get("from", "") or item.get("sender", "") or ""
+    if isinstance(from_value, dict):
+        company = str(
+            from_value.get("text")
+            or from_value.get("value")
+            or from_value.get("address")
+            or from_value.get("email")
+            or ""
+        ).strip()
+    else:
+        company = _clean_email_sender(str(from_value).strip())
+    company = str(item.get("company", "") or company).strip()
+    body = _first_non_empty(
+        str(item.get("raw_text", "") or "").strip(),
+        str(item.get("text", "") or "").strip(),
+        str(item.get("textPlain", "") or "").strip(),
+        str(item.get("body", "") or "").strip(),
+        str(item.get("html", "") or "").strip(),
+    )
+
+    prepared = dict(item)
+    if subject and not prepared.get("title"):
+        prepared["title"] = subject
+    if company and not prepared.get("company"):
+        prepared["company"] = company
+    if body and not prepared.get("raw_text"):
+        prepared["raw_text"] = body
+    if not prepared.get("posted_at"):
+        posted_at = _first_non_empty(
+            str(item.get("posted_at", "") or "").strip(),
+            str(item.get("date", "") or "").strip(),
+            str(item.get("internalDate", "") or "").strip(),
+            str(item.get("headers", {}).get("date", "") if isinstance(item.get("headers"), dict) else "").strip(),
+        )
+        if posted_at:
+            prepared["posted_at"] = posted_at
+
+    if not prepared.get("external_id"):
+        prepared["external_id"] = _first_non_empty(
+            str(item.get("messageId", "") or "").strip(),
+            str(item.get("uid", "") or "").strip(),
+            str(item.get("id", "") or "").strip(),
+            subject,
+        )
+
+    if not prepared.get("url"):
+        link_match = re.search(r"https?://[^\s<>\"]+", body or "", flags=re.IGNORECASE)
+        if link_match:
+            prepared["url"] = link_match.group(0).rstrip(").,;]")
+
+    return prepared
+
+
+def _dedupe_import_payloads(opportunities: list[NormalizedOpportunity]) -> list[NormalizedOpportunity]:
+    unique_by_url: dict[str, NormalizedOpportunity] = {}
+    unique_by_external_id: dict[str, NormalizedOpportunity] = {}
+    deduped: list[NormalizedOpportunity] = []
+
+    for opportunity in opportunities:
+        if opportunity.url and opportunity.url in unique_by_url:
+            continue
+        if opportunity.external_id and opportunity.external_id in unique_by_external_id:
+            continue
+        if opportunity.url:
+            unique_by_url[opportunity.url] = opportunity
+        if opportunity.external_id:
+            unique_by_external_id[opportunity.external_id] = opportunity
+        deduped.append(opportunity)
+
+    return deduped
+
+
+def _clean_email_sender(value: str) -> str:
+    cleaned = " ".join((value or "").split()).strip()
+    if not cleaned:
+        return ""
+    match = re.match(r"^(?P<name>.+?)\s*<[^>]+>$", cleaned)
+    if match:
+        candidate = match.group("name").strip(" -|")
+        if candidate:
+            return candidate
+    return cleaned
+
+
+def _normalize_posted_at(value) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return _to_iso_datetime(value)
+    text = str(value).strip()
+    if not text:
+        return None
+    return _to_iso_datetime(text) or text
 
 
 def _coerce_list(value) -> list[str]:

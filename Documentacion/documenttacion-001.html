@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jerarquía y roles propuestos</title>
+  <style>
+    :root{
+      --bg1:#0b1020;
+      --bg2:#131a33;
+      --panel:#171f3f;
+      --panel-soft:rgba(255,255,255,0.06);
+      --line:rgba(255,255,255,0.12);
+      --text:#eef2ff;
+      --muted:#b8c1e0;
+      --accent:#7dd3fc;
+      --accent2:#a78bfa;
+      --accent3:#34d399;
+      --warn:#fbbf24;
+      --shadow:0 20px 50px rgba(0,0,0,0.28);
+      --radius:24px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(125,211,252,.12), transparent 30%),
+        radial-gradient(circle at top right, rgba(167,139,250,.13), transparent 28%),
+        linear-gradient(180deg, var(--bg1), var(--bg2));
+      line-height:1.6;
+    }
+    .wrap{
+      max-width:1250px;
+      margin:0 auto;
+      padding:28px 20px 50px;
+    }
+    .hero{
+      background:linear-gradient(135deg, rgba(125,211,252,.16), rgba(167,139,250,.14));
+      border:1px solid var(--line);
+      border-radius:32px;
+      padding:34px;
+      box-shadow:var(--shadow);
+      position:relative;
+      overflow:hidden;
+    }
+    .hero::after{
+      content:"";
+      position:absolute;
+      width:260px;
+      height:260px;
+      right:-60px;
+      top:-60px;
+      border-radius:50%;
+      background:radial-gradient(circle, rgba(52,211,153,.15), transparent 70%);
+      pointer-events:none;
+    }
+    .badge{
+      display:inline-block;
+      padding:8px 14px;
+      border-radius:999px;
+      font-size:13px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.06);
+      margin-bottom:12px;
+    }
+    h1{
+      margin:0 0 10px;
+      font-size:clamp(34px, 6vw, 56px);
+      line-height:1.05;
+    }
+    .lead{
+      margin:0;
+      max-width:920px;
+      color:var(--muted);
+      font-size:18px;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns:repeat(12, 1fr);
+      gap:18px;
+      margin-top:24px;
+    }
+    .panel{
+      background:var(--panel-soft);
+      border:1px solid var(--line);
+      border-radius:28px;
+      padding:24px;
+      box-shadow:var(--shadow);
+      backdrop-filter: blur(8px);
+    }
+    .span-12{grid-column:span 12}
+    .span-8{grid-column:span 8}
+    .span-6{grid-column:span 6}
+    .span-4{grid-column:span 4}
+    h2{
+      margin:0 0 8px;
+      font-size:28px;
+    }
+    h3{
+      margin:0 0 10px;
+      font-size:20px;
+    }
+    .sub{
+      margin:0 0 18px;
+      color:var(--muted);
+    }
+    .org-level{
+      display:grid;
+      gap:16px;
+    }
+    .card{
+      background:linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.03));
+      border:1px solid var(--line);
+      border-radius:22px;
+      padding:20px;
+    }
+    .num{
+      width:42px;
+      height:42px;
+      border-radius:14px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:800;
+      color:#09111f;
+      background:linear-gradient(135deg, var(--accent), var(--accent2));
+      margin-bottom:12px;
+    }
+    ul{
+      margin:0;
+      padding-left:18px;
+    }
+    li{margin:8px 0}
+    .role-list{
+      display:grid;
+      grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
+      gap:14px;
+    }
+    .role-item{
+      background:#fff;
+      color:#18213d;
+      border-radius:20px;
+      padding:18px;
+      box-shadow:var(--shadow);
+    }
+    .tag{
+      display:inline-block;
+      padding:6px 10px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:700;
+      margin-bottom:10px;
+      background:#e8f3ff;
+      color:#274f9d;
+    }
+    .callout{
+      border-left:4px solid var(--warn);
+      background:rgba(251,191,36,.10);
+      padding:16px 18px;
+      border-radius:16px;
+      color:#fff1c2;
+    }
+    .notes{
+      display:grid;
+      gap:14px;
+    }
+    .note{
+      background:linear-gradient(135deg, rgba(52,211,153,.10), rgba(125,211,252,.08));
+      border:1px solid var(--line);
+      border-radius:20px;
+      padding:18px;
+    }
+    .footer{
+      margin-top:22px;
+      text-align:center;
+      color:var(--muted);
+      font-size:14px;
+    }
+    @media (max-width: 980px){
+      .span-8,.span-6,.span-4{grid-column:span 12}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <div class="badge">Documento acomodado con la información proporcionada</div>
+      <h1>Jerarquía y roles propuestos</h1>
+      <p class="lead">
+        Estructura organizacional, roles, observaciones y necesidades descritas alrededor del Director General,
+        Gerente General, agencias, sucursales, soporte, KPIs, metas y reportes.
+      </p>
+    </section>
+
+    <div class="grid">
+      <section class="panel span-8">
+        <h2>Estructura principal</h2>
+        <p class="sub">Niveles y posiciones mencionadas en la información original.</p>
+
+        <div class="org-level">
+          <div class="card">
+            <div class="num">1</div>
+            <h3>Nivel superior</h3>
+            <ul>
+              <li><strong>Director General / Dueño del Grupo (Emulado)</strong></li>
+              <li>Tiene la máxima autoridad.</li>
+              <li>Puede pedir directamente a cualquier gerente, por ejemplo al <strong>Gerente de Ventas</strong>, un auto con características especiales.</li>
+              <li>El <strong>Gerente de Ventas</strong> debe entonces programar y dejar todo listo para cumplir el pedido.</li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <div class="num">2</div>
+            <h3>Nivel de agencias / sucursales</h3>
+            <ul>
+              <li>Lista de agencias, cada una con su propia estructura.</li>
+              <li>Cada agencia tiene:
+                <ul>
+                  <li>Gerente de Administración</li>
+                  <li>Gerente de Ventas</li>
+                  <li>Gerente de Servicio</li>
+                  <li>Otros gerentes según necesidad</li>
+                </ul>
+              </li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <div class="num">3</div>
+            <h3>Personal de soporte</h3>
+            <ul>
+              <li>Por agencia o central.</li>
+              <li>Contador auxiliar.</li>
+              <li>Nóminas, personal de recursos humanos / payroll.</li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <div class="num">4</div>
+            <h3>Gerente General</h3>
+            <ul>
+              <li>Posición lateral o transversal.</li>
+              <li>Posicionado “al lado izquierdo” del organigrama.</li>
+              <li>Posiblemente con funciones de supervisión o enlace.</li>
+              <li>No necesariamente por encima de los gerentes de agencia, pero con ciertas capacidades especiales.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <aside class="panel span-4">
+        <h2>Roles mencionados</h2>
+        <p class="sub">Puestos y áreas nombradas de forma directa.</p>
+        <div class="role-list">
+          <div class="role-item">
+            <div class="tag">Nivel superior</div>
+            <strong>Director General / Dueño del Grupo</strong>
+          </div>
+          <div class="role-item">
+            <div class="tag">Agencias</div>
+            <strong>Gerente de Administración</strong>
+          </div>
+          <div class="role-item">
+            <div class="tag">Agencias</div>
+            <strong>Gerente de Ventas</strong>
+          </div>
+          <div class="role-item">
+            <div class="tag">Agencias</div>
+            <strong>Gerente de Servicio</strong>
+          </div>
+          <div class="role-item">
+            <div class="tag">Soporte</div>
+            <strong>Contador auxiliar</strong>
+          </div>
+          <div class="role-item">
+            <div class="tag">Soporte</div>
+            <strong>Nóminas / RH / Payroll</strong>
+          </div>
+          <div class="role-item">
+            <div class="tag">Transversal</div>
+            <strong>Gerente General</strong>
+          </div>
+        </div>
+      </aside>
+
+      <section class="panel span-12">
+        <h2>Lo que se quiere ver como Director General</h2>
+        <p class="sub">Texto acomodado sin agregar información nueva.</p>
+        <div class="notes">
+          <div class="note">
+            <strong>Resumen por agencia</strong>
+            <ul>
+              <li>Más que ver el organigrama, se quiere ver el desempeño de la empresa.</li>
+              <li>Ejemplo con WhatsApp: visualizar como Director General un resumen por agencia.</li>
+              <li>Ver cómo arrancó el día, qué pasó durante el día y cómo terminó.</li>
+              <li>También ver un resumen diario si no se ha terminado algo.</li>
+            </ul>
+          </div>
+
+          <div class="note">
+            <strong>Reporte por agencia y consolidado</strong>
+            <ul>
+              <li>Se quiere un reporte por agencia.</li>
+              <li>También un consolidado.</li>
+              <li>Se menciona que lo mandará el del iPhone 12.</li>
+            </ul>
+          </div>
+
+          <div class="note">
+            <strong>Interacción entre sucursales</strong>
+            <ul>
+              <li>Que interactúen entre sucursales.</li>
+              <li>Ejemplo: central de usados.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel span-6">
+        <h2>Lo que se quiere ver como Gerente General</h2>
+        <p class="sub">KPIs, objetivos y seguimiento mencionados en el texto.</p>
+        <div class="notes">
+          <div class="note">
+            <strong>KPIs del equipo</strong>
+            <ul>
+              <li>Entrar y ver previas pos ventas.</li>
+              <li>Ver los KPIs de su gente.</li>
+              <li>Poner objetivos: por ejemplo, que cada vendedor venda 3 a la semana.</li>
+              <li>Ejemplo: hoy miércoles Raúl lleva dos, va bien; Jorge no lleva y así.</li>
+              <li>Algo que informe si se va bien en la semana.</li>
+            </ul>
+          </div>
+
+          <div class="note">
+            <strong>Reporte profesional</strong>
+            <ul>
+              <li>Dar ejemplo de reporte profesional.</li>
+              <li>Por cada área, cada indicador llevarlo a algo muy específico.</li>
+              <li>O incluso ya las tareas o el seguimiento.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel span-6">
+        <h2>Metas, servicio y seguimiento</h2>
+        <p class="sub">Puntos expresados sobre metas y operación.</p>
+        <div class="notes">
+          <div class="note">
+            <strong>Metas de servicio</strong>
+            <ul>
+              <li>Si no se ha recibido el número esperado para metas de servicio, ponerse a promocionar.</li>
+              <li>Capataz funciona porque el encargado de redes sociales ya le dice: enfócate en esta deficiencia para lograr las metas.</li>
+            </ul>
+          </div>
+
+          <div class="note">
+            <strong>Metas gestionables</strong>
+            <ul>
+              <li>Se quiere que las metas se puedan gestionar.</li>
+              <li>Dependiendo del puesto, departamento o rol.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel span-12">
+        <h2>Capataz y colaboración entre gerentes</h2>
+        <p class="sub">Ideas escritas en la información original sobre apoyo y coordinación.</p>
+
+        <div class="notes">
+          <div class="note">
+            <strong>Alianzas entre gerentes</strong>
+            <ul>
+              <li>Que Capataz sugiera posibles alianzas entre gerentes para mayor rendimiento.</li>
+            </ul>
+          </div>
+
+          <div class="note">
+            <strong>Resumen o análisis</strong>
+            <ul>
+              <li>Capataz puede apoyar con resumen o análisis.</li>
+              <li>Ejemplo: en Monterrey están haciendo esto y así.</li>
+              <li>Capataz avisa en grupo de gerentes.</li>
+              <li>Cada uno puede ver si le conviene participar o posibles acciones.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel span-12">
+        <h2>Cierre de la información</h2>
+        <div class="callout">
+          Mandarán los puestos, el organigrama y establecerán unos KPIs.
+        </div>
+      </section>
+    </div>
+
+    <div class="footer">
+      HTML generado únicamente acomodando la información proporcionada.
+    </div>
+  </div>
+</body>
+</html>

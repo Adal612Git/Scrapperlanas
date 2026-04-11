@@ -5,13 +5,17 @@
 {% block page_description %}Centro de control para preferencias del operador, memoria de trabajo y politicas de ingesta con la misma linea visual del prototipo oficial.{% endblock %}
 {% block page_status %}
   <span class="rounded-full border border-blue-500/30 bg-blue-500/15 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-blue-200">Control plane</span>
+  <span class="rounded-full border border-slate-700 bg-slate-950 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-slate-300">Modo actual: {{ automation_summary.mode_key }}</span>
   <span class="rounded-full border border-slate-700 bg-slate-900 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-slate-300">{{ policies|length }} fuentes</span>
 {% endblock %}
-{% block page_actions %}
-  <a href="{{ url_for('main.dashboard') }}" class="inline-flex items-center gap-2 rounded-2xl border border-slate-700 bg-slate-900 px-4 py-2.5 text-sm font-bold text-slate-200 hover:border-slate-600 hover:bg-slate-800">
-    <i class="fa-solid fa-arrow-left"></i>
-    Volver al dashboard
-  </a>
+{% block page_secondary_actions %}
+  <form action="{{ url_for('main.ingest_now') }}" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="inline-flex items-center gap-2 rounded-2xl border border-blue-500/30 bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-500">
+      <i class="fa-solid fa-satellite-dish"></i>
+      Ejecutar ingesta ahora
+    </button>
+  </form>
 {% endblock %}
 {% block content %}
   <section class="rounded-[28px] border border-slate-800 bg-slate-900/90 p-6 shadow-xl shadow-black/20">
@@ -76,10 +80,7 @@
           <span class="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Pago minimo</span>
           <input type="number" name="min_budget" min="0" step="100" value="{{ profile.min_budget }}" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
         </label>
-        <label class="block">
-          <span class="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Fuentes preferidas</span>
-          <input type="text" name="preferred_sources" value="{{ profile.preferred_sources }}" placeholder="Workana Public Projects, Alertas por Correo, Reddit Public JSON" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
-        </label>
+        <input type="hidden" name="preferred_sources" value="{{ profile.preferred_sources }}">
         <button type="submit" class="inline-flex items-center justify-center gap-2 rounded-2xl border border-blue-500/30 bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-500">
           <i class="fa-solid fa-floppy-disk"></i>
           Guardar preferencias

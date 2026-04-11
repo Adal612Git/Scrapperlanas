@@ -122,6 +122,7 @@ class Config:
             30,
             _as_int(os.getenv("AUTOMATION_POLL_SECONDS"), default=300),
         )
+        self.DEMO_DATA = _as_bool(os.getenv("DEMO_DATA"), default=False)
         self.SCRAPPERLANAS_BASE_URL = (
             os.getenv("SCRAPPERLANAS_BASE_URL", self.APP_BASE_URL).strip().rstrip("/")
         )

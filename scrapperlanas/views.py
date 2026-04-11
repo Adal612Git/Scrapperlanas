@@ -48,14 +48,6 @@ KANBAN_COLUMNS = (
         "count_class": "border border-blue-500/30 bg-blue-500/15 text-blue-200",
     },
     {
-        "state": "RESPONDIDO",
-        "label": "Respondido",
-        "icon": "fa-solid fa-reply",
-        "panel_class": "border-teal-500/20",
-        "header_class": "border-teal-500/20 bg-teal-500/10 text-teal-300",
-        "count_class": "border border-teal-500/30 bg-teal-500/15 text-teal-200",
-    },
-    {
         "state": "APLICADO",
         "label": "Aplicado",
         "icon": "fa-solid fa-paper-plane",
@@ -72,28 +64,12 @@ KANBAN_COLUMNS = (
         "count_class": "border border-amber-500/30 bg-amber-500/15 text-amber-200",
     },
     {
-        "state": "GANADO",
-        "label": "Ganado",
-        "icon": "fa-solid fa-handshake",
-        "panel_class": "border-emerald-500/20",
-        "header_class": "border-emerald-500/20 bg-emerald-500/10 text-emerald-300",
-        "count_class": "border border-emerald-500/30 bg-emerald-500/15 text-emerald-200",
-    },
-    {
-        "state": "PERDIDO",
-        "label": "Perdido",
-        "icon": "fa-solid fa-folder-minus",
-        "panel_class": "border-slate-700",
-        "header_class": "border-slate-700 bg-slate-800/70 text-slate-300",
-        "count_class": "border border-slate-600 bg-slate-800 text-slate-300",
-    },
-    {
-        "state": "SOSPECHOSO",
-        "label": "Sospechoso",
-        "icon": "fa-solid fa-triangle-exclamation",
-        "panel_class": "border-orange-500/20",
-        "header_class": "border-orange-500/20 bg-orange-500/10 text-orange-300",
-        "count_class": "border border-orange-500/30 bg-orange-500/15 text-orange-200",
+        "state": "DESCARTADO",
+        "label": "Descartado",
+        "icon": "fa-solid fa-ban",
+        "panel_class": "border-rose-500/20",
+        "header_class": "border-rose-500/20 bg-rose-500/10 text-rose-300",
+        "count_class": "border border-rose-500/30 bg-rose-500/15 text-rose-200",
     },
 )
 
@@ -101,12 +77,8 @@ STATE_BADGE_STYLES = {
     "NUEVO": "border border-blue-500/30 bg-blue-500/15 text-blue-200",
     "VISTO": "border border-sky-500/30 bg-sky-500/15 text-sky-200",
     "INTERESANTE": "border border-blue-500/30 bg-blue-500/15 text-blue-200",
-    "RESPONDIDO": "border border-teal-500/30 bg-teal-500/15 text-teal-200",
     "APLICADO": "border border-fuchsia-500/30 bg-fuchsia-500/15 text-fuchsia-200",
     "FOLLOW_UP": "border border-amber-500/30 bg-amber-500/15 text-amber-200",
-    "GANADO": "border border-emerald-500/30 bg-emerald-500/15 text-emerald-200",
-    "PERDIDO": "border border-slate-600 bg-slate-800 text-slate-300",
-    "SOSPECHOSO": "border border-orange-500/30 bg-orange-500/15 text-orange-200",
     "DESCARTADO": "border border-rose-500/30 bg-rose-500/15 text-rose-200",
 }
 
@@ -447,6 +419,12 @@ def import_opportunities_internal():
 
     if not items:
         return jsonify({"ok": False, "error": "No opportunities received."}), 400
+    if len(items) > 100:
+        return jsonify({"ok": False, "error": "Too many opportunities in a single request."}), 413
+    if not source_key:
+        return jsonify({"ok": False, "error": "source_key is required."}), 400
+    if source_key == "email_alerts" and source_label is None:
+        source_label = "Alertas por Correo"
 
     db = get_db()
     with automation_lock(current_app):
@@ -709,8 +687,7 @@ def _build_filters(profile) -> dict:
         "source": request.args.get("source", "").strip(),
         "sector": request.args.get("sector", "").strip() or (profile["sectors"] if profile and not has_query else ""),
         "risk": request.args.get("risk", "").strip(),
-        "min_budget": request.args.get("min_budget", "").strip()
-        or (str(profile["min_budget"]) if profile and profile["min_budget"] and not has_query else ""),
+        "min_budget": request.args.get("min_budget", "").strip(),
     }
 
 
@@ -983,9 +960,18 @@ def _recent_automation_runs(db, *, limit: int) -> list[dict]:
 
 
 def _sort_items(items: list[dict]) -> list[dict]:
+    def _source_rank(item: dict) -> int:
+        source_key = str(item.get("source_key") or "")
+        if source_key == "weworkremotely":
+            return 0
+        if source_key == "sample_feed":
+            return 2
+        return 1
+
     return sorted(
         items,
         key=lambda item: (
+            _source_rank(item),
             -int(item.get("priority_score") or 0),
             -int(item.get("score") or 0),
             item.get("title", ""),

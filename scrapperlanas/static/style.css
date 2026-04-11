@@ -41,6 +41,83 @@ body {
   box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.08), 0 0 24px rgba(59, 130, 246, 0.08);
 }
 
+.dashboard-section {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  scroll-margin-top: 7rem;
+}
+
+.dashboard-section > * {
+  position: relative;
+  z-index: 1;
+}
+
+.dashboard-section::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 28px;
+  pointer-events: none;
+  opacity: 1;
+}
+
+.dashboard-section-filters::before {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.16), rgba(15, 23, 42, 0) 42%);
+}
+
+.dashboard-section-automation::before {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.14), rgba(15, 23, 42, 0) 42%);
+}
+
+.dashboard-section-plan::before {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.14), rgba(15, 23, 42, 0) 42%);
+}
+
+.dashboard-section-inbox::before {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.12), rgba(15, 23, 42, 0) 42%);
+}
+
+.dashboard-section-visualizacion::before {
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.12), rgba(15, 23, 42, 0) 42%);
+}
+
+.dashboard-section-historial::before {
+  background: linear-gradient(135deg, rgba(244, 114, 182, 0.12), rgba(15, 23, 42, 0) 42%);
+}
+
+.dashboard-section-busquedas::before {
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.12), rgba(15, 23, 42, 0) 42%);
+}
+
+.dashboard-section-alertas::before {
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.12), rgba(15, 23, 42, 0) 42%);
+}
+
+.dashboard-band-light {
+  background-color: rgba(248, 250, 252, 0.04);
+}
+
+.dashboard-band-dark {
+  background-color: rgba(15, 23, 42, 0.78);
+}
+
+.section-heading {
+  text-align: center;
+  max-width: 56rem;
+  margin: 0 auto 1.25rem auto;
+}
+
+.section-heading h2,
+.section-heading h3 {
+  font-size: clamp(1.6rem, 2vw, 2.5rem);
+  line-height: 1.05;
+}
+
+.section-heading p {
+  margin-top: 0.75rem;
+}
+
 .sidebar-collapsed #main-sidebar {
   width: 6.25rem;
 }

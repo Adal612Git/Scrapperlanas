@@ -287,21 +287,7 @@ DEFAULT_WORKANA_POLICY_CONFIG = {
         "https://www.workana.com/es/jobs?category=it-programming&skills=automation",
         "https://www.workana.com/es/jobs?category=it-programming&skills=n8n",
     ],
-    "include_terms": [
-        "python",
-        "scraping",
-        "automation",
-        "n8n",
-        "backend",
-        "api",
-        "integracion",
-        "integration",
-        "data",
-        "etl",
-        "developer",
-        "engineer",
-        "software",
-    ],
+    "include_terms": [],
     "exclude_terms": [
         "asistente virtual",
         "virtual assistant",
@@ -314,8 +300,8 @@ DEFAULT_WORKANA_POLICY_CONFIG = {
         "diseno grafico",
         "community manager",
     ],
-    "candidate_limit": 18,
-    "max_items": 18,
+    "candidate_limit": 24,
+    "max_items": 24,
 }
 
 DEFAULT_GREENHOUSE_POLICY_CONFIG = {
@@ -416,6 +402,7 @@ DEFAULT_WWR_POLICY_CONFIG = {
         "front-end",
         "design lead",
         "designer",
+        "talent community",
         "firmware",
         "sales",
         "marketing",
@@ -524,9 +511,9 @@ DEFAULT_SOURCE_POLICIES = (
         "method": "rss_feed",
         "risk_level": "low",
         "frequency_minutes": 120,
-        "enabled": 0,
+        "enabled": 1,
         "config_json": json.dumps(DEFAULT_WWR_POLICY_CONFIG, ensure_ascii=False),
-        "notes": "Fuente secundaria: buena para remoto, pero mas orientada a empleo formal que a contratos freelance directos.",
+        "notes": "Fuente publica RSS para remoto. Mantener polling conservador y filtros ligeros para no perder vacantes utiles.",
     },
     {
         "source_key": "hackernews_jobs",
@@ -703,10 +690,59 @@ def _refresh_source_policy_defaults(db: Database) -> None:
     ).fetchall()
 
     is_production = current_app.config.get("ENVIRONMENT") == "production"
+    demo_data = bool(current_app.config.get("DEMO_DATA"))
+
+    db.execute(
+        """
+        UPDATE source_policies
+        SET enabled = 1,
+            frequency_minutes = 120,
+            config_json = ?,
+            notes = ?
+        WHERE source_key = 'weworkremotely'
+        """,
+        (
+            json.dumps(DEFAULT_WWR_POLICY_CONFIG, ensure_ascii=False),
+            "Fuente publica RSS para remoto. Mantener polling conservador y filtros ligeros para no perder vacantes utiles.",
+        ),
+    )
 
     for row in rows:
         source_key = row["source_key"]
         config = _load_json(row["config_json"], default={})
+
+        if demo_data:
+            if source_key in {"sample_feed", "weworkremotely"}:
+                db.execute(
+                    """
+                    UPDATE source_policies
+                    SET enabled = 1,
+                        frequency_minutes = ?,
+                        config_json = ?,
+                        notes = ?
+                    WHERE id = ?
+                    """,
+                    (
+                        5 if source_key == "sample_feed" else 120,
+                        "{}"
+                        if source_key == "sample_feed"
+                        else json.dumps(DEFAULT_WWR_POLICY_CONFIG, ensure_ascii=False),
+                        "Fuente local de demostracion. Activada para entornos locales de prueba."
+                        if source_key == "sample_feed"
+                        else "Fuente publica RSS para remoto. Mantener polling conservador y filtros ligeros para no perder vacantes utiles.",
+                        row["id"],
+                    ),
+                )
+            else:
+                db.execute(
+                    """
+                    UPDATE source_policies
+                    SET enabled = 0
+                    WHERE id = ?
+                    """,
+                    (row["id"],),
+                )
+            continue
 
         if source_key == "sample_feed":
             if is_production and row["enabled"] == 1 and config == {}:
@@ -821,32 +857,6 @@ def _refresh_source_policy_defaults(db: Database) -> None:
                 (
                     json.dumps(DEFAULT_LEVER_POLICY_CONFIG, ensure_ascii=False),
                     "Fuente secundaria: Lever trae mas vacantes corporativas que proyectos freelance. Dejamos el conector disponible, pero apagado por default.",
-                    row["id"],
-                ),
-            )
-            continue
-
-        if source_key == "weworkremotely" and (
-            _is_empty_collection_config(config, "rss_urls")
-            or _config_missing_terms(config, "exclude_terms", ("frontend", "front-end", "firmware", "bubble"))
-            or (
-                _config_matches_default(config, DEFAULT_WWR_POLICY_CONFIG)
-                and row["notes"]
-                == "RSS oficial de We Work Remotely filtrado a roles tecnicos remotos con mejor potencial de cierre."
-            )
-        ):
-            db.execute(
-                """
-                UPDATE source_policies
-                SET enabled = 0,
-                    frequency_minutes = 120,
-                    config_json = ?,
-                    notes = ?
-                WHERE id = ?
-                """,
-                (
-                    json.dumps(DEFAULT_WWR_POLICY_CONFIG, ensure_ascii=False),
-                    "Fuente secundaria: buena para remoto, pero mas orientada a empleo formal que a contratos freelance directos.",
                     row["id"],
                 ),
             )

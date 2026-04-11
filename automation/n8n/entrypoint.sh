@@ -44,6 +44,7 @@ if [ "${FORCE_BOOTSTRAP}" = "true" ] || [ ! -f "${BOOTSTRAP_MARKER}" ]; then
   n8n import:workflow --separate --input="${RENDER_DIR}"
   n8n update:workflow --id=scrapperlanas-scheduler --active=true
   n8n update:workflow --id=scrapperlanas-import-webhook --active=true
+  n8n update:workflow --id=scrapperlanas-email-alerts-imap --active=true
   date -u +"%Y-%m-%dT%H:%M:%SZ" > "${BOOTSTRAP_MARKER}"
 else
   echo "[scrapperlanas] Reusing existing n8n bootstrap state"

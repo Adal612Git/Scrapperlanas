@@ -328,6 +328,98 @@ def test_internal_import_endpoint_creates_opportunity(app, client):
         assert run_row["created"] == 1
 
 
+def test_internal_import_endpoint_normalizes_email_alert_payload(app, client):
+    response = client.post(
+        "/internal/import/opportunities",
+        headers={"Authorization": "Bearer cron-test-secret"},
+        json={
+            "source_key": "email_alerts",
+            "items": [
+                {
+                    "subject": "Automation engineer contract",
+                    "from": {"text": "Acme Talent <alerts@acme.example>"},
+                    "date": "2026-04-09T12:00:00.000Z",
+                    "textPlain": "Remote contract. Need Python, n8n and APIs. Budget USD 2500. https://example.com/jobs/automation-engineer",
+                    "messageId": "mail-raw-001",
+                }
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload["ok"] is True
+    assert payload["stats"]["created"] == 1
+
+    with app.app_context():
+        db = get_db()
+        row = db.execute(
+            "SELECT source_key, source_label, title, company, url FROM opportunities WHERE external_id = ?",
+            ("mail-raw-001",),
+        ).fetchone()
+
+    assert row["source_key"] == "email_alerts"
+    assert row["source_label"] == "Alertas por Correo"
+    assert row["title"] == "Automation engineer contract"
+    assert row["company"] == "Acme Talent"
+    assert row["url"] == "https://example.com/jobs/automation-engineer"
+
+
+def test_internal_import_endpoint_extracts_budget_from_email_text(app, client):
+    response = client.post(
+        "/internal/import/opportunities",
+        headers={"Authorization": "Bearer cron-test-secret"},
+        json={
+            "source_key": "email_alerts",
+            "items": [
+                {
+                    "subject": "Need scraping help",
+                    "from": "Hiring Team <jobs@example.com>",
+                    "text": "Remote contract. We need Python + n8n. Budget USD 3200. https://example.com/jobs/scraping-help",
+                    "messageId": "mail-budget-001",
+                }
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    with app.app_context():
+        db = get_db()
+        row = db.execute(
+            "SELECT budget_min, budget_max, budget_text, currency FROM opportunities WHERE external_id = ?",
+            ("mail-budget-001",),
+        ).fetchone()
+
+    assert row["budget_min"] == 3200
+    assert row["budget_max"] == 3200
+    assert row["budget_text"] == "USD 3,200"
+    assert row["currency"] == "USD"
+
+
+def test_internal_import_endpoint_rejects_large_payload(client):
+    response = client.post(
+        "/internal/import/opportunities",
+        headers={"Authorization": "Bearer cron-test-secret"},
+        json={
+            "source_key": "email_alerts",
+            "items": [
+                {
+                    "external_id": f"mail-{index}",
+                    "title": f"Job {index}",
+                    "company": "Inbox",
+                    "url": f"https://example.com/jobs/{index}",
+                    "raw_text": "Remote contract.",
+                }
+                for index in range(101)
+            ],
+        },
+    )
+
+    assert response.status_code == 413
+    payload = response.get_json()
+    assert payload["ok"] is False
+
+
 def test_settings_page_shows_n8n_bootstrap_details(client):
     register(client)
 

@@ -1,28 +1,28 @@
 {% extends "base.html" %}
 {% block title %}Dashboard | Scrapperlanas{% endblock %}
 {% block page_kicker %}Operacion{% endblock %}
-{% block page_title %}Dashboard (Inbox){% endblock %}
-{% block page_description %}El prototipo oficial ahora vive sobre la app real: filtros, lecturas, pipeline, vistas y alertas dentro de la misma consola operativa.{% endblock %}
+{% block page_title %}Consola operativa{% endblock %}
+{% block page_description %}El prototipo oficial ahora vive sobre la app real: filtros, lecturas, kanban, vistas y alertas dentro de la misma consola operativa.{% endblock %}
 {% block page_status %}
-  <span class="rounded-full border border-cyan-500/30 bg-cyan-500/15 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-cyan-200">{{ automation_summary.mode_label }}</span>
-  <span class="rounded-full border border-blue-500/30 bg-blue-500/15 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-blue-200">Live inbox</span>
-  <span class="rounded-full border border-slate-700 bg-slate-900 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-slate-300">{{ items|length }} visibles</span>
+  <span class="rounded-full border border-cyan-500/30 bg-cyan-500/15 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-cyan-200">{{ automation_summary.mode_label }}</span>
+  <span class="rounded-full border border-slate-700 bg-slate-950 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-300">Modo: {{ automation_summary.mode_key }}</span>
+  <span class="rounded-full border border-blue-500/30 bg-blue-500/15 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-blue-200">Live inbox</span>
+  <span class="rounded-full border border-slate-700 bg-slate-900 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-300">{{ items|length }} visibles</span>
 {% endblock %}
 {% block page_actions %}
-  <form action="{{ url_for('main.ingest_now') }}" method="post">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <button type="submit" class="inline-flex items-center gap-2 rounded-2xl border border-blue-500/30 bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-[0_0_18px_rgba(37,99,235,0.28)] hover:bg-blue-500">
-      <i class="fa-solid fa-satellite-dish"></i>
-      Ejecutar ingesta ahora
-    </button>
-  </form>
   <a href="{{ url_for('main.export_csv', **filters) }}" class="inline-flex items-center gap-2 rounded-2xl border border-slate-700 bg-slate-900 px-4 py-2.5 text-sm font-bold text-white hover:border-slate-600 hover:bg-slate-800">
     <i class="fa-solid fa-download text-slate-400"></i>
     Exportar CSV
   </a>
 {% endblock %}
 {% block content %}
-  <section class="rounded-[28px] border border-slate-800 bg-slate-900/80 p-4 shadow-2xl shadow-black/20 backdrop-blur xl:p-6">
+  <div id="dashboard-top" class="scroll-mt-40"></div>
+  <section class="dashboard-section dashboard-band-dark dashboard-section-filters rounded-[28px] border border-slate-800 p-4 shadow-2xl shadow-black/20 backdrop-blur xl:p-6">
+    <div class="section-heading">
+      <p class="text-xs font-bold uppercase tracking-[0.34em] text-slate-500">Bloque 01</p>
+      <h2 class="mt-2 text-white">Filtros del dashboard</h2>
+      <p class="text-sm leading-7 text-slate-400">Aqui solo decides como ver lo ya capturado.</p>
+    </div>
     <div class="grid gap-4 xl:grid-cols-12">
       <form method="get" class="xl:col-span-9">
         <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
@@ -89,24 +89,30 @@
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="query_string" value="{{ active_query_string }}">
         <div class="h-full rounded-[26px] border border-slate-800 bg-slate-950/80 p-5">
-          <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Persistencia de criterio</p>
-          <h2 class="mt-2 text-xl font-black text-white">Guardar vista operativa</h2>
-          <p class="mt-2 text-sm leading-6 text-slate-400">Recupera el mismo enfoque sin volver a construir la combinacion de filtros.</p>
+          <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Vista guardada</p>
+          <h2 class="mt-2 text-xl font-black text-white">Guardar filtro de consulta</h2>
+          <p class="mt-2 text-sm leading-6 text-slate-400">Recupera la misma vista sin reconstruir la combinacion de filtros del dashboard.</p>
           <label class="mt-5 block">
             <span class="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Nombre</span>
             <input type="text" name="name" placeholder="Rust remoto high-score" class="w-full rounded-2xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
           </label>
           <button type="submit" class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-blue-500/30 bg-blue-500/15 px-4 py-3 text-sm font-bold text-blue-200 hover:bg-blue-500/20">
             <i class="fa-solid fa-floppy-disk"></i>
-            Guardar filtros
+            Guardar vista
           </button>
         </div>
       </form>
     </div>
   </section>
 
-  <section class="mt-6 grid gap-4 xl:grid-cols-3">
-    <article class="rounded-[28px] border border-slate-800 bg-slate-900/90 p-6 shadow-xl shadow-black/20 xl:col-span-2">
+  <section class="dashboard-section dashboard-band-light dashboard-section-automation mt-10 rounded-[28px] border border-slate-800 p-4 shadow-2xl shadow-black/20 xl:p-6">
+    <div class="section-heading">
+      <p class="text-xs font-bold uppercase tracking-[0.34em] text-slate-500">Bloque 02</p>
+      <h2 class="mt-2 text-white">Captura automatica</h2>
+      <p class="text-sm leading-7 text-slate-400">Estado de fuentes, ritmo, salud y siguientes corridas del scrapper.</p>
+    </div>
+    <div class="grid gap-4 xl:grid-cols-3">
+    <article class="rounded-[28px] border border-slate-800 bg-slate-950/80 p-6 shadow-xl shadow-black/20 xl:col-span-2">
       <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Automatizacion</p>
@@ -121,17 +127,17 @@
 
       <div class="mt-6 grid gap-4 md:grid-cols-3">
         <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-          <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Fuentes activas</p>
+          <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Fuentes del scrapper</p>
           <p class="mt-3 text-3xl font-black text-white">{{ automation_summary.enabled_count }}</p>
           <p class="mt-2 text-sm text-slate-400">Politicas habilitadas para trabajar.</p>
         </div>
         <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-          <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Listas ahora</p>
+          <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Listas para correr</p>
           <p class="mt-3 text-3xl font-black text-white">{{ automation_summary.due_count }}</p>
           <p class="mt-2 text-sm text-slate-400">Fuentes ya vencidas segun su frecuencia.</p>
         </div>
         <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-          <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Siguiente ventana</p>
+          <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Siguiente captura</p>
           <p class="mt-3 text-3xl font-black text-white">{{ automation_summary.next_due_label }}</p>
           <p class="mt-2 text-sm text-slate-400">Proxima fuente a disparar en automatico.</p>
         </div>
@@ -139,7 +145,7 @@
 
       <div class="mt-4 grid gap-4 md:grid-cols-3">
         <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-          <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Runs 24h</p>
+          <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Ejecuciones 24h</p>
           <p class="mt-3 text-3xl font-black text-white">{{ automation_summary.stability.total_runs }}</p>
           <p class="mt-2 text-sm text-slate-400">{{ automation_summary.stability.successful_runs }} ok / {{ automation_summary.stability.failed_runs }} error.</p>
         </div>
@@ -158,7 +164,7 @@
       <p class="mt-6 text-sm leading-6 text-slate-400">La IA no corre “todo el tiempo”: corre dentro de cada ingesta. Para no castigar fuentes ni llenar el dashboard, el scheduler solo debe disparar fuentes vencidas y el boton manual se usa como override puntual. Log local: {{ automation_summary.runtime.log_path }}.</p>
     </article>
 
-    <article class="rounded-[28px] border border-slate-800 bg-slate-900/90 p-6 shadow-xl shadow-black/20">
+    <article class="rounded-[28px] border border-slate-800 bg-slate-950/80 p-6 shadow-xl shadow-black/20">
       <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Ritmo por fuente</p>
       <h2 class="mt-2 text-2xl font-black text-white">Proximas corridas</h2>
       <div class="mt-6 space-y-3">
@@ -183,34 +189,35 @@
     </article>
   </section>
 
-  <section class="mt-6 rounded-[28px] border border-slate-800 bg-slate-900/90 p-5 shadow-xl shadow-black/20">
-    <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-      <div>
-        <p class="text-xs font-bold uppercase tracking-[0.28em] text-slate-500">Objetivos reales</p>
-        <h2 class="mt-2 text-2xl font-black tracking-tight text-white">Plan de ataque de hoy</h2>
-        <p class="mt-2 text-sm text-slate-400">Esta capa ya no es solo inbox: prioriza lo que vale tiempo comercial hoy mismo.</p>
-      </div>
+  <section class="dashboard-section dashboard-band-dark dashboard-section-plan mt-10 rounded-[28px] border border-slate-800 p-5 shadow-xl shadow-black/20">
+    <div class="section-heading">
+      <p class="text-xs font-bold uppercase tracking-[0.34em] text-slate-500">Bloque 03</p>
+      <h2 class="mt-2 text-white">Priorizacion interna</h2>
+      <p class="text-sm leading-7 text-slate-400">Lo urgente arriba, lo util primero y lo de menor valor despues.</p>
+    </div>
+    <div class="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div class="hidden lg:block"></div>
       <span class="rounded-full border border-emerald-500/30 bg-emerald-500/15 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-emerald-200">{{ daily_plan.focus_now }} targets A1/A2</span>
     </div>
 
     <div class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
       <article class="rounded-[24px] border border-emerald-500/20 bg-gradient-to-br from-slate-950 to-emerald-900/20 p-5">
-        <p class="text-xs font-bold uppercase tracking-[0.18em] text-emerald-200/80">Aplicar hoy</p>
+        <p class="text-xs font-bold uppercase tracking-[0.18em] text-emerald-200/80">Mover hoy</p>
         <p class="mt-3 text-4xl font-black text-white">{{ daily_plan.apply_now }}</p>
-        <p class="mt-2 text-sm text-slate-300">Matches donde la recomendacion ya es avanzar.</p>
+        <p class="mt-2 text-sm text-slate-300">Matches donde la recomendacion ya es avanzar de estado.</p>
       </article>
       <article class="rounded-[24px] border border-blue-500/20 bg-gradient-to-br from-slate-950 to-blue-900/20 p-5">
-        <p class="text-xs font-bold uppercase tracking-[0.18em] text-blue-200/80">Resolver hoy</p>
+        <p class="text-xs font-bold uppercase tracking-[0.18em] text-blue-200/80">Revisar hoy</p>
         <p class="mt-3 text-4xl font-black text-white">{{ daily_plan.review_today }}</p>
         <p class="mt-2 text-sm text-slate-300">Necesitan lectura completa y decision en el mismo dia.</p>
       </article>
       <article class="rounded-[24px] border border-fuchsia-500/20 bg-gradient-to-br from-slate-950 to-fuchsia-900/20 p-5">
-        <p class="text-xs font-bold uppercase tracking-[0.18em] text-fuchsia-200/80">Muy frescas</p>
+        <p class="text-xs font-bold uppercase tracking-[0.18em] text-fuchsia-200/80">Muy recientes</p>
         <p class="mt-3 text-4xl font-black text-white">{{ daily_plan.fresh }}</p>
         <p class="mt-2 text-sm text-slate-300">Publicadas hace poco, con mejor chance de entrar temprano.</p>
       </article>
       <article class="rounded-[24px] border border-amber-500/20 bg-gradient-to-br from-slate-950 to-amber-900/20 p-5">
-        <p class="text-xs font-bold uppercase tracking-[0.18em] text-amber-200/80">Foco real</p>
+        <p class="text-xs font-bold uppercase tracking-[0.18em] text-amber-200/80">Foco del dia</p>
         <p class="mt-3 text-4xl font-black text-white">{{ daily_plan.focus_now }}</p>
         <p class="mt-2 text-sm text-slate-300">Cuantas merecen energia inmediata antes que el resto.</p>
       </article>
@@ -225,16 +232,22 @@
                 <span class="rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] {{ item.priority_badge_class }}">{{ item.priority_tier }} / {{ item.priority_label }}</span>
                 <span class="rounded-full border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-slate-300">{{ item.freshness_label }}</span>
               </div>
-              <h3 class="mt-4 text-xl font-black leading-tight text-white">
+              <h3 class="mt-4 break-words text-xl font-black leading-tight text-white">
                 <a href="{{ url_for('main.opportunity_detail', opportunity_id=item.id) }}" class="transition hover:text-blue-300">{{ item.title }}</a>
               </h3>
-              <p class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-sm text-slate-400">
+              <p class="mt-2 flex flex-wrap gap-x-3 gap-y-1 break-words text-sm text-slate-400">
                 <span>{{ item.company or "Empresa no identificada" }}</span>
                 <span>{{ item.source_label }}</span>
                 <span>{{ item.application_host }}</span>
               </p>
-              <p class="mt-4 text-sm leading-7 text-slate-300">{{ item.priority_reason }}</p>
-              <p class="mt-3 text-sm text-slate-400">Siguiente paso: {{ item.action_summary }}</p>
+              <div class="mt-3 flex flex-wrap gap-2">
+                <span class="rounded-full px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em] {% if item.source_key == 'sample_feed' %}border border-amber-500/30 bg-amber-500/15 text-amber-200{% else %}border border-emerald-500/30 bg-emerald-500/15 text-emerald-200{% endif %}">
+                  {% if item.source_key == 'sample_feed' %}DEMO{% else %}REAL{% endif %}
+                </span>
+                <span class="rounded-full border border-slate-700 bg-slate-950 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-300">{{ item.source_key }}</span>
+              </div>
+              <p class="mt-4 break-words text-sm leading-7 text-slate-300">{{ item.priority_reason }}</p>
+              <p class="mt-3 break-words text-sm text-slate-400">Siguiente paso: {{ item.action_summary }}</p>
             </div>
 
             <div class="w-fit rounded-[22px] border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-center">
@@ -259,7 +272,7 @@
             </a>
             <a href="{{ item.url }}" target="_blank" rel="noreferrer" class="inline-flex items-center gap-2 rounded-2xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm font-bold text-slate-200 hover:border-slate-600 hover:bg-slate-800">
               <i class="fa-solid fa-arrow-up-right-from-square text-blue-300"></i>
-              Aplicar / revisar
+              Abrir fuente
             </a>
           </div>
         </article>
@@ -271,12 +284,13 @@
     </div>
   </section>
 
-  <div id="section-inbox" class="app-section mt-6 block">
-    <div class="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-      <div>
-        <p class="text-xs font-bold uppercase tracking-[0.28em] text-slate-500">Inbox vivo</p>
-        <h2 class="mt-2 text-2xl font-black tracking-tight text-white">Ultimas oportunidades</h2>
-      </div>
+  <div id="section-inbox" class="app-section dashboard-section dashboard-band-light dashboard-section-inbox mt-10 block rounded-[28px] border border-slate-800 p-5 shadow-xl shadow-black/20">
+    <div class="section-heading">
+      <p class="text-xs font-bold uppercase tracking-[0.34em] text-slate-500">Bloque 04</p>
+      <h2 class="mt-2 text-white">Ofertas capturadas</h2>
+      <p class="text-sm leading-7 text-slate-400">Aqui viven las tarjetas reales que se van a trabajar hoy.</p>
+    </div>
+    <div class="mb-6 flex justify-center">
       <span class="inline-flex w-fit items-center gap-2 rounded-full border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-medium text-slate-300">
         <span class="h-2 w-2 animate-pulse rounded-full bg-emerald-400"></span>
         {{ items|length }} resultados visibles
@@ -291,14 +305,20 @@
               <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div class="min-w-0">
                   <p class="text-xs font-bold uppercase tracking-[0.28em] text-slate-500">{{ item.source_label }}</p>
-                  <h3 class="mt-2 text-2xl font-black leading-tight text-white">
+                  <h3 class="mt-2 break-words text-2xl font-black leading-tight text-white">
                     <a href="{{ url_for('main.opportunity_detail', opportunity_id=item.id) }}" class="transition hover:text-blue-300">{{ item.title }}</a>
                   </h3>
-                  <p class="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-sm text-slate-400">
-                    <span>{{ item.company or "Empresa no identificada" }}</span>
-                    <span>{{ item.sector or "Sector pendiente" }}</span>
-                    <span>{{ item.budget_display }}</span>
-                  </p>
+              <p class="mt-3 flex flex-wrap gap-x-3 gap-y-1 break-words text-sm text-slate-400">
+                <span>{{ item.company or "Empresa no identificada" }}</span>
+                <span>{{ item.sector or "Sector pendiente" }}</span>
+                <span>{{ item.budget_display }}</span>
+              </p>
+              <div class="mt-3 flex flex-wrap gap-2">
+                <span class="rounded-full px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em] {% if item.source_key == 'sample_feed' %}border border-amber-500/30 bg-amber-500/15 text-amber-200{% else %}border border-emerald-500/30 bg-emerald-500/15 text-emerald-200{% endif %}">
+                  {% if item.source_key == 'sample_feed' %}DEMO{% else %}REAL{% endif %}
+                </span>
+                <span class="rounded-full border border-slate-700 bg-slate-950 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-300">{{ item.source_key }}</span>
+              </div>
                 </div>
 
                 <div class="w-fit rounded-[24px] border border-blue-500/20 bg-blue-500/10 px-5 py-4 text-center">
@@ -307,7 +327,7 @@
                 </div>
               </div>
 
-              <p class="mt-4 text-sm leading-7 text-slate-300">{{ item.ai_summary }}</p>
+              <p class="mt-4 break-words text-sm leading-7 text-slate-300">{{ item.ai_summary }}</p>
 
               <div class="mt-4 flex flex-wrap gap-2">
                 <span class="rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] {{ item.priority_badge_class }}">{{ item.priority_tier }}</span>
@@ -328,7 +348,7 @@
                   {% if item.analysis.semantic_score is not none %}Match semantico: {{ item.analysis.semantic_score }}/100{% endif %}
                 </p>
               {% endif %}
-              <p class="mt-2 text-sm text-slate-500">Canal: {{ item.application_host }} / Frescura: {{ item.freshness_label }}</p>
+              <p class="mt-2 break-words text-sm text-slate-500">Canal: {{ item.application_host }} / Frescura: {{ item.freshness_label }}</p>
 
               {% if item.risk_reasons %}
                 <ul class="mt-4 list-disc space-y-1 pl-5 text-sm text-slate-400">
@@ -361,12 +381,13 @@
     </div>
   </div>
 
-  <div id="section-visualizacion" class="app-section mt-6 hidden">
-    <div class="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-      <div>
-        <p class="text-xs font-bold uppercase tracking-[0.28em] text-slate-500">Visualizacion</p>
-        <h2 class="mt-2 text-2xl font-black tracking-tight text-white">Analisis estrategico del mercado</h2>
-      </div>
+  <div id="section-visualizacion" class="app-section dashboard-section dashboard-band-dark dashboard-section-visualizacion mt-10 hidden rounded-[28px] border border-slate-800 p-5 shadow-xl shadow-black/20">
+    <div class="section-heading">
+      <p class="text-xs font-bold uppercase tracking-[0.34em] text-slate-500">Bloque 05</p>
+      <h2 class="mt-2 text-white">Lectura y analisis</h2>
+      <p class="text-sm leading-7 text-slate-400">Lectura de volumen, fuentes, sector y tendencia.</p>
+    </div>
+    <div class="mb-6 flex justify-center">
       <span class="inline-flex w-fit items-center gap-2 rounded-full border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-medium text-slate-300">
         <i class="fa-solid fa-calendar-days text-blue-300"></i>
         Ultimos 7 cortes
@@ -380,7 +401,7 @@
         <p class="mt-2 text-sm text-slate-300">Inventario completo del radar operativo.</p>
       </article>
       <article class="rounded-[28px] border border-emerald-500/20 bg-gradient-to-br from-slate-900 to-emerald-900/30 p-5 shadow-xl shadow-black/20">
-        <p class="text-xs font-bold uppercase tracking-[0.24em] text-emerald-200/80">Pipeline activo</p>
+        <p class="text-xs font-bold uppercase tracking-[0.24em] text-emerald-200/80">Kanban activo</p>
         <p class="mt-3 text-4xl font-black text-white">{{ metrics.active }}</p>
         <p class="mt-2 text-sm text-slate-300">{{ high_priority_ratio }}% del radar actual ya supera score 70.</p>
       </article>
@@ -392,7 +413,7 @@
       <article class="rounded-[28px] border border-amber-500/20 bg-gradient-to-br from-slate-900 to-amber-900/30 p-5 shadow-xl shadow-black/20">
         <p class="text-xs font-bold uppercase tracking-[0.24em] text-amber-200/80">Cashflow potencial</p>
         <p class="mt-3 text-4xl font-black text-white">${{ "{:,.0f}".format(metrics.cashflow) }}</p>
-        <p class="mt-2 text-sm text-slate-300">Valor agregado sobre pipeline priorizado.</p>
+        <p class="mt-2 text-sm text-slate-300">Valor agregado sobre ofertas ya priorizadas.</p>
       </article>
     </div>
 
@@ -432,7 +453,7 @@
               {% set width = ((row.total / metrics.total) * 100) if metrics.total else 0 %}
               <div>
                 <div class="mb-2 flex items-center justify-between gap-3 text-sm">
-                  <span class="font-medium text-slate-300">{{ row.source_label }}</span>
+                  <span class="min-w-0 break-words font-medium text-slate-300">{{ row.source_label }}</span>
                   <span class="text-slate-500">{{ row.total }}</span>
                 </div>
                 <div class="h-2 rounded-full bg-slate-950">
@@ -452,7 +473,7 @@
             {% for row in sector_summary %}
               <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
                 <div class="flex items-start justify-between gap-3">
-                  <div>
+                  <div class="min-w-0">
                     <p class="text-sm font-bold text-white">{{ row.sector_label }}</p>
                     <p class="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">{{ row.total }} oportunidades</p>
                   </div>
@@ -468,11 +489,11 @@
     </div>
   </div>
 
-  <div id="section-historial" class="app-section mt-6 hidden">
-    <div class="mb-6">
-      <p class="text-xs font-bold uppercase tracking-[0.28em] text-slate-500">Pipeline</p>
-      <h2 class="mt-2 text-2xl font-black tracking-tight text-white">Estados persistentes del flujo</h2>
-      <p class="mt-2 text-sm text-slate-400">Vista kanban alineada a los estados reales del motor.</p>
+  <div id="section-historial" class="app-section dashboard-section dashboard-band-light dashboard-section-historial mt-10 hidden rounded-[28px] border border-slate-800 p-5 shadow-xl shadow-black/20">
+    <div class="section-heading">
+      <p class="text-xs font-bold uppercase tracking-[0.34em] text-slate-500">Bloque 06</p>
+      <h2 class="mt-2 text-white">Kanban ofertas</h2>
+      <p class="text-sm leading-7 text-slate-400">Vista kanban alineada a los estados reales del motor.</p>
     </div>
 
     <div class="flex gap-4 overflow-x-auto pb-2">
@@ -511,12 +532,13 @@
     </div>
   </div>
 
-  <div id="section-busquedas" class="app-section mt-6 hidden">
-    <div class="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-      <div>
-        <p class="text-xs font-bold uppercase tracking-[0.28em] text-slate-500">Memoria de trabajo</p>
-        <h2 class="mt-2 text-2xl font-black tracking-tight text-white">Busquedas guardadas y filtros</h2>
-      </div>
+  <div id="section-busquedas" class="app-section dashboard-section dashboard-band-dark dashboard-section-busquedas mt-10 hidden rounded-[28px] border border-slate-800 p-5 shadow-xl shadow-black/20">
+    <div class="section-heading">
+      <p class="text-xs font-bold uppercase tracking-[0.34em] text-slate-500">Bloque 07</p>
+      <h2 class="mt-2 text-white">Vistas guardadas</h2>
+      <p class="text-sm leading-7 text-slate-400">Atajos para volver a una lectura operativa sin reconstruirla.</p>
+    </div>
+    <div class="mb-6 flex justify-center">
       <span class="rounded-full border border-slate-700 bg-slate-900 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-slate-300">{{ saved_views|length }} vistas</span>
     </div>
 
@@ -552,11 +574,11 @@
     </div>
   </div>
 
-  <div id="section-alertas" class="app-section mt-6 hidden">
-    <div class="mb-6">
-      <p class="text-xs font-bold uppercase tracking-[0.28em] text-slate-500">Alertas</p>
-      <h2 class="mt-2 text-2xl font-black tracking-tight text-white">Resumen de notificaciones y criterio personal</h2>
-      <p class="mt-2 text-sm text-slate-400">La configuracion fina vive en Ajustes, pero este panel resume el criterio activo del operador.</p>
+  <div id="section-alertas" class="app-section dashboard-section dashboard-band-light dashboard-section-alertas mt-10 hidden rounded-[28px] border border-slate-800 p-5 shadow-xl shadow-black/20">
+    <div class="section-heading">
+      <p class="text-xs font-bold uppercase tracking-[0.34em] text-slate-500">Bloque 08</p>
+      <h2 class="mt-2 text-white">Alertas y criterio</h2>
+      <p class="text-sm leading-7 text-slate-400">La configuracion fina vive en Ajustes, pero aqui ves el criterio activo.</p>
     </div>
 
     <div class="grid gap-4 xl:grid-cols-3">
@@ -576,7 +598,7 @@
         <div class="mt-6 grid gap-4 md:grid-cols-2">
           <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
             <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Correo destino</p>
-            <p class="mt-2 text-sm font-semibold text-white">{{ g.user.email }}</p>
+            <p class="mt-2 break-words text-sm font-semibold text-white">{{ g.user.email }}</p>
           </div>
           <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
             <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Pago minimo activo</p>
@@ -586,11 +608,11 @@
           </div>
           <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
             <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Sectores</p>
-            <p class="mt-2 text-sm leading-6 text-slate-300">{{ g.user.sectors or "Sin sectores definidos" }}</p>
+            <p class="mt-2 break-words text-sm leading-6 text-slate-300">{{ g.user.sectors or "Sin sectores definidos" }}</p>
           </div>
           <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
             <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Keywords</p>
-            <p class="mt-2 text-sm leading-6 text-slate-300">{{ g.user.keywords or "Sin keywords personalizadas" }}</p>
+            <p class="mt-2 break-words text-sm leading-6 text-slate-300">{{ g.user.keywords or "Sin keywords personalizadas" }}</p>
           </div>
         </div>
       </article>

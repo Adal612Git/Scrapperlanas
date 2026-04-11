@@ -7,8 +7,8 @@ services:
     env_file:
       - .env
     environment:
-      APP_ENV: production
-      AUTOMATION_MODE: n8n
+      APP_ENV: ${APP_ENV:-development}
+      AUTOMATION_MODE: ${AUTOMATION_MODE:-manual}
       DATABASE_URL: postgresql://scrapperlanas:scrapperlanas@db:5432/scrapperlanas
       SESSION_COOKIE_SECURE: "false"
       TRUST_PROXY: "true"
