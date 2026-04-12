@@ -24,51 +24,109 @@ PIPELINE_STATES = (
 
 
 KEYWORD_WEIGHTS = {
-    "python": 14,
-    "scraping": 18,
-    "automation": 14,
-    "n8n": 16,
+    "python": 16,
+    "scraping": 20,
+    "automation": 16,
+    "n8n": 18,
+    "make": 10,
+    "zapier": 9,
     "rust": 12,
-    "backend": 10,
-    "api": 10,
+    "backend": 12,
+    "api": 12,
+    "integration": 10,
+    "integrations": 10,
+    "webhooks": 10,
+    "workflow": 8,
+    "workflows": 8,
+    "pipeline": 9,
+    "etl": 9,
+    "crm": 8,
     "dashboard": 8,
     "postgresql": 10,
-    "flask": 8,
-    "docker": 7,
-    "ollama": 9,
-    "llm": 9,
+    "fastapi": 11,
+    "django": 10,
+    "flask": 10,
+    "docker": 8,
+    "linux": 6,
+    "playwright": 12,
+    "selenium": 11,
+    "beautifulsoup": 10,
+    "bs4": 10,
+    "ollama": 8,
+    "llm": 8,
+    "ai": 4,
+    "openai": 10,
+    "deepseek": 10,
+    "rag": 9,
+    "agent": 7,
+    "agents": 7,
+    "langchain": 9,
+    "embeddings": 8,
+    "vector db": 8,
+    "vector database": 8,
     "remote": 4,
-    "contract": 3,
-    "freelance": 6,
+    "contract": 10,
+    "freelance": 12,
+    "project": 8,
+    "project-based": 10,
+    "short-term": 7,
+    "deliverable": 10,
+    "hourly": 9,
+    "fixed price": 10,
+    "fixed-price": 10,
 }
 
 POSITIVE_SIGNAL_WEIGHTS = {
     "consultant": 8,
-    "hourly": 7,
-    "fixed price": 8,
     "immediate": 4,
     "urgent": 4,
     "yc": 3,
+    "milestone": 7,
+    "quote": 5,
+    "bid": 4,
+    "budget": 6,
+    "contractor": 7,
 }
 
 NEGATIVE_SIGNAL_WEIGHTS = {
-    "engineering manager": -30,
-    "manager": -22,
-    "director": -24,
-    "head of": -24,
+    "engineering manager": -34,
+    "manager": -24,
+    "director": -26,
+    "head of": -26,
+    "vp ": -20,
+    "vice president": -20,
+    "talent acquisition": -24,
+    "recruiter": -22,
+    "full-time": -26,
+    "permanent": -28,
+    "employee benefits": -18,
+    "benefits": -10,
+    "salary": -12,
+    "employment": -16,
+    "careers": -14,
     "frontend": -24,
     "front-end": -24,
-    "designer": -16,
+    "ui/ux": -18,
+    "ui ux": -18,
+    "ux/ui": -18,
+    "designer": -18,
+    "figma": -18,
     "ios": -12,
     "android": -12,
+    "unity": -18,
+    "game dev": -18,
+    "game development": -18,
     "mobile": -10,
-    "wordpress": -12,
+    "wordpress": -10,
+    "wordpress-only": -16,
+    "shopify": -10,
+    "shopify theme": -16,
     "shopware": -12,
     "bubble": -12,
     "firmware": -16,
-    "onsite": -12,
-    "on-site": -12,
-    "hybrid": -8,
+    "onsite": -14,
+    "on-site": -14,
+    "hybrid": -10,
 }
 
 
@@ -79,7 +137,7 @@ def score_opportunity(
     min_budget: int = 0,
 ) -> int:
     text = f"{opportunity.title}\n{opportunity.raw_text}".lower()
-    score = 10
+    score = 8
 
     for keyword, weight in KEYWORD_WEIGHTS.items():
         if keyword in text:
@@ -87,6 +145,31 @@ def score_opportunity(
 
     for signal, weight in POSITIVE_SIGNAL_WEIGHTS.items():
         if signal in text:
+            score += weight
+
+    if any(marker in text for marker in ("project", "project-based", "short-term", "deliverable", "milestone")):
+        score += 6
+    if any(marker in text for marker in ("hourly", "fixed price", "fixed-price", "budget")):
+        score += 5
+
+    combo_bonuses = (
+        (("python", "scraping"), 12),
+        (("api", "automation"), 10),
+        (("n8n", "crm"), 12),
+        (("llm", "automation"), 10),
+        (("backend", "integration"), 10),
+        (("data", "pipeline"), 8),
+        (("playwright", "scraping"), 12),
+        (("webhooks", "workflow"), 10),
+        (("openai", "business"), 8),
+        (("deepseek", "business"), 8),
+        (("llm", "workflow"), 8),
+        (("ai", "automation"), 8),
+        (("python", "automation"), 10),
+        (("api", "integration"), 8),
+    )
+    for tokens, weight in combo_bonuses:
+        if all(token in text for token in tokens):
             score += weight
 
     for signal, weight in NEGATIVE_SIGNAL_WEIGHTS.items():
@@ -112,6 +195,15 @@ def score_opportunity(
             score -= 12
     elif min_budget:
         score -= 6
+
+    if any(marker in text for marker in ("freelance", "contract", "hourly", "fixed price", "fixed-price")):
+        score += 4
+    if any(marker in text for marker in ("full-time", "permanent", "salary", "benefits", "employment")):
+        score -= 12
+    if any(marker in text for marker in ("wordpress", "shopify", "figma", "ui ux", "ui/ux")) and not any(
+        marker in text for marker in ("backend", "api", "automation", "scraping", "integration", "workflow")
+    ):
+        score -= 10
 
     if opportunity.posted_at:
         published_at = _parse_posted_at(opportunity.posted_at)
@@ -216,6 +308,81 @@ def update_opportunity_state(
     else:
         return
 
+    db.commit()
+
+
+def update_opportunity_status(
+    db,
+    *,
+    opportunity_id: int,
+    actor_user_id: int,
+    new_state: str,
+    substate: str = "",
+    note: str = "",
+) -> None:
+    if new_state not in PIPELINE_STATES:
+        raise ValueError("Estado no permitido.")
+
+    opportunity = db.execute(
+        "SELECT state FROM opportunities WHERE id = ?",
+        (opportunity_id,),
+    ).fetchone()
+    if opportunity is None:
+        raise LookupError("Oportunidad no encontrada.")
+
+    previous_state = opportunity["state"]
+    db.execute(
+        """
+        UPDATE opportunities
+        SET state = ?, substate = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+        """,
+        (new_state, substate.strip(), opportunity_id),
+    )
+    create_event(
+        db,
+        opportunity_id=opportunity_id,
+        actor_user_id=actor_user_id,
+        event_type="STATE_CHANGED",
+        previous_state=previous_state,
+        new_state=new_state,
+        note=note.strip(),
+    )
+    db.commit()
+
+
+def update_opportunity_note(
+    db,
+    *,
+    opportunity_id: int,
+    actor_user_id: int,
+    note: str,
+) -> None:
+    note = note.strip()
+    opportunity = db.execute(
+        "SELECT operational_note FROM opportunities WHERE id = ?",
+        (opportunity_id,),
+    ).fetchone()
+    if opportunity is None:
+        raise LookupError("Oportunidad no encontrada.")
+
+    db.execute(
+        """
+        UPDATE opportunities
+        SET operational_note = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+        """,
+        (note, opportunity_id),
+    )
+    create_event(
+        db,
+        opportunity_id=opportunity_id,
+        actor_user_id=actor_user_id,
+        event_type="NOTE_UPDATED",
+        previous_state=None,
+        new_state=None,
+        note=note,
+    )
     db.commit()
 
 

@@ -166,6 +166,55 @@ def test_state_change_creates_audit_event(app, client):
         assert event["note"] == "Propuesta enviada al cliente."
 
 
+def test_detail_comment_persists_and_renders(app, client):
+    register(client)
+    client.post(
+        "/ingest/run",
+        data={"csrf_token": get_csrf_token(client, "/dashboard")},
+        follow_redirects=True,
+    )
+
+    with app.app_context():
+        db = get_db()
+        opportunity_id = db.execute(
+            "SELECT id FROM opportunities ORDER BY score DESC LIMIT 1"
+        ).fetchone()["id"]
+
+    response = client.post(
+        f"/opportunities/{opportunity_id}",
+        data={
+            "action_type": "note",
+            "note": "Revisar presupuesto y enviar respuesta hoy.",
+            "csrf_token": get_csrf_token(client, f"/opportunities/{opportunity_id}"),
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert b"Comentario actualizado" in response.data
+
+    with app.app_context():
+        db = get_db()
+        opportunity = db.execute(
+            "SELECT operational_note FROM opportunities WHERE id = ?",
+            (opportunity_id,),
+        ).fetchone()
+        event = db.execute(
+            """
+            SELECT event_type, note
+            FROM opportunity_events
+            WHERE opportunity_id = ?
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (opportunity_id,),
+        ).fetchone()
+
+    assert opportunity["operational_note"] == "Revisar presupuesto y enviar respuesta hoy."
+    assert event["event_type"] == "NOTE_UPDATED"
+    assert event["note"] == "Revisar presupuesto y enviar respuesta hoy."
+
+
 def test_missing_csrf_rejected(client):
     response = client.post(
         "/auth/login",
