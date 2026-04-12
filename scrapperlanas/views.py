@@ -32,11 +32,25 @@ from .services.pipeline import (
     policy_runtime_status,
     run_ingestion,
     run_ingestion_for_policies,
+    update_opportunity_note,
+    update_opportunity_status,
     update_opportunity_state,
 )
 
 
 bp = Blueprint("main", __name__)
+
+ACTIVE_SOURCE_KEYS = {
+    "workana_projects",
+    "weworkremotely",
+    "email_alerts",
+    "freelancer_com",
+    "peopleperhour",
+}
+
+FUTURE_SOURCE_KEYS = {
+    "upwork",
+}
 
 KANBAN_COLUMNS = (
     {
@@ -80,6 +94,13 @@ STATE_BADGE_STYLES = {
     "APLICADO": "border border-fuchsia-500/30 bg-fuchsia-500/15 text-fuchsia-200",
     "FOLLOW_UP": "border border-amber-500/30 bg-amber-500/15 text-amber-200",
     "DESCARTADO": "border border-rose-500/30 bg-rose-500/15 text-rose-200",
+}
+
+SUBSTATE_BADGE_STYLES = {
+    "opened": "border border-sky-500/30 bg-sky-500/15 text-sky-200",
+    "interest_marked": "border border-blue-500/30 bg-blue-500/15 text-blue-200",
+    "manual_applied": "border border-fuchsia-500/30 bg-fuchsia-500/15 text-fuchsia-200",
+    "answered": "border border-amber-500/30 bg-amber-500/15 text-amber-200",
 }
 
 RISK_BADGE_STYLES = {
@@ -222,6 +243,18 @@ def dashboard():
     available_sources = db.execute(
         "SELECT DISTINCT source_label FROM opportunities ORDER BY source_label ASC"
     ).fetchall()
+    visible_sources = [
+        row["source_label"]
+        for row in available_sources
+        if row["source_label"] in {
+            "Workana Public Projects",
+            "We Work Remotely RSS",
+            "Alertas por Correo",
+            "Freelancer.com",
+            "PeoplePerHour",
+            "Upwork",
+        }
+    ]
     pipeline_board = {column["state"]: [] for column in KANBAN_COLUMNS}
     for item in all_items:
         if item["state"] in pipeline_board and len(pipeline_board[item["state"]]) < 6:
@@ -245,7 +278,7 @@ def dashboard():
         saved_views=saved_views,
         kanban_columns=KANBAN_COLUMNS,
         pipeline_board=pipeline_board,
-        available_sources=[row["source_label"] for row in available_sources],
+        available_sources=visible_sources,
         active_query_string=_clean_query_string(filters),
         pipeline_states=PIPELINE_STATES,
         focus_items=focus_items,
@@ -480,30 +513,69 @@ def delete_saved_view(view_id: int):
 @login_required
 def opportunity_detail(opportunity_id: int):
     db = get_db()
-    if request.method == "POST":
-        note = request.form.get("note", "").strip()
-        new_state = request.form.get("state", "").strip()
-        try:
-            update_opportunity_state(
-                db,
-                opportunity_id=opportunity_id,
-                actor_user_id=g.user["id"],
-                new_state=new_state,
-                note=note,
-            )
-            flash("Estado actualizado.", "success")
-        except ValueError as exc:
-            flash(str(exc), "error")
-        except LookupError:
-            abort(404)
-        return redirect(url_for("main.opportunity_detail", opportunity_id=opportunity_id))
-
     row = db.execute(
         "SELECT * FROM opportunities WHERE id = ?",
         (opportunity_id,),
     ).fetchone()
     if row is None:
         abort(404)
+
+    if request.method == "GET" and row["state"] == "NUEVO":
+        update_opportunity_status(
+            db,
+            opportunity_id=opportunity_id,
+            actor_user_id=g.user["id"],
+            new_state="VISTO",
+            substate="opened",
+            note="Abierta por primera vez desde el detalle.",
+        )
+
+    if request.method == "POST":
+        new_state = request.form.get("state", "").strip()
+        note = request.form.get("note", "").strip()
+        action_type = request.form.get("action_type", "").strip()
+        try:
+            if action_type == "note":
+                if row["state"] == "APLICADO" and note:
+                    update_opportunity_status(
+                        db,
+                        opportunity_id=opportunity_id,
+                        actor_user_id=g.user["id"],
+                        new_state="FOLLOW_UP",
+                        substate="answered",
+                        note=note,
+                    )
+                    flash("Comentario actualizado y movido a follow-up.", "success")
+                    return redirect(url_for("main.opportunity_detail", opportunity_id=opportunity_id))
+                update_opportunity_note(
+                    db,
+                    opportunity_id=opportunity_id,
+                    actor_user_id=g.user["id"],
+                    note=note,
+                )
+                flash("Comentario actualizado.", "success")
+            else:
+                substate = ""
+                if new_state == "INTERESANTE":
+                    substate = "interest_marked"
+                elif new_state == "APLICADO":
+                    substate = "manual_applied"
+                elif new_state == "FOLLOW_UP":
+                    substate = "answered"
+                update_opportunity_status(
+                    db,
+                    opportunity_id=opportunity_id,
+                    actor_user_id=g.user["id"],
+                    new_state=new_state,
+                    substate=substate,
+                    note=note,
+                )
+                flash("Estado actualizado.", "success")
+        except ValueError as exc:
+            flash(str(exc), "error")
+        except LookupError:
+            abort(404)
+        return redirect(url_for("main.opportunity_detail", opportunity_id=opportunity_id))
 
     events = db.execute(
         """
@@ -529,6 +601,23 @@ def opportunity_detail(opportunity_id: int):
 @login_required
 def settings():
     db = get_db()
+    ai_provider = str(current_app.config.get("AI_PROVIDER") or "heuristic").strip() or "heuristic"
+    if ai_provider == "gemini":
+        active_model = str(current_app.config.get("GEMINI_MODEL") or "").strip() or None
+    elif ai_provider == "deepseek":
+        active_model = str(current_app.config.get("DEEPSEEK_MODEL") or "").strip() or None
+    elif ai_provider == "ollama":
+        active_model = str(current_app.config.get("AI_MODEL") or current_app.config.get("OLLAMA_MODEL") or "").strip() or None
+    else:
+        active_model = str(current_app.config.get("AI_MODEL") or "").strip() or None
+    ai_status = {
+        "provider": ai_provider,
+        "provider_explicit": bool(current_app.config.get("AI_PROVIDER_EXPLICIT")),
+        "model": active_model,
+        "embed_provider": str(current_app.config.get("AI_EMBED_PROVIDER") or "none").strip() or "none",
+        "embed_model": str(current_app.config.get("AI_EMBED_MODEL") or "").strip() or None,
+        "alternate_provider_ready": bool(current_app.config.get("DEEPSEEK_API_KEY")),
+    }
 
     if request.method == "POST":
         action = request.form.get("action", "")
@@ -590,11 +679,20 @@ def settings():
             **dict(row),
             **_serialize_policy_runtime_status(row),
             "config_pretty": json.dumps(json.loads(row["config_json"] or "{}"), indent=2, ensure_ascii=False),
+            "source_group": (
+                "active"
+                if row["source_key"] in ACTIVE_SOURCE_KEYS
+                else "future"
+                if row["source_key"] in FUTURE_SOURCE_KEYS
+                else "disabled"
+            ),
         }
         for row in db.execute(
             "SELECT * FROM source_policies ORDER BY display_name ASC"
         ).fetchall()
     ]
+    active_policies = [policy for policy in policies if policy["source_key"] in ACTIVE_SOURCE_KEYS]
+    future_policies = [policy for policy in policies if policy["source_key"] in FUTURE_SOURCE_KEYS]
     saved_views = db.execute(
         """
         SELECT *
@@ -607,10 +705,12 @@ def settings():
     return render_template(
         "settings.html",
         profile=profile,
-        policies=policies,
+        policies=active_policies,
+        future_policies=future_policies,
         saved_views=saved_views,
         automation_summary=automation_summary,
         n8n_summary=n8n_summary,
+        ai_status=ai_status,
     )
 
 
@@ -742,12 +842,15 @@ def _serialize_opportunity(row) -> dict:
     item["budget_display"] = _format_budget(item)
     item["state_badge_class"] = STATE_BADGE_STYLES.get(item["state"], "border border-slate-600 bg-slate-800 text-slate-300")
     item["risk_badge_class"] = RISK_BADGE_STYLES.get(item["risk_level"], "border border-slate-600 bg-slate-800 text-slate-300")
+    item["substate_badge_class"] = SUBSTATE_BADGE_STYLES.get(item.get("substate", ""), "border border-slate-700 bg-slate-950 text-slate-300")
     item["action_label"] = _action_label(item["analysis"].get("recommended_action"))
     item["action_summary"] = _action_summary(item["analysis"].get("recommended_action"))
     item["fit_label_display"] = _fit_label_display(item["analysis"].get("fit_label"))
     item["application_host"] = _application_host(item["url"])
     item["posted_display"] = _posted_display(item.get("posted_at"), item.get("created_at"))
     item["freshness_label"] = _freshness_label(item.get("posted_at"), item.get("created_at"))
+    item["operational_note"] = item.get("operational_note", "")
+    item["substate"] = item.get("substate", "")
     item.update(_priority_profile(item))
     return item
 
@@ -1068,41 +1171,63 @@ def _priority_profile(item: dict) -> dict:
     action = str(item.get("analysis", {}).get("recommended_action") or "").strip()
     fit_label = str(item.get("analysis", {}).get("fit_label") or "").strip()
     state = str(item.get("state") or "").strip()
+    source_key = str(item.get("source_key") or "").strip()
     management_role = _looks_management_role(text)
     noncore_role = _looks_noncore_role(text)
+    freelance_signal = _looks_contract_now(text)
+    corporate_signal = _looks_corporate_language(text)
+    project_signal = _looks_project_delivery(text)
+    tech_signal = _looks_freelance_tech_stack(text)
+
+    if source_key in {"freelancer_com", "peopleperhour"}:
+        priority_score += 4
+        reasons.append("viene de marketplace freelance")
+    elif source_key == "weworkremotely":
+        priority_score -= 2
+        reasons.append("fuente remota secundaria")
 
     if action == "apply_now":
-        priority_score += 14
-        reasons.append("la IA lo ve listo para aplicar")
-    elif action == "review_today":
         priority_score += 8
-        reasons.append("merece decision hoy")
+        reasons.append("la IA ya lo ve accionable")
+    elif action == "review_today":
+        priority_score += 4
+        reasons.append("merece revision hoy")
     elif action == "clarify_scope":
-        priority_score += 2
+        priority_score += 1
     elif action == "skip":
-        priority_score -= 18
+        priority_score -= 10
 
     if fit_label == "strong_fit":
-        priority_score += 8
-        reasons.append("encaja fuerte con el stack objetivo")
+        priority_score += 6
+        reasons.append("encaja con nuestro stack")
     elif fit_label == "possible_fit":
-        priority_score += 4
+        priority_score += 3
     elif fit_label == "avoid":
-        priority_score -= 14
+        priority_score -= 10
 
-    if _looks_contract_now(text):
+    if freelance_signal:
+        priority_score += 10
+        reasons.append("señal clara de contrato o pago por entrega")
+    if project_signal:
         priority_score += 8
-        reasons.append("huele a oportunidad mas monetizable")
+        reasons.append("parece proyecto concreto")
+    if tech_signal:
+        priority_score += 6
+        reasons.append("encaja con stack técnico objetivo")
     if _looks_remote_text(text):
-        priority_score += 4
+        priority_score += 2
     if management_role:
-        priority_score -= 18
+        priority_score -= 24
         reasons.append("es mas rol de gestion que de ejecucion")
     if noncore_role:
-        priority_score -= 14
+        priority_score -= 18
         reasons.append("menos alineado al nicho actual")
     if _looks_on_site(text):
-        priority_score -= 10
+        priority_score -= 14
+        reasons.append("requiere presencia fisica")
+    if corporate_signal:
+        priority_score -= 18
+        reasons.append("lenguaje mas corporativo que freelance")
     if item.get("risk_level") == "high":
         priority_score -= 20
     elif item.get("risk_level") == "medium":
@@ -1117,10 +1242,10 @@ def _priority_profile(item: dict) -> dict:
     if state in {"APLICADO", "GANADO", "PERDIDO", "DESCARTADO"}:
         priority_score -= 40
 
-    if priority_score >= 60:
+    if priority_score >= 68:
         tier = "A1"
         label = "golpear hoy"
-    elif priority_score >= 48:
+    elif priority_score >= 52:
         tier = "A2"
         label = "resolver hoy"
     elif priority_score >= 36:
@@ -1186,7 +1311,7 @@ def _quick_actions(item: dict) -> list[dict]:
     actions = (
         {
             "state": "INTERESANTE",
-            "label": "Priorizar",
+            "label": "Marcar como interesante",
             "note": "Marcada como prioridad real desde detalle.",
             "button_class": "border-blue-500/30 bg-blue-600 text-white hover:bg-blue-500",
             "icon": "fa-solid fa-star",
@@ -1217,7 +1342,7 @@ def _quick_actions(item: dict) -> list[dict]:
 
 
 def _looks_contract_now(text: str) -> bool:
-    hints = ("contract", "freelance", "consultant", "hourly", "fixed price", "budget", "$", "usd")
+    hints = ("contract", "freelance", "consultant", "hourly", "fixed price", "fixed-price", "budget", "$", "usd", "milestone")
     return any(hint in text for hint in hints)
 
 
@@ -1233,6 +1358,42 @@ def _looks_on_site(text: str) -> bool:
 
 def _looks_management_role(text: str) -> bool:
     hints = ("engineering manager", "manager", "director", "head of", "vp ", "vice president")
+    return any(hint in text for hint in hints)
+
+
+def _looks_corporate_language(text: str) -> bool:
+    hints = (
+        "full-time",
+        "permanent",
+        "employee benefits",
+        "benefits",
+        "salary",
+        "employment",
+        "careers",
+        "corporate",
+        "hiring",
+        "join our team",
+    )
+    return any(hint in text for hint in hints)
+
+
+def _looks_project_delivery(text: str) -> bool:
+    hints = (
+        "project",
+        "project-based",
+        "deliverable",
+        "milestone",
+        "quote",
+        "bid",
+        "fixed price",
+        "fixed-price",
+        "scope",
+    )
+    return any(hint in text for hint in hints)
+
+
+def _looks_freelance_tech_stack(text: str) -> bool:
+    hints = ("python", "scraping", "automation", "n8n", "backend", "api", "flask", "postgresql", "rust")
     return any(hint in text for hint in hints)
 
 

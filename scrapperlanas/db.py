@@ -67,6 +67,8 @@ SQLITE_SCHEMA_STATEMENTS = (
         suggested_reply TEXT NOT NULL DEFAULT '',
         analysis_json TEXT NOT NULL DEFAULT '{}',
         state TEXT NOT NULL DEFAULT 'NUEVO',
+        substate TEXT NOT NULL DEFAULT '',
+        operational_note TEXT NOT NULL DEFAULT '',
         is_suspicious INTEGER NOT NULL DEFAULT 0,
         raw_text TEXT NOT NULL DEFAULT '',
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -180,6 +182,8 @@ POSTGRES_SCHEMA_STATEMENTS = (
         suggested_reply TEXT NOT NULL DEFAULT '',
         analysis_json TEXT NOT NULL DEFAULT '{}',
         state TEXT NOT NULL DEFAULT 'NUEVO',
+        substate TEXT NOT NULL DEFAULT '',
+        operational_note TEXT NOT NULL DEFAULT '',
         is_suspicious INTEGER NOT NULL DEFAULT 0,
         raw_text TEXT NOT NULL DEFAULT '',
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP::text,
@@ -236,50 +240,6 @@ POSTGRES_SCHEMA_STATEMENTS = (
     "CREATE INDEX IF NOT EXISTS idx_automation_runs_source_key ON automation_runs(source_key)",
 )
 
-DEFAULT_REDDIT_POLICY_CONFIG = {
-    "urls": [
-        "https://www.reddit.com/r/forhire/search.json?q=flair%3AHiring&restrict_sr=1&sort=new&limit=25",
-        "https://www.reddit.com/r/freelance_forhire/search.json?q=hiring&restrict_sr=1&sort=new&limit=25",
-    ],
-    "search_terms": [
-        "[hiring] python scraping",
-        "[hiring] web scraping contract",
-        "[hiring] n8n automation",
-        "[hiring] api integration",
-        "[hiring] backend automation",
-        "[hiring] data engineer remote",
-    ],
-    "include_terms": [
-        "python",
-        "scraping",
-        "automation",
-        "n8n",
-        "backend",
-        "developer",
-        "engineer",
-        "software",
-        "full stack",
-        "full-stack",
-        "api",
-        "data",
-        "etl",
-    ],
-    "exclude_terms": [
-        "[for hire]",
-        "for hire",
-        "unpaid",
-        "volunteer",
-        "homework",
-        "writer",
-        "interviewer",
-        "school",
-        "minecraft",
-        "telegram only",
-        "whatsapp only",
-    ],
-    "max_items": 30,
-}
-
 DEFAULT_WORKANA_POLICY_CONFIG = {
     "search_urls": [
         "https://www.workana.com/es/jobs?category=it-programming&skills=python",
@@ -302,78 +262,6 @@ DEFAULT_WORKANA_POLICY_CONFIG = {
     ],
     "candidate_limit": 24,
     "max_items": 24,
-}
-
-DEFAULT_GREENHOUSE_POLICY_CONFIG = {
-    "boards": ["canonical", "vercel", "gitlab", "airtable", "netlify"],
-    "include_terms": [
-        "engineer",
-        "developer",
-        "backend",
-        "back-end",
-        "full stack",
-        "full-stack",
-        "python",
-        "rust",
-        "golang",
-        "api",
-        "platform",
-        "data",
-        "analytics",
-        "automation",
-        "integrat",
-        "ai",
-        "ml",
-        "consultant",
-        "contractor",
-        "freelance",
-    ],
-    "exclude_terms": [
-        "manager",
-        "director",
-        "head of",
-        "sales",
-        "account executive",
-        "business development",
-        "recruiter",
-        "talent",
-        "legal",
-        "finance",
-        "accountant",
-        "marketing",
-        "people partner",
-        "support",
-        "customer success",
-    ],
-    "remote_only": True,
-    "max_items": 45,
-}
-
-DEFAULT_LEVER_POLICY_CONFIG = {
-    "companies": ["applydigital"],
-    "include_terms": [
-        "engineer",
-        "backend",
-        "back-end",
-        "developer",
-        "consultant",
-        "freelance",
-        "martech",
-        "automation",
-        "solutions architect",
-        "agentic",
-        "qa",
-    ],
-    "exclude_terms": [
-        "sales",
-        "designer",
-        "project manager",
-        "scrum master",
-        "marketing intern",
-        "intern ",
-        "engagement manager",
-    ],
-    "max_items": 20,
 }
 
 DEFAULT_WWR_POLICY_CONFIG = {
@@ -416,65 +304,43 @@ DEFAULT_WWR_POLICY_CONFIG = {
     "max_items": 30,
 }
 
-DEFAULT_HN_JOBS_POLICY_CONFIG = {
-    "endpoint": "https://hacker-news.firebaseio.com/v0/jobstories.json",
-    "item_url_template": "https://hacker-news.firebaseio.com/v0/item/{id}.json",
-    "candidate_limit": 60,
-    "include_terms": [
-        "engineer",
-        "developer",
-        "backend",
-        "full stack",
-        "full-stack",
-        "python",
-        "rust",
-        "automation",
-        "api",
-        "data",
-        "rails",
-        "software",
-        "ai",
-        "ml",
-    ],
-    "exclude_terms": [
-        "designer",
-        "sales",
-        "marketing",
-        "recruiter",
-        "customer success",
-        "support",
-        "intern",
-    ],
-    "max_items": 20,
-}
-
 DEFAULT_EMAIL_ALERTS_POLICY_CONFIG = {
     "min_score": 24,
     "max_age_days": 21,
 }
 
+DEFAULT_FREELANCER_POLICY_CONFIG = {
+    "search_urls": [
+        "https://www.freelancer.com/job-search/python/",
+        "https://www.freelancer.com/job-search/web-scraping/",
+        "https://www.freelancer.com/job-search/n8n/",
+        "https://www.freelancer.com/job-search/api/",
+    ],
+    "include_terms": ["python", "scraping", "automation", "api", "n8n", "backend"],
+    "exclude_terms": ["virtual assistant", "sales", "marketing", "designer"],
+    "max_items": 20,
+}
+
+DEFAULT_PPH_POLICY_CONFIG = {
+    "search_urls": [
+        "https://www.peopleperhour.com/freelance-jobs?page=1",
+        "https://www.peopleperhour.com/freelance-jobs/technology-programming/website-development",
+        "https://www.peopleperhour.com/freelance-jobs/technology-programming/python",
+    ],
+    "include_terms": ["python", "automation", "scraping", "api", "n8n", "backend"],
+    "exclude_terms": ["virtual assistant", "sales", "marketing", "designer"],
+    "max_items": 20,
+}
+
+DEFAULT_UPWORK_POLICY_CONFIG = {
+    "search_urls": [],
+    "include_terms": ["python", "scraping", "automation", "api", "n8n", "backend"],
+    "exclude_terms": ["virtual assistant", "sales", "marketing", "designer"],
+    "max_items": 20,
+}
+
 
 DEFAULT_SOURCE_POLICIES = (
-    {
-        "source_key": "sample_feed",
-        "display_name": "Demo Feed Local",
-        "method": "fixture_json",
-        "risk_level": "low",
-        "frequency_minutes": 5,
-        "enabled": 0,
-        "config_json": "{}",
-        "notes": "Fuente local de demostracion. Mantener deshabilitada en produccion real.",
-    },
-    {
-        "source_key": "reddit",
-        "display_name": "Reddit Public JSON",
-        "method": "official_json_endpoints",
-        "risk_level": "medium",
-        "frequency_minutes": 30,
-        "enabled": 1,
-        "config_json": json.dumps(DEFAULT_REDDIT_POLICY_CONFIG, ensure_ascii=False),
-        "notes": "Endpoints publicos JSON de Reddit orientados a freelance, automation, scraping y backend.",
-    },
     {
         "source_key": "workana_projects",
         "display_name": "Workana Public Projects",
@@ -484,26 +350,6 @@ DEFAULT_SOURCE_POLICIES = (
         "enabled": 1,
         "config_json": json.dumps(DEFAULT_WORKANA_POLICY_CONFIG, ensure_ascii=False),
         "notes": "Fuente freelance prioritaria: proyectos publicos de Workana con alta intencion de contratar por entregable u horas.",
-    },
-    {
-        "source_key": "greenhouse",
-        "display_name": "Greenhouse Public Boards",
-        "method": "public_boards_api",
-        "risk_level": "low",
-        "frequency_minutes": 180,
-        "enabled": 0,
-        "config_json": json.dumps(DEFAULT_GREENHOUSE_POLICY_CONFIG, ensure_ascii=False),
-        "notes": "Fuente secundaria: Greenhouse suele traer empleo formal y procesos ATS mas largos. Reactivala solo si quieres complementar con hiring corporativo.",
-    },
-    {
-        "source_key": "lever",
-        "display_name": "Lever Public Postings",
-        "method": "public_postings_api",
-        "risk_level": "low",
-        "frequency_minutes": 180,
-        "enabled": 0,
-        "config_json": json.dumps(DEFAULT_LEVER_POLICY_CONFIG, ensure_ascii=False),
-        "notes": "Fuente secundaria: Lever trae mas vacantes corporativas que proyectos freelance. Dejamos el conector disponible, pero apagado por default.",
     },
     {
         "source_key": "weworkremotely",
@@ -516,26 +362,6 @@ DEFAULT_SOURCE_POLICIES = (
         "notes": "Fuente publica RSS para remoto. Mantener polling conservador y filtros ligeros para no perder vacantes utiles.",
     },
     {
-        "source_key": "hackernews_jobs",
-        "display_name": "Hacker News Jobs",
-        "method": "official_api",
-        "risk_level": "low",
-        "frequency_minutes": 180,
-        "enabled": 0,
-        "config_json": json.dumps(DEFAULT_HN_JOBS_POLICY_CONFIG, ensure_ascii=False),
-        "notes": "Fuente secundaria: util para hiring tecnico, pero normalmente no es la mejor puerta de entrada para proyectos freelance rapidos.",
-    },
-    {
-        "source_key": "public_pages",
-        "display_name": "Paginas Publicas Compatibles",
-        "method": "light_html_parse",
-        "risk_level": "medium",
-        "frequency_minutes": 180,
-        "enabled": 0,
-        "config_json": json.dumps({"urls": []}),
-        "notes": "Configurar URLs compatibles con JSON: {\"urls\": [\"https://...\"]}.",
-    },
-    {
         "source_key": "email_alerts",
         "display_name": "Alertas por Correo",
         "method": "n8n_webhook_import",
@@ -544,6 +370,36 @@ DEFAULT_SOURCE_POLICIES = (
         "enabled": 0,
         "config_json": json.dumps(DEFAULT_EMAIL_ALERTS_POLICY_CONFIG, ensure_ascii=False),
         "notes": "Fuente recomendada para Upwork, Workana y otros marketplaces via n8n: captura alertas oficiales por correo y empujalas al import interno.",
+    },
+    {
+        "source_key": "freelancer_com",
+        "display_name": "Freelancer.com",
+        "method": "public_search_html",
+        "risk_level": "low",
+        "frequency_minutes": 180,
+        "enabled": 1,
+        "config_json": json.dumps(DEFAULT_FREELANCER_POLICY_CONFIG, ensure_ascii=False),
+        "notes": "Fuente freelance activa: lectura publica por HTML de busqueda/proyectos con filtros de programacion y automatizacion.",
+    },
+    {
+        "source_key": "peopleperhour",
+        "display_name": "PeoplePerHour",
+        "method": "public_search_html",
+        "risk_level": "low",
+        "frequency_minutes": 180,
+        "enabled": 1,
+        "config_json": json.dumps(DEFAULT_PPH_POLICY_CONFIG, ensure_ascii=False),
+        "notes": "Fuente freelance activa: lectura publica por HTML de listados y proyectos con filtros de tecnologia y programacion.",
+    },
+    {
+        "source_key": "upwork",
+        "display_name": "Upwork",
+        "method": "future_connector",
+        "risk_level": "low",
+        "frequency_minutes": 180,
+        "enabled": 0,
+        "config_json": json.dumps(DEFAULT_UPWORK_POLICY_CONFIG, ensure_ascii=False),
+        "notes": "Pendiente de conector. Ruta recomendada: alertas oficiales por correo o importacion externa; evitar scraping invasivo y autopostulacion.",
     },
 )
 
@@ -691,6 +547,14 @@ def _refresh_source_policy_defaults(db: Database) -> None:
 
     is_production = current_app.config.get("ENVIRONMENT") == "production"
     demo_data = bool(current_app.config.get("DEMO_DATA"))
+    allowed_source_keys = {
+        "workana_projects",
+        "weworkremotely",
+        "email_alerts",
+        "freelancer_com",
+        "peopleperhour",
+        "upwork",
+    }
 
     db.execute(
         """
@@ -711,8 +575,23 @@ def _refresh_source_policy_defaults(db: Database) -> None:
         source_key = row["source_key"]
         config = _load_json(row["config_json"], default={})
 
+        if source_key not in allowed_source_keys:
+            db.execute(
+                """
+                UPDATE source_policies
+                SET enabled = 0,
+                    notes = ?
+                WHERE id = ?
+                """,
+                (
+                    "Fuente fuera de operacion en la nueva estrategia freelance-first.",
+                    row["id"],
+                ),
+            )
+            continue
+
         if demo_data:
-            if source_key in {"sample_feed", "weworkremotely"}:
+            if source_key in {"weworkremotely"}:
                 db.execute(
                     """
                     UPDATE source_policies
@@ -723,13 +602,9 @@ def _refresh_source_policy_defaults(db: Database) -> None:
                     WHERE id = ?
                     """,
                     (
-                        5 if source_key == "sample_feed" else 120,
-                        "{}"
-                        if source_key == "sample_feed"
-                        else json.dumps(DEFAULT_WWR_POLICY_CONFIG, ensure_ascii=False),
-                        "Fuente local de demostracion. Activada para entornos locales de prueba."
-                        if source_key == "sample_feed"
-                        else "Fuente publica RSS para remoto. Mantener polling conservador y filtros ligeros para no perder vacantes utiles.",
+                        120,
+                        json.dumps(DEFAULT_WWR_POLICY_CONFIG, ensure_ascii=False),
+                        "Fuente publica RSS para remoto. Mantener polling conservador y filtros ligeros para no perder vacantes utiles.",
                         row["id"],
                     ),
                 )
@@ -742,52 +617,6 @@ def _refresh_source_policy_defaults(db: Database) -> None:
                     """,
                     (row["id"],),
                 )
-            continue
-
-        if source_key == "sample_feed":
-            if is_production and row["enabled"] == 1 and config == {}:
-                db.execute(
-                    "UPDATE source_policies SET enabled = 0, notes = ? WHERE id = ?",
-                    ("Fuente local de demostracion. Mantener deshabilitada en produccion real.", row["id"]),
-                )
-            continue
-
-        if source_key == "reddit" and is_production and (
-            _is_blank_or_legacy_reddit_config(config) or _is_current_reddit_public_config(config)
-        ):
-            db.execute(
-                """
-                UPDATE source_policies
-                SET enabled = 0,
-                    frequency_minutes = 120,
-                    config_json = ?,
-                    notes = ?
-                WHERE id = ?
-                """,
-                (
-                    json.dumps(DEFAULT_REDDIT_POLICY_CONFIG, ensure_ascii=False),
-                    "Deshabilitado en produccion Vercel: Reddit bloquea estos endpoints publicos. Reactivar manualmente solo si luego agregas una integracion autenticada.",
-                    row["id"],
-                ),
-            )
-            continue
-
-        if source_key == "reddit" and _is_blank_or_legacy_reddit_config(config):
-            db.execute(
-                """
-                UPDATE source_policies
-                SET enabled = 1,
-                    frequency_minutes = 30,
-                    config_json = ?,
-                    notes = ?
-                WHERE id = ?
-                """,
-                (
-                    json.dumps(DEFAULT_REDDIT_POLICY_CONFIG, ensure_ascii=False),
-                    "Endpoints publicos JSON de Reddit orientados a freelance, automation, scraping y backend.",
-                    row["id"],
-                ),
-            )
             continue
 
         if source_key == "workana_projects" and (
@@ -811,81 +640,74 @@ def _refresh_source_policy_defaults(db: Database) -> None:
             )
             continue
 
-        if source_key == "greenhouse" and (
-            _is_empty_collection_config(config, "boards")
-            or _config_missing_terms(config, "exclude_terms", ("manager", "director", "head of"))
-            or (
-                _config_matches_default(config, DEFAULT_GREENHOUSE_POLICY_CONFIG)
-                and row["notes"]
-                == "Boards publicos de empresas remotas filtrados a roles de ingenieria, data y automatizacion."
-            )
+        if source_key == "freelancer_com" and (
+            row["method"] != "public_search_html"
+            or _is_empty_collection_config(config, "search_urls")
+            or row["enabled"] != 1
         ):
             db.execute(
                 """
                 UPDATE source_policies
-                SET enabled = 0,
+                SET enabled = 1,
                     frequency_minutes = 180,
+                    method = ?,
                     config_json = ?,
                     notes = ?
                 WHERE id = ?
                 """,
                 (
-                    json.dumps(DEFAULT_GREENHOUSE_POLICY_CONFIG, ensure_ascii=False),
-                    "Fuente secundaria: Greenhouse suele traer empleo formal y procesos ATS mas largos. Reactivala solo si quieres complementar con hiring corporativo.",
+                    "public_search_html",
+                    json.dumps(DEFAULT_FREELANCER_POLICY_CONFIG, ensure_ascii=False),
+                    "Fuente freelance activa: lectura publica por HTML de busqueda/proyectos con filtros de programacion y automatizacion.",
                     row["id"],
                 ),
             )
             continue
 
-        if source_key == "lever" and (
-            _is_empty_collection_config(config, "companies")
-            or (
-                _config_matches_default(config, DEFAULT_LEVER_POLICY_CONFIG)
-                and row["notes"]
-                == "Companies de Lever filtradas a roles tecnicos y freelance con mejor probabilidad de cierre rapido."
-            )
+        if source_key == "peopleperhour" and (
+            row["method"] != "public_search_html"
+            or _is_empty_collection_config(config, "search_urls")
+            or row["enabled"] != 1
         ):
             db.execute(
                 """
                 UPDATE source_policies
-                SET enabled = 0,
+                SET enabled = 1,
                     frequency_minutes = 180,
+                    method = ?,
                     config_json = ?,
                     notes = ?
                 WHERE id = ?
                 """,
                 (
-                    json.dumps(DEFAULT_LEVER_POLICY_CONFIG, ensure_ascii=False),
-                    "Fuente secundaria: Lever trae mas vacantes corporativas que proyectos freelance. Dejamos el conector disponible, pero apagado por default.",
+                    "public_search_html",
+                    json.dumps(DEFAULT_PPH_POLICY_CONFIG, ensure_ascii=False),
+                    "Fuente freelance activa: lectura publica por HTML de listados y proyectos con filtros de tecnologia y programacion.",
                     row["id"],
                 ),
             )
             continue
 
-        if source_key == "hackernews_jobs" and (
-            _is_blank_or_missing_keys(
-                config,
-                "endpoint",
-                "item_url_template",
-            )
-            or (
-                _config_matches_default(config, DEFAULT_HN_JOBS_POLICY_CONFIG)
-                and row["notes"]
-                == "API oficial de Hacker News Jobs filtrada a roles tecnicos con URLs de aplicacion reales."
-            )
+        if source_key == "upwork" and (
+            row["method"] != "future_connector"
+            or row["enabled"] != 0
+            or row["notes"]
+            != "Pendiente de conector. Ruta recomendada: alertas oficiales por correo o importacion externa; evitar scraping invasivo y autopostulacion."
         ):
             db.execute(
                 """
                 UPDATE source_policies
                 SET enabled = 0,
                     frequency_minutes = 180,
+                    method = ?,
                     config_json = ?,
                     notes = ?
                 WHERE id = ?
                 """,
                 (
-                    json.dumps(DEFAULT_HN_JOBS_POLICY_CONFIG, ensure_ascii=False),
-                    "Fuente secundaria: util para hiring tecnico, pero normalmente no es la mejor puerta de entrada para proyectos freelance rapidos.",
+                    "future_connector",
+                    json.dumps(DEFAULT_UPWORK_POLICY_CONFIG, ensure_ascii=False),
+                    "Pendiente de conector. Ruta recomendada: alertas oficiales por correo o importacion externa; evitar scraping invasivo y autopostulacion.",
                     row["id"],
                 ),
             )
@@ -934,6 +756,8 @@ def _ensure_runtime_columns(db: Database) -> None:
     required_columns = {
         "opportunities": {
             "analysis_json": "TEXT NOT NULL DEFAULT '{}'",
+            "substate": "TEXT NOT NULL DEFAULT ''",
+            "operational_note": "TEXT NOT NULL DEFAULT ''",
         }
     }
 

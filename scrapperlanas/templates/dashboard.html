@@ -21,7 +21,7 @@
     <div class="section-heading">
       <p class="text-xs font-bold uppercase tracking-[0.34em] text-slate-500">Bloque 01</p>
       <h2 class="mt-2 text-white">Filtros del dashboard</h2>
-      <p class="text-sm leading-7 text-slate-400">Aqui solo decides como ver lo ya capturado.</p>
+      <p class="text-sm leading-7 text-slate-400">Aqui solo decides como ver lo ya capturado en las fuentes activas.</p>
     </div>
     <div class="grid gap-4 xl:grid-cols-12">
       <form method="get" class="xl:col-span-9">
@@ -241,13 +241,17 @@
                 <span>{{ item.application_host }}</span>
               </p>
               <div class="mt-3 flex flex-wrap gap-2">
-                <span class="rounded-full px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em] {% if item.source_key == 'sample_feed' %}border border-amber-500/30 bg-amber-500/15 text-amber-200{% else %}border border-emerald-500/30 bg-emerald-500/15 text-emerald-200{% endif %}">
-                  {% if item.source_key == 'sample_feed' %}DEMO{% else %}REAL{% endif %}
-                </span>
+              <span class="rounded-full border border-emerald-500/30 bg-emerald-500/15 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-200">REAL</span>
                 <span class="rounded-full border border-slate-700 bg-slate-950 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-300">{{ item.source_key }}</span>
               </div>
               <p class="mt-4 break-words text-sm leading-7 text-slate-300">{{ item.priority_reason }}</p>
               <p class="mt-3 break-words text-sm text-slate-400">Siguiente paso: {{ item.action_summary }}</p>
+              {% if item.operational_note %}
+                <p class="mt-4 rounded-2xl border border-slate-800 bg-slate-950/70 px-4 py-3 text-sm leading-6 text-slate-300">
+                  <span class="mb-1 block text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Comentario</span>
+                  {{ item.operational_note }}
+                </p>
+              {% endif %}
             </div>
 
             <div class="w-fit rounded-[22px] border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-center">
@@ -256,14 +260,17 @@
             </div>
           </div>
 
-          <div class="mt-4 flex flex-wrap gap-2">
-            <span class="rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] {{ item.state_badge_class }}">{{ item.state }}</span>
-            <span class="rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] {{ item.risk_badge_class }}">{{ item.risk_level }}</span>
-            <span class="rounded-full border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-slate-200">{{ item.action_label }}</span>
-            {% if item.analysis.fit_label %}
-              <span class="rounded-full border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-slate-200">{{ item.fit_label_display }}</span>
-            {% endif %}
-          </div>
+              <div class="mt-4 flex flex-wrap gap-2">
+                <span class="rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] {{ item.state_badge_class }}">{{ item.state }}</span>
+                <span class="rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] {{ item.risk_badge_class }}">{{ item.risk_level }}</span>
+                <span class="rounded-full border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-slate-200">{{ item.action_label }}</span>
+                {% if item.analysis.fit_label %}
+                  <span class="rounded-full border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-slate-200">{{ item.fit_label_display }}</span>
+                {% endif %}
+                {% if item.substate %}
+                  <span class="rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] {{ item.substate_badge_class }}">{{ item.substate }}</span>
+                {% endif %}
+              </div>
 
           <div class="mt-5 flex flex-wrap gap-3">
             <a href="{{ url_for('main.opportunity_detail', opportunity_id=item.id) }}" class="inline-flex items-center gap-2 rounded-2xl border border-blue-500/30 bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-500">
@@ -314,9 +321,7 @@
                 <span>{{ item.budget_display }}</span>
               </p>
               <div class="mt-3 flex flex-wrap gap-2">
-                <span class="rounded-full px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em] {% if item.source_key == 'sample_feed' %}border border-amber-500/30 bg-amber-500/15 text-amber-200{% else %}border border-emerald-500/30 bg-emerald-500/15 text-emerald-200{% endif %}">
-                  {% if item.source_key == 'sample_feed' %}DEMO{% else %}REAL{% endif %}
-                </span>
+                <span class="rounded-full border border-emerald-500/30 bg-emerald-500/15 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-200">REAL</span>
                 <span class="rounded-full border border-slate-700 bg-slate-950 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-300">{{ item.source_key }}</span>
               </div>
                 </div>
@@ -385,7 +390,7 @@
     <div class="section-heading">
       <p class="text-xs font-bold uppercase tracking-[0.34em] text-slate-500">Bloque 05</p>
       <h2 class="mt-2 text-white">Lectura y analisis</h2>
-      <p class="text-sm leading-7 text-slate-400">Lectura de volumen, fuentes, sector y tendencia.</p>
+              <p class="text-sm leading-7 text-slate-400">Lectura de volumen, fuentes activas, sector y tendencia.</p>
     </div>
     <div class="mb-6 flex justify-center">
       <span class="inline-flex w-fit items-center gap-2 rounded-full border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-medium text-slate-300">

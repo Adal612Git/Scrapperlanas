@@ -9,8 +9,8 @@ Scrapperlanas es una consola operativa para detectar, clasificar y dar seguimien
 - Pipeline persistente con estados como `NUEVO`, `INTERESANTE`, `APLICADO` y `SOSPECHOSO`.
 - Bitacora de eventos por oportunidad.
 - Politicas de fuente editables desde la UI.
-- Ingesta desde feed demo, Reddit JSON, Workana public projects, Greenhouse, Lever, We Work Remotely RSS, Hacker News Jobs y paginas publicas compatibles.
-- Defaults freelance-first: Workana Public Projects y Reddit activos; Alertas por Correo lista para conectarse a marketplaces como Upwork o Workana via n8n; boards corporativos quedan como fuentes secundarias.
+- Ingesta enfocada en Workana public projects, We Work Remotely RSS y Alertas por Correo.
+- Nuevas fuentes preparadas: `freelancer_com`, `peopleperhour` y `upwork`.
 - Resumen y respuesta sugerida con `heuristic`, `Ollama`, `Gemini` o `DeepSeek`.
 - Embeddings semanticos opcionales con Ollama o Gemini para mejorar fit y prioridad.
 - Exportacion CSV y vistas guardadas.
@@ -77,7 +77,7 @@ python run.py
 - Si `AUTOMATION_MODE=local`, la misma app corre un worker en segundo plano mientras el proceso y la computadora sigan encendidos.
 - El scheduler automatico ya respeta `frequency_minutes` por fuente para no castigar boards ni hacer polling innecesario.
 - La deduplicacion sigue ocurriendo por `url`, asi que una fuente repetida actualiza en vez de llenar el dashboard con clones.
-- Si quieres mejor tasa de freelance real, prioriza `Workana Public Projects` y mete alertas oficiales de Upwork/Workana por correo hacia `email_alerts` en vez de depender solo de ATS corporativos.
+- Si quieres mejor tasa de freelance real, prioriza `Workana Public Projects` y canaliza alertas oficiales de marketplaces por correo hacia `email_alerts`.
 - La app deja log rotativo en `instance/logs/scrapperlanas.log` y heartbeat en `instance/automation-heartbeat.json`.
 
 Endpoints internos importantes:
@@ -136,7 +136,7 @@ Sin `DATABASE_URL`, Vercel cae a SQLite en `/tmp`, que es efimero y no debe cons
 
 Ese endpoint ahora procesa solo las fuentes vencidas, no todo el inventario completo en cada disparo.
 
-En produccion, el bootstrap deshabilita `sample_feed` y limpia cualquier demo data anterior para dejar el tablero solo con oportunidades reales.
+En produccion, el bootstrap deja activas solo `workana_projects`, `weworkremotely` y `email_alerts`; el resto queda fuera de operacion.
 
 ## Docker + PostgreSQL
 

@@ -38,13 +38,19 @@ def test_default_source_mix_prioritizes_freelance_channels(tmp_path: Path):
             ).fetchall()
         }
 
-    assert rows["reddit"]["enabled"] == 1
     assert rows["workana_projects"]["enabled"] == 1
+    assert rows["weworkremotely"]["enabled"] == 1
+    assert rows["email_alerts"]["enabled"] == 0
+    assert rows["reddit"]["enabled"] == 0
     assert rows["greenhouse"]["enabled"] == 0
     assert rows["lever"]["enabled"] == 0
-    assert rows["weworkremotely"]["enabled"] == 0
     assert rows["hackernews_jobs"]["enabled"] == 0
-    assert "Upwork" in rows["email_alerts"]["notes"]
+    assert rows["public_pages"]["enabled"] == 0
+    assert rows["sample_feed"]["enabled"] == 0
+    assert rows["freelancer_com"]["enabled"] == 0
+    assert rows["peopleperhour"]["enabled"] == 0
+    assert rows["upwork"]["enabled"] == 0
+    assert "Workana" in rows["email_alerts"]["notes"]
 
 
 def test_workana_connector_fetches_public_projects(monkeypatch, tmp_path: Path):
@@ -125,3 +131,62 @@ def test_workana_connector_fetches_public_projects(monkeypatch, tmp_path: Path):
     assert opportunity.url == "https://www.workana.com/job/python-scraper-directorios-b2b"
     assert opportunity.budget_min == 2400
     assert opportunity.posted_at == "2025-07-08T00:00:00+00:00"
+
+
+def test_freelancer_connector_fetches_public_projects(monkeypatch, tmp_path: Path):
+    app = create_app(
+        {
+            "TESTING": True,
+            "DATABASE": str(tmp_path / "freelancer.sqlite3"),
+            "SECRET_KEY": "test-secret",
+            "CRON_SECRET": "cron-test-secret",
+            "OLLAMA_ENABLED": False,
+        }
+    )
+
+    listing_html = """
+    <html>
+      <body>
+        <a href="/projects/python-scraper-b2b-123456">Python scraper para directorios B2B</a>
+        <a href="/projects/virtual-assistant-sales-ops-654321">Virtual assistant para ventas</a>
+      </body>
+    </html>
+    """
+
+    def fake_get(url, headers=None, timeout=None):
+        if "job-search/python" in url:
+            return DummyHtmlResponse(text=listing_html)
+        if "job-search/web-scraping" in url:
+            return DummyHtmlResponse(text="<html></html>")
+        if "job-search/n8n" in url:
+            return DummyHtmlResponse(text="<html></html>")
+        if "job-search/api" in url:
+            return DummyHtmlResponse(text="<html></html>")
+        return DummyHtmlResponse(text="<html></html>", status_code=404)
+
+    monkeypatch.setattr("scrapperlanas.services.ingestion.requests.get", fake_get)
+
+    policy_row = {
+        "source_key": "freelancer_com",
+        "display_name": "Freelancer.com",
+        "risk_level": "low",
+        "config_json": json.dumps(
+            {
+                "search_urls": ["https://www.freelancer.com/job-search/python/"],
+                "include_terms": ["python", "scraping", "automation", "api"],
+                "exclude_terms": ["virtual assistant", "ventas"],
+                "candidate_limit": 10,
+                "max_items": 10,
+            },
+            ensure_ascii=False,
+        ),
+    }
+
+    with app.app_context():
+        opportunities = connector_registry()["freelancer_com"].fetch(policy_row)
+
+    assert len(opportunities) == 1
+    opportunity = opportunities[0]
+    assert opportunity.title == "Python scraper para directorios B2B"
+    assert opportunity.url == "https://www.freelancer.com/projects/python-scraper-b2b-123456"
+    assert opportunity.source_key == "freelancer_com"

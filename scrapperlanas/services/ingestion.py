@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
@@ -588,6 +589,119 @@ class WeWorkRemotelyConnector(BaseConnector):
         return filtered
 
 
+class FreelancerComConnector(BaseConnector):
+    def fetch(self, policy_row) -> list[NormalizedOpportunity]:
+        config = self._policy_config(policy_row)
+        search_urls = config.get("search_urls") or [
+            "https://www.freelancer.com/job-search/python/",
+            "https://www.freelancer.com/job-search/web-scraping/",
+            "https://www.freelancer.com/job-search/n8n/",
+            "https://www.freelancer.com/job-search/api/",
+        ]
+        candidate_limit = max(1, _safe_int(config.get("candidate_limit"), default=25))
+        normalized: list[NormalizedOpportunity] = []
+        seen_urls: set[str] = set()
+        successful_pages = 0
+
+        for search_url in search_urls:
+            try:
+                response = requests.get(search_url, headers=self._headers(), timeout=self._timeout())
+                response.raise_for_status()
+            except Exception:
+                continue
+
+            successful_pages += 1
+            soup = BeautifulSoup(response.text, "html.parser")
+            for href, title in _extract_freelancer_job_links(search_url, soup):
+                if href in seen_urls:
+                    continue
+                seen_urls.add(href)
+                raw_row = {
+                    "external_id": _freelancer_external_id(href),
+                    "title": title,
+                    "company": "Freelancer.com",
+                    "url": href,
+                    "body": _freelancer_card_text(soup, href, title),
+                    "posted_at": datetime.now(UTC).replace(microsecond=0).isoformat(),
+                }
+                normalized.append(
+                    self._normalize(
+                        policy_row=policy_row,
+                        source_label=policy_row["display_name"],
+                        raw=raw_row,
+                    )
+                )
+                if len(seen_urls) >= candidate_limit:
+                    break
+            if len(seen_urls) >= candidate_limit:
+                break
+
+        if successful_pages == 0:
+            raise RuntimeError("Freelancer.com search pages unreachable.")
+
+        normalized = self._dedupe_by_url(normalized)
+        filtered = self._apply_policy_filters(policy_row, normalized)
+        if not filtered:
+            raise RuntimeError("Freelancer.com responded, but no projects matched the current filters.")
+        return filtered
+
+
+class PeoplePerHourConnector(BaseConnector):
+    def fetch(self, policy_row) -> list[NormalizedOpportunity]:
+        config = self._policy_config(policy_row)
+        search_urls = config.get("search_urls") or [
+            "https://www.peopleperhour.com/freelance-jobs?page=1",
+            "https://www.peopleperhour.com/freelance-jobs/technology-programming/website-development",
+            "https://www.peopleperhour.com/freelance-jobs/technology-programming/python",
+        ]
+        candidate_limit = max(1, _safe_int(config.get("candidate_limit"), default=20))
+        normalized: list[NormalizedOpportunity] = []
+        seen_urls: set[str] = set()
+        successful_pages = 0
+
+        for search_url in search_urls:
+            try:
+                response = requests.get(search_url, headers=self._headers(), timeout=self._timeout())
+                response.raise_for_status()
+            except Exception:
+                continue
+
+            successful_pages += 1
+            soup = BeautifulSoup(response.text, "html.parser")
+            for href, title, card_text in _extract_peopleperhour_job_cards(search_url, soup):
+                if href in seen_urls:
+                    continue
+                seen_urls.add(href)
+                raw_row = {
+                    "external_id": _peopleperhour_external_id(href),
+                    "title": title,
+                    "company": "PeoplePerHour",
+                    "url": href,
+                    "body": card_text,
+                    "posted_at": datetime.now(UTC).replace(microsecond=0).isoformat(),
+                }
+                normalized.append(
+                    self._normalize(
+                        policy_row=policy_row,
+                        source_label=policy_row["display_name"],
+                        raw=raw_row,
+                    )
+                )
+                if len(seen_urls) >= candidate_limit:
+                    break
+            if len(seen_urls) >= candidate_limit:
+                break
+
+        if successful_pages == 0:
+            raise RuntimeError("PeoplePerHour search pages unreachable.")
+
+        normalized = self._dedupe_by_url(normalized)
+        filtered = self._apply_policy_filters(policy_row, normalized)
+        if not filtered:
+            raise RuntimeError("PeoplePerHour responded, but no projects matched the current filters.")
+        return filtered
+
+
 class HackerNewsJobsConnector(BaseConnector):
     def fetch(self, policy_row) -> list[NormalizedOpportunity]:
         config = self._policy_config(policy_row)
@@ -699,17 +813,22 @@ class EmailAlertsConnector(BaseConnector):
         return []
 
 
+class FutureMarketplaceConnector(BaseConnector):
+    def __init__(self, source_key: str) -> None:
+        self.source_key = source_key
+
+    def fetch(self, policy_row) -> list[NormalizedOpportunity]:
+        raise RuntimeError(f"Connector not implemented yet for {self.source_key}.")
+
+
 def connector_registry() -> dict[str, BaseConnector]:
     return {
-        "sample_feed": SampleFeedConnector(),
-        "reddit": RedditConnector(),
         "workana_projects": WorkanaConnector(),
-        "greenhouse": GreenhouseConnector(),
-        "lever": LeverConnector(),
         "weworkremotely": WeWorkRemotelyConnector(),
-        "hackernews_jobs": HackerNewsJobsConnector(),
-        "public_pages": PublicPagesConnector(),
         "email_alerts": EmailAlertsConnector(),
+        "freelancer_com": FreelancerComConnector(),
+        "peopleperhour": PeoplePerHourConnector(),
+        "upwork": FutureMarketplaceConnector("upwork"),
     }
 
 
@@ -718,6 +837,104 @@ def html_to_text(value: str) -> str:
         return ""
     soup = BeautifulSoup(value, "html.parser")
     return " ".join(soup.stripped_strings)
+
+
+def _extract_freelancer_job_links(search_url: str, soup: BeautifulSoup) -> list[tuple[str, str]]:
+    links: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    for anchor in soup.select("a[href]"):
+        href = urljoin(search_url, anchor.get("href", "").strip())
+        if not href.startswith("https://www.freelancer.com/"):
+            continue
+        if "/projects/" not in href and "/jobs/" not in href and "/job-search/" not in href:
+            continue
+        if href in seen:
+            continue
+        text = " ".join(anchor.stripped_strings).strip()
+        if not text or len(text) < 8:
+            continue
+        if _looks_like_navigation_link(text):
+            continue
+        seen.add(href)
+        links.append((href, text))
+    return links
+
+
+def _extract_peopleperhour_job_cards(search_url: str, soup: BeautifulSoup) -> list[tuple[str, str, str]]:
+    cards: list[tuple[str, str, str]] = []
+    seen: set[str] = set()
+    for anchor in soup.select("a[href]"):
+        href = urljoin(search_url, anchor.get("href", "").strip())
+        if not href.startswith("https://www.peopleperhour.com/"):
+            continue
+        if "/freelance-jobs/" not in href:
+            continue
+        if not re.search(r"-\d+(?:[/?#]|$)", href):
+            continue
+        if href in seen:
+            continue
+        title = " ".join(anchor.stripped_strings).strip()
+        if not title or len(title) < 8:
+            continue
+        card_text = _pph_card_text(anchor)
+        if _looks_like_navigation_link(title):
+            continue
+        seen.add(href)
+        cards.append((href, title, card_text))
+    return cards
+
+
+def _pph_card_text(anchor) -> str:
+    pieces = []
+    if anchor is not None:
+        pieces.append(anchor.get_text(" ", strip=True))
+        parent = anchor.parent
+        if parent is not None:
+            pieces.append(parent.get_text(" ", strip=True))
+            grand = parent.parent
+            if grand is not None:
+                pieces.append(grand.get_text(" ", strip=True))
+    return " ".join(part for part in pieces if part).strip()
+
+
+def _peopleperhour_external_id(url: str) -> str:
+    match = re.search(r"/freelance-jobs/(?:[^/]+-)?(\d+)", url)
+    if match:
+        return f"pph-{match.group(1)}"
+    digest = hashlib.sha1(url.encode("utf-8")).hexdigest()[:16]
+    return f"pph-{digest}"
+
+
+def _freelancer_external_id(url: str) -> str:
+    match = re.search(r"/projects/(?:[^/]+-)?(\d+)", url)
+    if match:
+        return f"freelancer-{match.group(1)}"
+    digest = hashlib.sha1(url.encode("utf-8")).hexdigest()[:16]
+    return f"freelancer-{digest}"
+
+
+def _freelancer_card_text(soup: BeautifulSoup, href: str, title: str) -> str:
+    anchor = soup.find("a", href=re.compile(re.escape(href)))
+    if anchor:
+        parent_text = anchor.parent.get_text(" ", strip=True) if anchor.parent else ""
+        if parent_text and len(parent_text) > len(title):
+            return parent_text
+    return title
+
+
+def _looks_like_navigation_link(text: str) -> bool:
+    lowered = text.lower()
+    return lowered in {
+        "next",
+        "previous",
+        "first",
+        "last",
+        "bid now",
+        "apply now",
+        "search",
+        "browse jobs",
+        "freelancer",
+    }
 
 
 def detect_stack(raw_text: str) -> list[str]:
