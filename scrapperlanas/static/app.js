@@ -1,22 +1,24 @@
 document.addEventListener("DOMContentLoaded", () => {
   const shell = document.getElementById("app-shell");
-  const toggle = document.querySelector("[data-sidebar-toggle]");
   const sectionLinks = Array.from(document.querySelectorAll("[data-section-target]"));
   const sections = Array.from(document.querySelectorAll(".app-section"));
 
-  if (toggle && shell) {
-    toggle.addEventListener("click", () => {
-      shell.classList.toggle("sidebar-collapsed");
-    });
-  }
-
-  if (!sectionLinks.length || !sections.length) {
+  if (!sectionLinks.length || !sections.length || !shell) {
     return;
   }
 
   const activateSection = (sectionId, shouldScroll = false) => {
-    if (sectionId === "top") {
-      activateSection("inbox", false);
+    if (sectionId === "top" || sectionId === "home") {
+      sections.forEach((section) => {
+        const isHomeSection = section.id === "section-home";
+        section.classList.toggle("hidden", !isHomeSection);
+        section.classList.toggle("block", isHomeSection);
+      });
+
+      sectionLinks.forEach((link) => {
+        link.classList.toggle("is-nav-active", link.dataset.sectionTarget === "home");
+      });
+
       if (shouldScroll) {
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
@@ -67,5 +69,5 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   const initialHash = readHash();
-  activateSection(initialHash || "inbox", Boolean(initialHash));
+  activateSection(initialHash || "home", Boolean(initialHash));
 });

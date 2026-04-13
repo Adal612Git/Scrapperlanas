@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scrapperlanas | Arquitectura Interactiva</title>
+  <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #070b12;
+      --bg-2: #0a1120;
+      --panel: rgba(8, 12, 20, 0.96);
+      --panel-soft: rgba(13, 19, 31, 0.92);
+      --line: #1b2437;
+      --text: #e8eefc;
+      --muted: #91a0bd;
+      --front: #22c7e8;
+      --backend: #8b7cff;
+      --logic: #f59e0b;
+      --data: #10b981;
+      --ai: #f472b6;
+      --auto: #38bdf8;
+      --infra: #ef4444;
+      --source: #84cc16;
+      --card: rgba(14, 19, 32, 0.84);
+      --card-2: rgba(10, 15, 26, 0.95);
+      --shadow: 0 24px 60px rgba(0,0,0,0.45);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Outfit', sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(34,199,232,0.12), transparent 26%),
+        radial-gradient(circle at top right, rgba(139,124,255,0.12), transparent 22%),
+        linear-gradient(180deg, var(--bg) 0%, #06080e 100%);
+      color: var(--text);
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .container { display: flex; width: 100vw; height: 100vh; }
+
+    .graph-container {
+      flex: 1;
+      position: relative;
+      background:
+        radial-gradient(ellipse at 30% 35%, rgba(18, 31, 56, 0.65) 0%, transparent 34%),
+        radial-gradient(ellipse at 70% 20%, rgba(20, 39, 73, 0.4) 0%, transparent 28%),
+        linear-gradient(180deg, #06080e 0%, #070c15 100%);
+      border-right: 1px solid var(--line);
+    }
+
+    #network { width: 100%; height: 100%; cursor: grab; }
+    #network:active { cursor: grabbing; }
+
+    .env-badge {
+      position: absolute;
+      top: 16px;
+      padding: 7px 14px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      backdrop-filter: blur(10px);
+      z-index: 8;
+      pointer-events: none;
+      text-transform: uppercase;
+    }
+
+    .env-main {
+      left: 16px;
+      background: rgba(16,185,129,0.12);
+      border: 1px solid rgba(16,185,129,0.35);
+      color: #34d399;
+    }
+
+    .env-local {
+      left: 220px;
+      background: rgba(56,189,248,0.12);
+      border: 1px solid rgba(56,189,248,0.35);
+      color: #7dd3fc;
+    }
+
+    .level-marker {
+      position: absolute;
+      left: 10px;
+      font-size: 10px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.28em;
+      color: rgba(132, 145, 170, 0.48);
+      transform: rotate(-90deg);
+      transform-origin: left center;
+      pointer-events: none;
+      z-index: 4;
+    }
+
+    .sidebar {
+      width: 560px;
+      min-width: 560px;
+      background: rgba(7,10,16,0.98);
+      border-left: 1px solid var(--line);
+      box-shadow: -16px 0 40px rgba(0,0,0,0.45);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      z-index: 10;
+    }
+
+    .sidebar-inner {
+      padding: 20px 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      overflow-y: auto;
+      height: 100%;
+    }
+
+    .header h1 {
+      font-size: 30px;
+      letter-spacing: -0.05em;
+      font-weight: 900;
+      background: linear-gradient(135deg, #34d399 0%, #38bdf8 42%, #8b7cff 78%, #f472b6 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .header .subtitle {
+      margin-top: 4px;
+      font-size: 12px;
+      color: #6f7d98;
+      font-weight: 500;
+    }
+
+    .tech-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 12px;
+    }
+
+    .tech-tag {
+      padding: 4px 9px;
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+      border: 1px solid rgba(255,255,255,0.09);
+      background: rgba(255,255,255,0.04);
+      color: #b8c3db;
+    }
+
+    .tech-tag.front { color: #67e8f9; border-color: rgba(34,199,232,0.22); background: rgba(34,199,232,0.08); }
+    .tech-tag.logic { color: #fbbf24; border-color: rgba(245,158,11,0.22); background: rgba(245,158,11,0.08); }
+    .tech-tag.data { color: #34d399; border-color: rgba(16,185,129,0.22); background: rgba(16,185,129,0.08); }
+    .tech-tag.ai { color: #f9a8d4; border-color: rgba(244,114,182,0.22); background: rgba(244,114,182,0.08); }
+    .tech-tag.warn { color: #a5b4fc; border-color: rgba(139,124,255,0.22); background: rgba(139,124,255,0.08); }
+
+    .tab-bar {
+      display: flex;
+      gap: 2px;
+      background: #101621;
+      border-radius: 10px;
+      padding: 4px;
+      border: 1px solid #1c2638;
+    }
+
+    .tab-btn {
+      flex: 1;
+      border: none;
+      padding: 8px 4px;
+      border-radius: 8px;
+      background: transparent;
+      color: #6f7d98;
+      font-size: 11px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: all .2s ease;
+      font-family: 'Outfit', sans-serif;
+    }
+
+    .tab-btn:hover { color: #c5d0e8; }
+    .tab-btn.active {
+      color: white;
+      background: linear-gradient(135deg, rgba(56,189,248,0.18), rgba(139,124,255,0.18));
+      box-shadow: 0 8px 18px rgba(56,189,248,0.08);
+    }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+
+    .btn {
+      padding: 8px 6px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid #263249;
+      color: #9fb0ce;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 10px;
+      font-weight: 800;
+      transition: all .2s ease;
+      white-space: nowrap;
+      font-family: 'Outfit', sans-serif;
+      text-align: center;
+    }
+
+    .btn:hover {
+      background: rgba(56,189,248,0.12);
+      border-color: rgba(56,189,248,0.42);
+      color: #7dd3fc;
+      transform: translateY(-1px);
+    }
+
+    .btn.active {
+      background: rgba(56,189,248,0.18);
+      border-color: #38bdf8;
+      color: #dff8ff;
+    }
+
+    .search-box { position: relative; }
+    .search-icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #596883;
+      font-size: 13px;
+      pointer-events: none;
+    }
+
+    .search-box input {
+      width: 100%;
+      background: #101621;
+      border: 1px solid #243047;
+      border-radius: 10px;
+      padding: 11px 14px 11px 36px;
+      color: white;
+      font-size: 12px;
+      font-family: 'Outfit', sans-serif;
+      outline: none;
+      transition: border-color .2s ease, box-shadow .2s ease;
+    }
+
+    .search-box input:focus {
+      border-color: #8b7cff;
+      box-shadow: 0 0 0 4px rgba(139,124,255,0.12);
+    }
+
+    .details-card {
+      display: none;
+      background: #111824;
+      border: 1px solid #263249;
+      border-radius: 14px;
+      padding: 18px;
+      max-height: 55vh;
+      overflow-y: auto;
+      animation: fadeIn .25s ease;
+    }
+
+    .node-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .details-title {
+      margin: 10px 0 6px;
+      font-size: 19px;
+      font-weight: 900;
+      line-height: 1.15;
+      letter-spacing: -0.03em;
+    }
+
+    .section-title {
+      margin: 15px 0 8px;
+      font-size: 10px;
+      text-transform: uppercase;
+      color: #627089;
+      letter-spacing: 0.18em;
+      font-weight: 900;
+    }
+
+    .desc-block {
+      font-size: 11px;
+      color: #9fb0ce;
+      line-height: 1.7;
+      background: rgba(255,255,255,0.03);
+      padding: 11px;
+      border-radius: 10px;
+      border: 1px solid #222d42;
+      white-space: pre-wrap;
+    }
+
+    .code-block {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10.5px;
+      background: #0b1018;
+      border: 1px solid #1d2638;
+      border-radius: 10px;
+      padding: 10px;
+      color: #aab7d1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 180px;
+      overflow-y: auto;
+    }
+
+    .line-front { border-left: 2px solid var(--front); padding-left: 8px; }
+    .line-back { border-left: 2px solid var(--backend); padding-left: 8px; }
+    .line-logic { border-left: 2px solid var(--logic); padding-left: 8px; }
+    .line-data { border-left: 2px solid var(--data); padding-left: 8px; }
+    .line-ai { border-left: 2px solid var(--ai); padding-left: 8px; }
+
+    .keyword { color: #f9a8d4; }
+    .func { color: #93c5fd; }
+    .type { color: #34d399; }
+    .string { color: #fcd34d; }
+
+    .endpoint-tag {
+      display: inline-block;
+      padding: 4px 8px;
+      margin: 2px;
+      border-radius: 6px;
+      font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+    }
+
+    .ep-view { background: rgba(34,199,232,0.1); color: #67e8f9; border: 1px solid rgba(34,199,232,0.22); }
+    .ep-action { background: rgba(245,158,11,0.1); color: #fbbf24; border: 1px solid rgba(245,158,11,0.22); }
+    .ep-db { background: rgba(16,185,129,0.1); color: #34d399; border: 1px solid rgba(16,185,129,0.22); }
+    .ep-ai { background: rgba(244,114,182,0.1); color: #f9a8d4; border: 1px solid rgba(244,114,182,0.22); }
+
+    .status-bar {
+      background: #111824;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      padding: 12px;
+    }
+
+    .progress {
+      height: 6px;
+      background: #1b2435;
+      border-radius: 999px;
+      overflow: hidden;
+      margin: 8px 0;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #34d399, #38bdf8, #8b7cff, #f472b6);
+      border-radius: inherit;
+    }
+
+    .legend {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 10px;
+      color: #8491aa;
+      font-weight: 600;
+    }
+
+    .dot { width: 8px; height: 8px; border-radius: 999px; }
+
+    .state-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-wrap: wrap;
+      margin: 5px 0;
+    }
+
+    .fsm-state {
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 800;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .fsm-arrow { color: #5d6980; font-size: 11px; }
+
+    .deploy-card {
+      background: #0d121b;
+      border: 1px solid #1f293a;
+      border-radius: 10px;
+      padding: 12px;
+      font-size: 11px;
+    }
+
+    .deploy-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 4px 0;
+      border-bottom: 1px solid #182132;
+    }
+
+    .deploy-row:last-child { border-bottom: none; }
+    .deploy-label { color: #7f8ea8; font-weight: 700; }
+    .deploy-value { color: #dbe6fb; font-family: 'JetBrains Mono', monospace; font-size: 10px; text-align: right; }
+
+    .roles-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+    }
+
+    .role-chip {
+      padding: 6px 8px;
+      border-radius: 8px;
+      font-size: 10px;
+      font-weight: 800;
+      text-align: center;
+      cursor: pointer;
+      transition: all .2s ease;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.04);
+      color: #ced8ef;
+    }
+
+    .role-chip:hover {
+      transform: translateY(-1px) scale(1.01);
+      border-color: rgba(139,124,255,0.42);
+      color: white;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0a0f18; }
+    ::-webkit-scrollbar-thumb { background: #28344d; border-radius: 999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #354564; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="graph-container">
+      <div id="network"></div>
+      <div class="env-badge env-main">MVP cerrado · freelance-first</div>
+      <div class="env-badge env-local">LOCAL · Flask + SQLite + n8n + Gemini</div>
+      <div class="level-marker" style="top: 8%;">FRONTEND</div>
+      <div class="level-marker" style="top: 22%;">BACKEND</div>
+      <div class="level-marker" style="top: 38%;">LOGIC / SERVICES</div>
+      <div class="level-marker" style="top: 56%;">DATA / PERSISTENCIA</div>
+      <div class="level-marker" style="top: 74%;">AUTOMATIZACIÓN / IA</div>
+      <div class="level-marker" style="top: 88%;">INFRA / FUENTES</div>
+    </div>
+
+    <aside class="sidebar">
+      <div class="sidebar-inner">
+        <div class="header">
+          <h1>SCRAPPERLANAS</h1>
+          <div class="subtitle">Arquitectura interactiva · Consola operativa freelance-first</div>
+          <div class="tech-tags">
+            <span class="tech-tag front">Flask Templates</span>
+            <span class="tech-tag front">Dashboard / Detail / Settings</span>
+            <span class="tech-tag logic">Pipeline heurístico</span>
+            <span class="tech-tag ai">Gemini + fallback</span>
+            <span class="tech-tag data">SQLite / db.py</span>
+            <span class="tech-tag warn">n8n / import webhook</span>
+            <span class="tech-tag warn">Freelancer / PPH / WWR</span>
+          </div>
+        </div>
+
+        <div class="tab-bar">
+          <button class="tab-btn active" onclick="switchTab('arch', this)">Arquitectura</button>
+          <button class="tab-btn" onclick="switchTab('flows', this)">Flujos</button>
+          <button class="tab-btn" onclick="switchTab('ia', this)">IA</button>
+          <button class="tab-btn" onclick="switchTab('infra', this)">Infra</button>
+        </div>
+
+        <div id="tab-arch" class="tab-content active">
+          <div class="controls-grid">
+            <button class="btn active" onclick="setLayout('hierarchical', this)">📐 Jerárquica</button>
+            <button class="btn" onclick="setLayout('force', this)">🔄 Grafo libre</button>
+            <button class="btn" onclick="showFlow('global')">🌐 Ver todo</button>
+            <button class="btn" onclick="showFlow('frontend')">🖥️ Frontend</button>
+            <button class="btn" onclick="showFlow('backend')">🧭 Backend</button>
+            <button class="btn" onclick="showFlow('logic')">⚙️ Lógica</button>
+            <button class="btn" onclick="showFlow('data')">🗄️ Datos</button>
+            <button class="btn" onclick="showFlow('sources')">📡 Fuentes</button>
+            <button class="btn" onclick="showFlow('automation')">🤖 Automatización</button>
+            <button class="btn" onclick="resetView()">✕ Resetear</button>
+          </div>
+        </div>
+
+        <div id="tab-flows" class="tab-content">
+          <div class="controls-grid">
+            <button class="btn" onclick="showFlow('capture')">📥 Captura</button>
+            <button class="btn" onclick="showFlow('prioritization')">🎯 Priorización</button>
+            <button class="btn" onclick="showFlow('iaFlow')">🧠 Análisis IA</button>
+            <button class="btn" onclick="showFlow('review')">🔎 Revisión</button>
+            <button class="btn" onclick="showFlow('settingsFlow')">⚙️ Configuración</button>
+            <button class="btn" onclick="showFlow('pipelineFlow')">📌 Pipeline</button>
+          </div>
+          <div style="font-size:11px;font-weight:800;color:#7dd3fc;margin:14px 0 8px;">ESTADOS PRINCIPALES</div>
+          <div class="state-row">
+            <span class="fsm-state" style="background:rgba(56,189,248,0.12);color:#7dd3fc">NUEVO</span>
+            <span class="fsm-arrow">→</span>
+            <span class="fsm-state" style="background:rgba(245,158,11,0.12);color:#fbbf24">VISTO</span>
+            <span class="fsm-arrow">→</span>
+            <span class="fsm-state" style="background:rgba(16,185,129,0.12);color:#34d399">INTERESANTE</span>
+          </div>
+          <div class="state-row">
+            <span class="fsm-state" style="background:rgba(139,124,255,0.12);color:#c4b5fd">APLICADO</span>
+            <span class="fsm-arrow">→</span>
+            <span class="fsm-state" style="background:rgba(244,114,182,0.12);color:#f9a8d4">FOLLOW_UP</span>
+            <span class="fsm-arrow">→</span>
+            <span class="fsm-state" style="background:rgba(239,68,68,0.12);color:#fda4af">DESCARTADO</span>
+          </div>
+          <div style="font-size:10px;color:#9aa9c4;margin-top:8px;line-height:1.7;">
+            La oportunidad entra desde una fuente, se normaliza, se puntúa, se enriquece con IA si aplica, se persiste y luego pasa a revisión humana desde dashboard y detalle.
+          </div>
+        </div>
+
+        <div id="tab-ia" class="tab-content">
+          <div style="font-size:11px;font-weight:800;color:#f9a8d4;margin-bottom:8px;">CAPA DE IA</div>
+          <div class="deploy-card">
+            <div class="deploy-row"><span class="deploy-label">Proveedor activo</span><span class="deploy-value">Gemini</span></div>
+            <div class="deploy-row"><span class="deploy-label">Fallback</span><span class="deploy-value">heuristic</span></div>
+            <div class="deploy-row"><span class="deploy-label">Embeddings</span><span class="deploy-value">none / fuera de etapa</span></div>
+            <div class="deploy-row"><span class="deploy-label">Persistencia</span><span class="deploy-value">analysis_json</span></div>
+            <div class="deploy-row"><span class="deploy-label">Impacto</span><span class="deploy-value">score_delta</span></div>
+          </div>
+          <div style="font-size:11px;font-weight:800;color:#7dd3fc;margin:14px 0 6px;">SALIDA DE ANÁLISIS</div>
+          <div class="code-block">
+            <div class="line-ai">fit_label</div>
+            <div class="line-ai">fit_reason</div>
+            <div class="line-ai">recommended_action</div>
+            <div class="line-ai">recommended_state</div>
+            <div class="line-ai">confidence</div>
+            <div class="line-ai">score_delta</div>
+            <div class="line-ai">ai_summary</div>
+            <div class="line-ai">suggested_reply</div>
+            <div class="line-ai">model_used</div>
+          </div>
+        </div>
+
+        <div id="tab-infra" class="tab-content">
+          <div style="font-size:11px;font-weight:800;color:#fbbf24;margin-bottom:8px;">RUNTIME ACTUAL</div>
+          <div class="deploy-card">
+            <div class="deploy-row"><span class="deploy-label">App principal</span><span class="deploy-value">Flask</span></div>
+            <div class="deploy-row"><span class="deploy-label">Persistencia</span><span class="deploy-value">SQLite</span></div>
+            <div class="deploy-row"><span class="deploy-label">Automatización</span><span class="deploy-value">n8n + scheduler</span></div>
+            <div class="deploy-row"><span class="deploy-label">Entrada externa</span><span class="deploy-value">import endpoint</span></div>
+            <div class="deploy-row"><span class="deploy-label">Configuración IA</span><span class="deploy-value">.env runtime</span></div>
+          </div>
+          <div style="font-size:11px;font-weight:800;color:#a3e635;margin:14px 0 6px;">FUENTES ACTIVAS</div>
+          <div class="roles-grid">
+            <div class="role-chip" onclick="showFlow('freelancer')" style="color:#bef264;border-color:rgba(132,204,22,0.3);background:rgba(132,204,22,0.08)">freelancer_com</div>
+            <div class="role-chip" onclick="showFlow('pph')" style="color:#bef264;border-color:rgba(132,204,22,0.3);background:rgba(132,204,22,0.08)">peopleperhour</div>
+            <div class="role-chip" onclick="showFlow('wwr')" style="color:#bef264;border-color:rgba(132,204,22,0.3);background:rgba(132,204,22,0.08)">weworkremotely</div>
+            <div class="role-chip" onclick="showFlow('futureLane')" style="color:#d8b4fe;border-color:rgba(139,124,255,0.3);background:rgba(139,124,255,0.08)">future lane</div>
+          </div>
+        </div>
+
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="search" placeholder="Buscar módulo, fuente, campo, helper..." onkeyup="filterNodes()" />
+        </div>
+
+        <div id="detailsPanel" class="details-card">
+          <div style="text-align:center;color:#66748f;padding:20px;font-size:12px;">
+            Selecciona un nodo del grafo para ver su detalle técnico.
+          </div>
+        </div>
+
+        <div class="status-bar">
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+            <span style="color:#7dd3fc;font-size:11px;font-weight:800;">ESTADO DEL SISTEMA</span>
+            <span style="color:#5f6b82;font-size:10px;">Arquitectura actual</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:#8491aa;">
+            <span>Frontend: 4</span>
+            <span>Servicios: 4</span>
+            <span>Fuentes: 5</span>
+            <span>Entidades: 6</span>
+          </div>
+          <div class="progress"><div class="progress-fill" style="width:100%"></div></div>
+          <div style="display:flex;justify-content:space-between;font-size:9px;color:#627089;">
+            <span>MVP operativo</span>
+            <span>Siguiente: operación + aprendizaje</span>
+          </div>
+        </div>
+
+        <div class="legend">
+          <div class="legend-item"><div class="dot" style="background:var(--front)"></div>Frontend / vistas</div>
+          <div class="legend-item"><div class="dot" style="background:var(--backend)"></div>Backend / rutas</div>
+          <div class="legend-item"><div class="dot" style="background:var(--logic)"></div>Lógica / services</div>
+          <div class="legend-item"><div class="dot" style="background:var(--data)"></div>Datos / persistencia</div>
+          <div class="legend-item"><div class="dot" style="background:var(--ai)"></div>IA / análisis</div>
+          <div class="legend-item"><div class="dot" style="background:var(--auto)"></div>Automatización</div>
+          <div class="legend-item"><div class="dot" style="background:var(--infra)"></div>Infra / runtime</div>
+          <div class="legend-item"><div class="dot" style="background:var(--source)"></div>Fuentes externas</div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+    const COLORS = {
+      front: { bg: '#082f49', border: '#22c7e8', highlight: '#67e8f9' },
+      backend: { bg: '#2e1065', border: '#8b7cff', highlight: '#c4b5fd' },
+      logic: { bg: '#78350f', border: '#f59e0b', highlight: '#fbbf24' },
+      data: { bg: '#064e3b', border: '#10b981', highlight: '#34d399' },
+      ai: { bg: '#831843', border: '#f472b6', highlight: '#f9a8d4' },
+      automation: { bg: '#0c4a6e', border: '#38bdf8', highlight: '#7dd3fc' },
+      infra: { bg: '#7f1d1d', border: '#ef4444', highlight: '#fda4af' },
+      source: { bg: '#365314', border: '#84cc16', highlight: '#bef264' }
+    };
+
+    const nodesData = [
+      { id:'frontend_dashboard', label:'Dashboard\nConsola operativa', level:0, group:'front', type:'view',
+        desc:'Vista principal del sistema. Muestra filtros, métricas, radar operativo, cards de oportunidades, pipeline, IA operativa y tiempo a decisión.',
+        files:['dashboard.html','views.py'],
+        fields:['Filtros del dashboard','Cards de oportunidades','Pipeline','IA operativa','Tiempo a decisión','Resumen por fuente'] },
+      { id:'frontend_detail', label:'Detalle de oportunidad', level:0, group:'front', type:'view',
+        desc:'Vista de decisión individual. Reúne análisis, operación y evidencia: resumen IA, veredicto, plan de ataque, respuesta sugerida, comentario persistente y cambio de estado.',
+        files:['opportunity_detail.html','views.py'],
+        fields:['Resumen IA','Veredicto IA','Plan de ataque','Respuesta sugerida','Comentario persistente','Banderas operativas'] },
+      { id:'frontend_settings', label:'Settings\nControl plane', level:0, group:'front', type:'view',
+        desc:'Centro de control del operador. Administra fuentes, IA, perfil operativo, n8n y vistas guardadas.',
+        files:['settings.html','views.py'],
+        fields:['Modo operativo','IA operativa','Perfil operativo','Fuentes activas','n8n','Fuentes futuras'] },
+      { id:'nav_shell', label:'Base / Header\nNavegación global', level:0, group:'front', type:'layout',
+        desc:'Shell principal del frontend. Separa navegación real de subnavegación interna del dashboard.',
+        files:['base.html','app.js','style.css'],
+        fields:['Dashboard','Ajustes del scrapper','Subnavegación dashboard','Logout'] },
+
+      { id:'views_py', label:'views.py\nRutas y contexto', level:1, group:'backend', type:'backend',
+        desc:'Orquesta dashboard, detalle, settings, export e ingesta manual. Prepara contexto para templates y coordina helpers de negocio.',
+        files:['views.py'],
+        methods:['dashboard()','opportunity_detail()','settings()','export_csv()','manual_ingest()','_operational_summary()','_ai_impact_summary()','_decision_summary()'] },
+      { id:'auth_routes', label:'Auth routes\nLogin / register', level:1, group:'backend', type:'backend',
+        desc:'Rutas de autenticación que controlan la entrada al sistema.',
+        files:['auth/login.html','auth/register.html','views.py'],
+        methods:['login','register','logout'] },
+      { id:'import_endpoint', label:'Import endpoint\nEntrada controlada', level:1, group:'backend', type:'endpoint',
+        desc:'Entrada interna para importaciones externas y automatización. Alimenta el pipeline sin romper el control de la app.',
+        files:['views.py'],
+        methods:['internal_import','cron_ingest','policy_ingest'] },
+
+      { id:'pipeline_service', label:'pipeline.py\nScoring y decisión', level:2, group:'logic', type:'service',
+        desc:'Capa de negocio central. Calcula score base, prioridad, recommended_action, recommended_state y score_delta, mezclando heurística con análisis IA.',
+        files:['pipeline.py'],
+        methods:['run_ingestion_for_policies()','enrich_opportunity()','compute_priority()','apply_state_logic()'],
+        fields:['priority_tier','priority_reason','recommended_action','recommended_state','score_delta'] },
+      { id:'ingestion_service', label:'ingestion.py\nCaptación y normalización', level:2, group:'logic', type:'service',
+        desc:'Lee fuentes, parsea, normaliza, deduplica y genera la oportunidad base antes de pasarla al pipeline.',
+        files:['ingestion.py'],
+        methods:['connector_registry()','fetch()','normalize()','dedupe()'],
+        fields:['source_key','url','raw_text','dedupe key','policy'] },
+      { id:'db_helper', label:'db.py\nBootstrap y acceso', level:2, group:'logic', type:'service',
+        desc:'Define tablas, bootstrap, helpers de policies, perfiles y persistencia general del sistema.',
+        files:['db.py'],
+        methods:['bootstrap_database()','get_db()','refresh_source_policy_defaults()'] },
+      { id:'app_js', label:'app.js\nNavegación interna', level:2, group:'logic', type:'service',
+        desc:'Controla el cambio de secciones internas del dashboard y el estado visual activo.',
+        files:['app.js'],
+        methods:['toggleSection','setActiveState','scrollIntoView'] },
+
+      { id:'db_core', label:'SQLite / DB core', level:3, group:'data', type:'database',
+        desc:'Persistencia central del sistema en runtime local.',
+        files:['db.py','instance/scrapperlanas.sqlite3'],
+        fields:['opportunities','source_policies','opportunity_events','user_profiles','saved_views','automation_runs'] },
+      { id:'opportunities_entity', label:'opportunities', level:3, group:'data', type:'entity',
+        desc:'Entidad central: título, fuente, score, state, substate, budget, raw_text, ai_summary, analysis_json y nota.',
+        files:['db.py'],
+        fields:['title','source_key','score','state','substate','budget','raw_text','analysis_json','note'] },
+      { id:'events_entity', label:'opportunity_events', level:3, group:'data', type:'entity',
+        desc:'Historial de cambios operativos: cambios de estado, notas y actor.',
+        files:['db.py'],
+        fields:['previous_state','new_state','note','actor','created_at'] },
+      { id:'policies_entity', label:'source_policies', level:3, group:'data', type:'entity',
+        desc:'Configura cada fuente: enabled, frequency, risk_level, config_json y notes.',
+        files:['db.py'],
+        fields:['enabled','frequency_minutes','risk_level','config_json','notes'] },
+      { id:'profiles_entity', label:'user_profiles', level:3, group:'data', type:'entity',
+        desc:'Perfil operativo del usuario: keywords, sectores, min budget y preferencias.',
+        files:['db.py'],
+        fields:['keywords','sectors','min_budget','preferred_sources'] },
+      { id:'saved_views_entity', label:'saved_views', level:3, group:'data', type:'entity',
+        desc:'Consultas guardadas y memoria operativa del dashboard.',
+        files:['db.py'],
+        fields:['name','query_json','created_at'] },
+      { id:'runs_entity', label:'automation_runs', level:3, group:'data', type:'entity',
+        desc:'Historial de ejecuciones automáticas: estado, duración y errores.',
+        files:['db.py'],
+        fields:['status','duration_ms','error','created_at'] },
+      { id:'analysis_json', label:'analysis_json\nIA persistida', level:3, group:'data', type:'entity',
+        desc:'Corazón de la capa IA: fit_label, fit_reason, recommended_action, recommended_state, confidence, score_delta, missing_info y model_used.',
+        files:['opportunities.analysis_json'],
+        fields:['fit_label','fit_reason','recommended_action','recommended_state','confidence','score_delta','model_used'] },
+
+      { id:'ai_service', label:'ai.py\nGemini + fallback', level:4, group:'ai', type:'service',
+        desc:'Analiza la oportunidad, resume, clasifica, sugiere acción y ajusta score. Usa Gemini si está disponible y cae a heurística si falla.',
+        files:['ai.py','pipeline.py'],
+        methods:['LocalAiAssistant.enrich()','_build_prompt()','heuristic_fallback()'],
+        fields:['model_used','fit_label','fit_reason','recommended_action','confidence'] },
+      { id:'gemini_provider', label:'Gemini\nProveedor activo', level:4, group:'ai', type:'provider',
+        desc:'Proveedor principal actual de análisis. Controlado por AI_PROVIDER=gemini y GEMINI_API_KEY.',
+        files:['.env','ai.py'],
+        fields:['AI_PROVIDER=gemini','GEMINI_API_KEY','GEMINI_MODEL'] },
+      { id:'heuristic_provider', label:'Heuristic\nFallback', level:4, group:'ai', type:'provider',
+        desc:'Fallback automático cuando Gemini no responde o no está disponible.',
+        files:['ai.py'],
+        fields:['fit_label','recommended_action','score_delta','model_used=heuristic'] },
+      { id:'frontend_ai_blocks', label:'Bloques IA\nUI visible', level:4, group:'ai', type:'ui',
+        desc:'Partes del frontend que dependen de IA: resumen, veredicto, plan de ataque, respuesta sugerida y trazabilidad de origen.',
+        files:['dashboard.html','opportunity_detail.html','settings.html'],
+        fields:['Resumen IA','Veredicto IA','Plan de ataque','Respuesta sugerida','Badges de origen'] },
+
+      { id:'automation_n8n', label:'n8n\nOrquestación', level:4, group:'automation', type:'automation',
+        desc:'Orquestador externo, scheduler e import webhook.',
+        files:['workflows n8n','views.py'],
+        fields:['scheduler','webhook','workflows empaquetados'] },
+      { id:'scheduler_loop', label:'Scheduler\nCron-like loop', level:4, group:'automation', type:'automation',
+        desc:'Dispara ingestas y mantiene el sistema vivo.',
+        files:['views.py','.env'],
+        fields:['AUTOMATION_MODE','AUTOMATION_POLL_SECONDS','AUTOMATION_RUN_ON_STARTUP'] },
+
+      { id:'runtime_env', label:'.env / runtime\nConfiguración activa', level:5, group:'infra', type:'runtime',
+        desc:'Configura proveedor IA, embeddings, scheduler, DB y base URL.',
+        files:['.env'],
+        fields:['AI_PROVIDER','AI_EMBED_PROVIDER','AI_MAX_ENRICHMENTS_PER_RUN','AI_MIN_SCORE_FOR_REMOTE_ENRICHMENT','DATABASE_PATH','APP_BASE_URL'] },
+      { id:'flask_app', label:'Flask app\nConsola principal', level:5, group:'infra', type:'infra',
+        desc:'Aplicación principal que sirve dashboard, detalle, settings y operaciones del sistema.',
+        files:['run.py','views.py'],
+        fields:['dashboard','detail','settings','export','manual ingest'] },
+      { id:'docker_stack', label:'Docker / stack local', level:5, group:'infra', type:'infra',
+        desc:'Entorno reproducible con app, DB y n8n según setup local.',
+        files:['docker compose','entrypoints'],
+        fields:['web','db','n8n'] },
+
+      { id:'freelancer_source', label:'freelancer_com\nFuente activa', level:5, group:'source', type:'source',
+        desc:'Fuente freelance principal activa mediante HTML público.',
+        files:['ingestion.py','db.py'],
+        fields:['policy activa','frecuencia','filtros técnicos','riesgo'] },
+      { id:'pph_source', label:'peopleperhour\nFuente activa', level:5, group:'source', type:'source',
+        desc:'Fuente freelance útil, algo más ruidosa, pero activa y funcional.',
+        files:['ingestion.py','db.py'],
+        fields:['policy activa','ruido moderado','filtros técnicos'] },
+      { id:'wwr_source', label:'weworkremotely\nSecundaria', level:5, group:'source', type:'source',
+        desc:'Fuente secundaria filtrada. Aporta remoto general con algo de ruido corporativo.',
+        files:['ingestion.py','db.py'],
+        fields:['RSS/HTML','fuente secundaria','ruido relativo'] },
+      { id:'future_lane', label:'Future lane\nUpwork / email / Workana', level:5, group:'source', type:'source',
+        desc:'Frente futuro o secundario: Upwork, email_alerts y workana_projects.',
+        files:['db.py','ingestion.py'],
+        fields:['upwork','email_alerts','workana_projects'] }
+    ];
+
+    const edgesData = [
+      { from:'nav_shell', to:'frontend_dashboard', label:'navega' },
+      { from:'nav_shell', to:'frontend_settings', label:'navega' },
+      { from:'nav_shell', to:'frontend_detail', label:'abre detalle' },
+
+      { from:'frontend_dashboard', to:'views_py', label:'render/context' },
+      { from:'frontend_detail', to:'views_py', label:'render/context' },
+      { from:'frontend_settings', to:'views_py', label:'render/context' },
+      { from:'auth_routes', to:'nav_shell', label:'acceso' },
+
+      { from:'views_py', to:'pipeline_service', label:'priorización' },
+      { from:'views_py', to:'db_helper', label:'queries/helpers' },
+      { from:'views_py', to:'import_endpoint', label:'manual/cron ingest' },
+      { from:'views_py', to:'app_js', label:'secciones dashboard', dashes:true },
+
+      { from:'import_endpoint', to:'ingestion_service', label:'importa oportunidades' },
+      { from:'ingestion_service', to:'pipeline_service', label:'oportunidad normalizada' },
+      { from:'pipeline_service', to:'ai_service', label:'enriquecimiento IA' },
+      { from:'pipeline_service', to:'db_core', label:'persistencia' },
+      { from:'ingestion_service', to:'db_core', label:'save opportunity' },
+      { from:'db_helper', to:'db_core', label:'bootstrap / access' },
+
+      { from:'db_core', to:'opportunities_entity', label:'tabla central' },
+      { from:'db_core', to:'events_entity', label:'historial' },
+      { from:'db_core', to:'policies_entity', label:'políticas' },
+      { from:'db_core', to:'profiles_entity', label:'perfil' },
+      { from:'db_core', to:'saved_views_entity', label:'consultas' },
+      { from:'db_core', to:'runs_entity', label:'runs' },
+      { from:'opportunities_entity', to:'analysis_json', label:'analysis_json' },
+
+      { from:'ai_service', to:'gemini_provider', label:'proveedor activo' },
+      { from:'ai_service', to:'heuristic_provider', label:'fallback', dashes:true },
+      { from:'ai_service', to:'analysis_json', label:'persistir análisis' },
+      { from:'analysis_json', to:'frontend_ai_blocks', label:'bloques UI' },
+      { from:'frontend_ai_blocks', to:'frontend_dashboard', label:'cards y métricas' },
+      { from:'frontend_ai_blocks', to:'frontend_detail', label:'veredicto / plan / reply' },
+      { from:'runtime_env', to:'ai_service', label:'provider / model' },
+      { from:'runtime_env', to:'scheduler_loop', label:'timers' },
+      { from:'runtime_env', to:'flask_app', label:'app config' },
+
+      { from:'automation_n8n', to:'import_endpoint', label:'webhook' },
+      { from:'scheduler_loop', to:'ingestion_service', label:'captura automática' },
+      { from:'automation_n8n', to:'scheduler_loop', label:'orquesta', dashes:true },
+
+      { from:'freelancer_source', to:'ingestion_service', label:'HTML público' },
+      { from:'pph_source', to:'ingestion_service', label:'HTML público' },
+      { from:'wwr_source', to:'ingestion_service', label:'RSS / HTML' },
+      { from:'future_lane', to:'ingestion_service', label:'frente futuro', dashes:true },
+
+      { from:'flask_app', to:'views_py', label:'sirve rutas' },
+      { from:'docker_stack', to:'flask_app', label:'runtime local' },
+      { from:'docker_stack', to:'automation_n8n', label:'stack' },
+      { from:'docker_stack', to:'db_core', label:'persistencia local' },
+
+      { from:'db_core', to:'frontend_dashboard', label:'cards / métricas' },
+      { from:'db_core', to:'frontend_detail', label:'detalle / eventos' },
+      { from:'db_core', to:'frontend_settings', label:'policies / profile' }
+    ];
+
+    const container = document.getElementById('network');
+    const visNodes = new vis.DataSet(nodesData.map(n => ({
+      id: n.id,
+      label: n.label,
+      level: n.level,
+      group: n.group,
+      title: n.desc || n.id,
+      shape: n.type === 'entity' || n.type === 'database' ? 'database' : (n.type === 'source' || n.type === 'provider' || n.type === 'runtime' ? 'hexagon' : 'box'),
+      font: {
+        color: '#ffffff',
+        face: 'Outfit',
+        size: n.level === 0 ? 13 : n.level >= 4 ? 10 : 11,
+        bold: n.level <= 1
+      },
+      color: {
+        background: COLORS[n.group].bg,
+        border: COLORS[n.group].border,
+        highlight: {
+          background: COLORS[n.group].bg,
+          border: COLORS[n.group].highlight
+        }
+      },
+      borderWidth: 2,
+      margin: n.level === 0 ? 12 : 8,
+      shadow: {
+        enabled: true,
+        color: COLORS[n.group].border + '35',
+        size: 12
+      }
+    })));
+
+    const visEdges = new vis.DataSet(edgesData.map((e, i) => ({
+      id: 'e' + i,
+      from: e.from,
+      to: e.to,
+      label: e.label || '',
+      arrows: 'to',
+      dashes: !!e.dashes,
+      color: {
+        color: e.dashes ? '#8b7cff55' : '#46526a88',
+        opacity: 0.65
+      },
+      font: {
+        align: 'middle',
+        size: 8,
+        color: '#7a879f',
+        background: '#070b12'
+      },
+      smooth: {
+        type: 'cubicBezier',
+        forceDirection: 'vertical',
+        roundness: 0.46
+      }
+    })));
+
+    const data = { nodes: visNodes, edges: visEdges };
+    const options = {
+      layout: {
+        hierarchical: {
+          enabled: true,
+          direction: 'UD',
+          sortMethod: 'directed',
+          levelSeparation: 165,
+          nodeSpacing: 200,
+          treeSpacing: 240,
+          blockShifting: true,
+          edgeMinimization: true,
+          parentCentralization: true
+        }
+      },
+      physics: {
+        enabled: true,
+        hierarchicalRepulsion: {
+          nodeDistance: 210,
+          centralGravity: 0.36,
+          springLength: 160,
+          springConstant: 0.05,
+          damping: 0.1
+        },
+        solver: 'hierarchicalRepulsion'
+      },
+      interaction: {
+        hover: true,
+        tooltipDelay: 180,
+        navigationButtons: true,
+        keyboard: true
+      },
+      nodes: {
+        widthConstraint: { maximum: 190 }
+      },
+      edges: {
+        smooth: {
+          type: 'cubicBezier',
+          forceDirection: 'vertical',
+          roundness: 0.46
+        }
+      }
+    };
+
+    const network = new vis.Network(container, data, options);
+
+    const groupNames = {
+      front: 'FRONTEND',
+      backend: 'BACKEND',
+      logic: 'LÓGICA / SERVICE',
+      data: 'DATOS / PERSISTENCIA',
+      ai: 'IA / ANÁLISIS',
+      automation: 'AUTOMATIZACIÓN',
+      infra: 'INFRA / RUNTIME',
+      source: 'FUENTE EXTERNA'
+    };
+
+    function makeTagClass(text) {
+      if (/dashboard|detail|settings|base|html/i.test(text)) return 'ep-view';
+      if (/state|score|action|fit|prompt|method|helper/i.test(text)) return 'ep-action';
+      if (/analysis_json|policy|profile|views|runs|opportunities|events/i.test(text)) return 'ep-db';
+      if (/gemini|heuristic|confidence|summary|reply|model/i.test(text)) return 'ep-ai';
+      return 'ep-view';
+    }
+
+    window.showNodeDetails = function(nodeId) {
+      const node = nodesData.find(n => n.id === nodeId);
+      if (!node) return;
+      const panel = document.getElementById('detailsPanel');
+      const color = COLORS[node.group].border;
+      let html = `
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <span class="node-badge" style="background:${color}22;color:${color};border:1px solid ${color}44;">${groupNames[node.group]}</span>
+          <span style="font-size:10px;color:#627089;">Nivel ${node.level}</span>
+          <span style="font-size:10px;color:#627089;">${node.type}</span>
+        </div>
+        <h2 class="details-title">${node.label.replace(/\n/g, ' ')}</h2>
+      `;
+
+      if (node.desc) {
+        html += `<div class="desc-block">${node.desc}</div>`;
+      }
+
+      if (node.files) {
+        html += `<div class="section-title">ARCHIVOS RELACIONADOS</div><div style="display:flex;flex-wrap:wrap;gap:4px;">`;
+        node.files.forEach(f => html += `<span class="endpoint-tag ${makeTagClass(f)}">${f}</span>`);
+        html += `</div>`;
+      }
+
+      if (node.fields) {
+        html += `<div class="section-title">DATOS / CAMPOS CLAVE</div><div class="code-block">`;
+        node.fields.forEach(f => html += `<div class="line-data"><span class="func">${f}</span></div>`);
+        html += `</div>`;
+      }
+
+      if (node.methods) {
+        html += `<div class="section-title">HELPERS / MÉTODOS</div><div class="code-block">`;
+        node.methods.forEach(m => html += `<div class="line-logic"><span class="keyword">function</span> <span class="func">${m}</span></div>`);
+        html += `</div>`;
+      }
+
+      panel.innerHTML = html;
+      panel.style.display = 'block';
+      panel.style.borderColor = color;
+    };
+
+    network.on('click', function(params) {
+      if (params.nodes.length > 0) {
+        const nodeId = params.nodes[0];
+        showNodeDetails(nodeId);
+        highlightFlow(nodeId);
+      } else {
+        document.getElementById('detailsPanel').style.display = 'none';
+        resetView(false);
+      }
+    });
+
+    window.switchTab = function(tabName, btnElement) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      btnElement.classList.add('active');
+      document.getElementById('tab-' + tabName).classList.add('active');
+    };
+
+    window.setLayout = function(type, btnElement) {
+      document.querySelectorAll('#tab-arch .btn').forEach(b => b.classList.remove('active'));
+      btnElement.classList.add('active');
+      if (type === 'hierarchical') {
+        network.setOptions({
+          layout: { hierarchical: { enabled: true, direction: 'UD', sortMethod: 'directed', levelSeparation: 165, nodeSpacing: 200, treeSpacing: 240 } },
+          physics: { enabled: true, hierarchicalRepulsion: { nodeDistance: 210, centralGravity: 0.36, springLength: 160, springConstant: 0.05, damping: 0.1 }, solver: 'hierarchicalRepulsion' }
+        });
+      } else {
+        network.setOptions({
+          layout: { hierarchical: { enabled: false } },
+          physics: { enabled: true, forceAtlas2Based: { gravitationalConstant: -115, centralGravity: 0.012, springLength: 190, springConstant: 0.06 }, solver: 'forceAtlas2Based' }
+        });
+      }
+      setTimeout(() => network.fit({ animation: true }), 120);
+    };
+
+    function connectedNodesOf(flow) {
+      return new Set(flow);
+    }
+
+    window.highlightFlow = function(focusNodeId, flowArray = null) {
+      let targets = new Set();
+      if (flowArray) {
+        targets = connectedNodesOf(flowArray);
+      } else if (focusNodeId) {
+        edgesData.forEach(e => {
+          if (e.from === focusNodeId) targets.add(e.to);
+          if (e.to === focusNodeId) targets.add(e.from);
+        });
+        targets.add(focusNodeId);
+      }
+
+      visNodes.forEach(n => {
+        visNodes.update({ id: n.id, opacity: targets.size === 0 ? 1 : (targets.has(n.id) ? 1 : 0.18) });
+      });
+
+      visEdges.forEach(e => {
+        visEdges.update({
+          id: e.id,
+          color: {
+            opacity: targets.size === 0 ? 0.65 : ((targets.has(e.from) && targets.has(e.to)) ? 0.88 : 0.08)
+          }
+        });
+      });
+    };
+
+    window.showFlow = function(name) {
+      const flows = {
+        global: nodesData.map(n => n.id),
+        frontend: ['nav_shell','frontend_dashboard','frontend_detail','frontend_settings','auth_routes','app_js'],
+        backend: ['views_py','import_endpoint','auth_routes','db_helper','flask_app'],
+        logic: ['ingestion_service','pipeline_service','ai_service','app_js','db_helper'],
+        data: ['db_core','opportunities_entity','events_entity','policies_entity','profiles_entity','saved_views_entity','runs_entity','analysis_json'],
+        sources: ['freelancer_source','pph_source','wwr_source','future_lane','ingestion_service','policies_entity'],
+        automation: ['automation_n8n','scheduler_loop','import_endpoint','ingestion_service','runtime_env','runs_entity'],
+        capture: ['freelancer_source','pph_source','wwr_source','ingestion_service','db_core','opportunities_entity'],
+        prioritization: ['ingestion_service','pipeline_service','ai_service','analysis_json','opportunities_entity','frontend_dashboard'],
+        iaFlow: ['ai_service','gemini_provider','heuristic_provider','analysis_json','frontend_ai_blocks','frontend_detail','frontend_dashboard','runtime_env'],
+        review: ['frontend_dashboard','frontend_detail','events_entity','opportunities_entity','pipeline_service'],
+        settingsFlow: ['frontend_settings','views_py','policies_entity','profiles_entity','runtime_env','automation_n8n'],
+        pipelineFlow: ['frontend_dashboard','frontend_detail','pipeline_service','opportunities_entity','events_entity','analysis_json'],
+        freelancer: ['freelancer_source','ingestion_service','pipeline_service','db_core','frontend_dashboard'],
+        pph: ['pph_source','ingestion_service','pipeline_service','db_core','frontend_dashboard'],
+        wwr: ['wwr_source','ingestion_service','pipeline_service','db_core','frontend_dashboard'],
+        futureLane: ['future_lane','policies_entity','frontend_settings']
+      };
+
+      const flow = flows[name] || [];
+      highlightFlow(null, flow);
+      if (flow.length) {
+        network.fit({ nodes: flow, animation: { duration: 700 } });
+        setTimeout(() => {
+          if (flow[0]) showNodeDetails(flow[0]);
+        }, 260);
+      }
+    };
+
+    window.resetView = function(fit = true) {
+      visNodes.forEach(n => visNodes.update({ id: n.id, opacity: 1 }));
+      visEdges.forEach(e => visEdges.update({ id: e.id, color: { opacity: 0.65 } }));
+      if (fit) network.fit({ animation: true });
+      document.getElementById('detailsPanel').style.display = 'none';
+    };
+
+    window.filterNodes = function() {
+      const term = document.getElementById('search').value.toLowerCase().trim();
+      if (!term) return resetView(false);
+      const matchIds = nodesData.filter(n =>
+        n.label.toLowerCase().includes(term) ||
+        n.id.toLowerCase().includes(term) ||
+        (n.desc && n.desc.toLowerCase().includes(term)) ||
+        (n.fields && n.fields.some(f => f.toLowerCase().includes(term))) ||
+        (n.methods && n.methods.some(m => m.toLowerCase().includes(term))) ||
+        (n.files && n.files.some(f => f.toLowerCase().includes(term)))
+      ).map(n => n.id);
+
+      highlightFlow(null, matchIds);
+      if (matchIds.length === 1) {
+        network.selectNodes([matchIds[0]]);
+        network.focus(matchIds[0], { scale: 1.28, animation: true });
+        showNodeDetails(matchIds[0]);
+      } else if (matchIds.length > 0) {
+        network.fit({ nodes: matchIds, animation: true });
+      }
+    };
+
+    window.onload = function() {
+      network.once('stabilized', function() {
+        network.fit({ animation: { duration: 900 } });
+        setTimeout(() => showFlow('global'), 420);
+      });
+    };
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') resetView();
+    });
+  </script>
+</body>
+</html>

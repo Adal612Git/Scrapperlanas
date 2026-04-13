@@ -190,6 +190,10 @@ def dashboard():
         "SELECT ROUND(COALESCE(AVG(score), 0), 1) AS total FROM opportunities"
     ).fetchone()["total"]
 
+    operational_summary = _operational_summary(db)
+    decision_summary = _decision_summary(db)
+    ai_impact_summary = _ai_impact_summary(db)
+
     source_summary = db.execute(
         """
         SELECT source_label, COUNT(*) AS total
@@ -271,6 +275,8 @@ def dashboard():
         metrics=metrics,
         score_average=score_average,
         high_priority_ratio=high_priority_ratio,
+        operational_summary=operational_summary,
+        decision_summary=decision_summary,
         source_summary=source_summary,
         sector_summary=sector_summary,
         state_summary=state_summary,
@@ -284,6 +290,7 @@ def dashboard():
         focus_items=focus_items,
         daily_plan=daily_plan,
         automation_summary=automation_summary,
+        ai_impact_summary=ai_impact_summary,
     )
 
 
@@ -674,6 +681,7 @@ def settings():
     profile = _get_profile(db, g.user["id"])
     automation_summary = _automation_summary(db)
     n8n_summary = _n8n_summary()
+    ai_impact_summary = _ai_impact_summary(db)
     policies = [
         {
             **dict(row),
@@ -711,6 +719,7 @@ def settings():
         automation_summary=automation_summary,
         n8n_summary=n8n_summary,
         ai_status=ai_status,
+        ai_impact_summary=ai_impact_summary,
     )
 
 
@@ -839,6 +848,9 @@ def _serialize_opportunity(row) -> dict:
     item["stack"] = json.loads(item["stack"] or "[]")
     item["risk_reasons"] = json.loads(item["risk_reasons"] or "[]")
     item["analysis"] = json.loads(item.get("analysis_json") or "{}")
+    item["analysis_model_used"] = str(item["analysis"].get("model_used") or "").strip()
+    item["analysis_origin_label"] = _analysis_origin_label(item["analysis_model_used"])
+    item["analysis_origin_badge_class"] = _analysis_origin_badge_class(item["analysis_model_used"])
     item["budget_display"] = _format_budget(item)
     item["state_badge_class"] = STATE_BADGE_STYLES.get(item["state"], "border border-slate-600 bg-slate-800 text-slate-300")
     item["risk_badge_class"] = RISK_BADGE_STYLES.get(item["risk_level"], "border border-slate-600 bg-slate-800 text-slate-300")
@@ -853,6 +865,34 @@ def _serialize_opportunity(row) -> dict:
     item["substate"] = item.get("substate", "")
     item.update(_priority_profile(item))
     return item
+
+
+def _analysis_origin_label(model_used: str) -> str:
+    if not model_used:
+        return "Captura / reglas"
+    if model_used == "heuristic":
+        return "Fallback heurístico"
+    if model_used.startswith("gemini"):
+        return "Gemini"
+    if model_used.startswith("deepseek"):
+        return "DeepSeek"
+    if model_used == "ollama":
+        return "Ollama"
+    return model_used
+
+
+def _analysis_origin_badge_class(model_used: str) -> str:
+    if not model_used:
+        return "border border-slate-700 bg-slate-950 text-slate-300"
+    if model_used == "heuristic":
+        return "border border-amber-500/30 bg-amber-500/15 text-amber-200"
+    if model_used.startswith("gemini"):
+        return "border border-blue-500/30 bg-blue-500/15 text-blue-200"
+    if model_used.startswith("deepseek"):
+        return "border border-fuchsia-500/30 bg-fuchsia-500/15 text-fuchsia-200"
+    if model_used == "ollama":
+        return "border border-emerald-500/30 bg-emerald-500/15 text-emerald-200"
+    return "border border-slate-700 bg-slate-950 text-slate-300"
 
 
 def _format_budget(item: dict) -> str:
@@ -1046,6 +1086,131 @@ def _recent_automation_metrics(db) -> dict:
         "updated_total": int(row["updated_total"] or 0),
         "average_duration_ms": float(row["average_duration_ms"] or 0),
         "latest_error": dict(latest_error) if latest_error else None,
+    }
+
+
+def _ai_impact_summary(db) -> dict:
+    models = ("gemini", "heuristic")
+    actions = ("apply_now", "review_today", "clarify_scope", "skip")
+    matrix = {}
+    totals = {}
+    rows = db.execute(
+        "SELECT analysis_json FROM opportunities WHERE analysis_json IS NOT NULL AND analysis_json <> ''"
+    ).fetchall()
+    parsed_rows = []
+    for row in rows:
+        try:
+            parsed_rows.append(json.loads(row["analysis_json"] or "{}"))
+        except json.JSONDecodeError:
+            continue
+
+    for model in models:
+        row_counts = {}
+        for action in actions:
+            row_counts[action] = sum(
+                1
+                for analysis in parsed_rows
+                if str(analysis.get("model_used") or "").startswith(model)
+                and str(analysis.get("recommended_action") or "") == action
+            )
+        matrix[model] = row_counts
+        totals[model] = sum(row_counts.values())
+
+    return {
+        "models": models,
+        "actions": actions,
+        "matrix": matrix,
+        "totals": totals,
+    }
+
+
+def _decision_summary(db) -> dict:
+    rows = db.execute(
+        """
+        SELECT
+            o.id,
+            o.source_label,
+            o.source_key,
+            o.created_at,
+            MIN(e.created_at) AS decision_at,
+            MIN(CASE WHEN e.new_state IN ('INTERESANTE', 'APLICADO', 'FOLLOW_UP', 'DESCARTADO') THEN e.created_at END) AS useful_decision_at
+        FROM opportunities o
+        LEFT JOIN opportunity_events e ON e.opportunity_id = o.id
+        GROUP BY o.id, o.source_label, o.source_key, o.created_at
+        HAVING useful_decision_at IS NOT NULL
+        """
+    ).fetchall()
+
+    def _minutes_delta(created_at, decision_at) -> float | None:
+        created = _parse_datetime(created_at)
+        decided = _parse_datetime(decision_at)
+        if created is None or decided is None:
+            return None
+        return max(0.0, (decided - created).total_seconds() / 60.0)
+
+    per_source: dict[str, list[float]] = {}
+    all_deltas: list[float] = []
+    for row in rows:
+        delta = _minutes_delta(row["created_at"], row["useful_decision_at"])
+        if delta is None:
+            continue
+        all_deltas.append(delta)
+        per_source.setdefault(row["source_label"], []).append(delta)
+
+    def _avg(values: list[float]) -> float:
+        return round(sum(values) / len(values), 1) if values else 0.0
+
+    return {
+        "decision_count": len(all_deltas),
+        "average_minutes": _avg(all_deltas),
+        "by_source": [
+            {"source_label": source, "average_minutes": _avg(values), "count": len(values)}
+            for source, values in sorted(per_source.items(), key=lambda item: (-len(item[1]), item[0]))
+        ],
+    }
+
+
+def _operational_summary(db) -> dict:
+    rows = db.execute(
+        """
+        SELECT
+            source_label,
+            source_key,
+            state,
+            COUNT(*) AS total,
+            ROUND(COALESCE(AVG(score), 0), 1) AS avg_score,
+            COALESCE(SUM(CASE WHEN analysis_json LIKE '%"model_used": "gemini%' THEN 1 ELSE 0 END), 0) AS gemini_count,
+            COALESCE(SUM(CASE WHEN analysis_json LIKE '%"model_used": "heuristic"' THEN 1 ELSE 0 END), 0) AS heuristic_count,
+            COALESCE(SUM(CASE WHEN analysis_json LIKE '%"recommended_action": "apply_now"' THEN 1 ELSE 0 END), 0) AS apply_now_count,
+            COALESCE(SUM(CASE WHEN analysis_json LIKE '%"recommended_action": "review_today"' THEN 1 ELSE 0 END), 0) AS review_today_count,
+            COALESCE(SUM(CASE WHEN analysis_json LIKE '%"recommended_action": "clarify_scope"' THEN 1 ELSE 0 END), 0) AS clarify_scope_count,
+            COALESCE(SUM(CASE WHEN analysis_json LIKE '%"recommended_action": "skip"' THEN 1 ELSE 0 END), 0) AS skip_count
+        FROM opportunities
+        GROUP BY source_label, source_key, state
+        ORDER BY total DESC, source_label ASC, state ASC
+        """
+    ).fetchall()
+
+    return {
+        "by_source_state": [dict(row) for row in rows],
+        "by_source": db.execute(
+            """
+            SELECT
+                source_label,
+                source_key,
+                COUNT(*) AS total,
+                ROUND(COALESCE(AVG(score), 0), 1) AS avg_score,
+                COALESCE(SUM(CASE WHEN analysis_json LIKE '%"model_used": "gemini%' THEN 1 ELSE 0 END), 0) AS gemini_count,
+                COALESCE(SUM(CASE WHEN analysis_json LIKE '%"model_used": "heuristic"' THEN 1 ELSE 0 END), 0) AS heuristic_count,
+                COALESCE(SUM(CASE WHEN state = 'INTERESANTE' THEN 1 ELSE 0 END), 0) AS interesting_count,
+                COALESCE(SUM(CASE WHEN state = 'APLICADO' THEN 1 ELSE 0 END), 0) AS applied_count,
+                COALESCE(SUM(CASE WHEN state = 'FOLLOW_UP' THEN 1 ELSE 0 END), 0) AS follow_up_count,
+                COALESCE(SUM(CASE WHEN state = 'DESCARTADO' THEN 1 ELSE 0 END), 0) AS discarded_count
+            FROM opportunities
+            GROUP BY source_label, source_key
+            ORDER BY total DESC, source_label ASC
+            """
+        ).fetchall(),
     }
 
 
@@ -1313,32 +1478,32 @@ def _quick_actions(item: dict) -> list[dict]:
             "state": "INTERESANTE",
             "label": "Marcar como interesante",
             "note": "Marcada como prioridad real desde detalle.",
-            "button_class": "border-blue-500/30 bg-blue-600 text-white hover:bg-blue-500",
+            "button_class": "border-blue-500/25 bg-blue-500/10 text-blue-100 hover:bg-blue-500/15",
             "icon": "fa-solid fa-star",
         },
         {
             "state": "APLICADO",
             "label": "Marcar aplicada",
             "note": "Aplicacion enviada desde la fuente original.",
-            "button_class": "border-fuchsia-500/30 bg-fuchsia-600 text-white hover:bg-fuchsia-500",
+            "button_class": "border-fuchsia-500/25 bg-fuchsia-500/10 text-fuchsia-100 hover:bg-fuchsia-500/15",
             "icon": "fa-solid fa-paper-plane",
         },
         {
             "state": "FOLLOW_UP",
             "label": "Mover a follow-up",
             "note": "Pendiente seguimiento comercial.",
-            "button_class": "border-amber-500/30 bg-amber-500/15 text-amber-200 hover:bg-amber-500/20",
+            "button_class": "border-amber-500/25 bg-amber-500/10 text-amber-100 hover:bg-amber-500/15",
             "icon": "fa-solid fa-comments",
         },
         {
             "state": "DESCARTADO",
             "label": "Descartar",
             "note": "Descartada por baja prioridad o mal encaje.",
-            "button_class": "border-rose-500/30 bg-rose-500/15 text-rose-200 hover:bg-rose-500/20",
+            "button_class": "border-rose-500/25 bg-rose-500/10 text-rose-100 hover:bg-rose-500/15",
             "icon": "fa-solid fa-ban",
         },
     )
-    return [action for action in actions if action["state"] != item.get("state")]
+    return list(actions)
 
 
 def _looks_contract_now(text: str) -> bool:

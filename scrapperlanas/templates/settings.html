@@ -8,16 +8,17 @@
   <span class="rounded-full border border-slate-700 bg-slate-950 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-slate-300">Modo actual: {{ automation_summary.mode_key }}</span>
   <span class="rounded-full border border-slate-700 bg-slate-900 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-slate-300">{{ policies|length }} activas</span>
 {% endblock %}
-{% block page_secondary_actions %}
-  <form action="{{ url_for('main.ingest_now') }}" method="post">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <button type="submit" class="inline-flex items-center gap-2 rounded-2xl border border-blue-500/30 bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-500">
-      <i class="fa-solid fa-satellite-dish"></i>
-      Ejecutar ingesta ahora
-    </button>
-  </form>
-{% endblock %}
+{% block page_actions %}{% endblock %}
 {% block content %}
+  <div class="sticky top-6 z-30 mb-4 flex justify-end">
+    <form action="{{ url_for('main.ingest_now') }}" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="inline-flex items-center gap-2 rounded-2xl border border-blue-500/30 bg-slate-900/90 px-4 py-3 text-sm font-bold text-blue-100 shadow-xl shadow-black/30 backdrop-blur hover:bg-slate-800">
+        <i class="fa-solid fa-satellite-dish"></i>
+        Ejecutar ingesta ahora
+      </button>
+    </form>
+  </div>
   <section class="rounded-[28px] border border-slate-800 bg-slate-900/90 p-6 shadow-xl shadow-black/20">
     <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
       <div>
@@ -81,39 +82,37 @@
     </div>
   </section>
 
-  <section class="grid gap-4 xl:grid-cols-2">
+  <section class="mt-6 grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
     <article class="rounded-[28px] border border-slate-800 bg-slate-900/90 p-6 shadow-xl shadow-black/20">
-      <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Perfil operativo</p>
-      <h2 class="mt-2 text-2xl font-black text-white">Preferencias de enfoque</h2>
-        <p class="mt-2 text-sm leading-6 text-slate-400">Estos criterios alimentan filtros, scoring y la decision asistida del pipeline de las fuentes activas.</p>
-
-      <form method="post" class="mt-6 grid gap-4">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <input type="hidden" name="action" value="update_profile">
-        <label class="block">
-          <span class="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Keywords preferidas</span>
-          <textarea name="keywords" rows="3" placeholder="rust, python, scraping, n8n" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">{{ profile.keywords }}</textarea>
-        </label>
-        <label class="block">
-          <span class="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Sectores de interes</span>
-          <input type="text" name="sectors" value="{{ profile.sectors }}" placeholder="Tecnologia, SaaS B2B, FinTech" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
-        </label>
-        <label class="block">
-          <span class="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Pago minimo</span>
-          <input type="number" name="min_budget" min="0" step="100" value="{{ profile.min_budget }}" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
-        </label>
-        <input type="hidden" name="preferred_sources" value="{{ profile.preferred_sources }}">
-        <button type="submit" class="inline-flex items-center justify-center gap-2 rounded-2xl border border-blue-500/30 bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-500">
-          <i class="fa-solid fa-floppy-disk"></i>
-          Guardar preferencias
-        </button>
-      </form>
+      <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">IA operativa</p>
+      <h2 class="mt-2 text-2xl font-black text-white">Impacto por proveedor</h2>
+      <p class="mt-2 text-sm leading-6 text-slate-400">Conteo simple de acciones sugeridas por modelo para comparar Gemini contra el fallback heurístico.</p>
+      <div class="mt-5 grid gap-4 sm:grid-cols-2">
+        <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+          <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Proveedor</p>
+          <p class="mt-2 text-sm font-bold text-white">{{ ai_status.provider }}</p>
+          <p class="mt-2 text-xs text-slate-500">{{ ai_status.model or "sin modelo activo" }} / embeddings {{ ai_status.embed_provider }}</p>
+        </div>
+        <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+          <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Impacto</p>
+          <p class="mt-2 text-sm font-bold text-white">{{ ai_impact_summary.totals.gemini + ai_impact_summary.totals.heuristic }}</p>
+          <p class="mt-2 text-xs text-slate-500">Gemini {{ ai_impact_summary.totals.gemini }} / Heuristic {{ ai_impact_summary.totals.heuristic }}</p>
+        </div>
+      </div>
+      <div class="mt-4 grid gap-2 sm:grid-cols-2">
+        {% for action in ai_impact_summary.actions %}
+          <div class="rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3">
+            <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">{{ action }}</p>
+            <p class="mt-2 text-lg font-black text-white">{{ ai_impact_summary.matrix['gemini'][action] + ai_impact_summary.matrix['heuristic'][action] }}</p>
+          </div>
+        {% endfor %}
+      </div>
     </article>
 
     <article class="rounded-[28px] border border-slate-800 bg-slate-900/90 p-6 shadow-xl shadow-black/20">
+      <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Memoria de trabajo</p>
       <div class="flex items-start justify-between gap-4">
         <div>
-          <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Memoria de trabajo</p>
           <h2 class="mt-2 text-2xl font-black text-white">Vistas guardadas</h2>
           <p class="mt-2 text-sm leading-6 text-slate-400">Atajos persistentes hacia los filtros que mas usas en operacion.</p>
         </div>
@@ -140,6 +139,34 @@
         {% endfor %}
       </div>
     </article>
+  </section>
+
+  <section class="mt-6 rounded-[28px] border border-slate-800 bg-slate-900/90 p-6 shadow-xl shadow-black/20">
+    <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Perfil operativo</p>
+    <h2 class="mt-2 text-2xl font-black text-white">Preferencias de enfoque</h2>
+      <p class="mt-2 text-sm leading-6 text-slate-400">Estos criterios alimentan filtros, scoring y la decision asistida del pipeline de las fuentes activas.</p>
+
+    <form method="post" class="mt-6 grid gap-4">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="action" value="update_profile">
+      <label class="block">
+        <span class="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Keywords preferidas</span>
+        <textarea name="keywords" rows="3" placeholder="rust, python, scraping, n8n" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">{{ profile.keywords }}</textarea>
+      </label>
+      <label class="block">
+        <span class="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Sectores de interes</span>
+        <input type="text" name="sectors" value="{{ profile.sectors }}" placeholder="Tecnologia, SaaS B2B, FinTech" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
+      </label>
+      <label class="block">
+        <span class="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Pago minimo</span>
+        <input type="number" name="min_budget" min="0" step="100" value="{{ profile.min_budget }}" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
+      </label>
+      <input type="hidden" name="preferred_sources" value="{{ profile.preferred_sources }}">
+      <button type="submit" class="inline-flex items-center justify-center gap-2 rounded-2xl border border-blue-500/30 bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-500">
+        <i class="fa-solid fa-floppy-disk"></i>
+        Guardar preferencias
+      </button>
+    </form>
   </section>
 
   <section class="mt-6 rounded-[28px] border border-slate-800 bg-slate-900/90 p-6 shadow-xl shadow-black/20">
@@ -264,11 +291,11 @@
     {% endfor %}
   </section>
 
-  <section class="mt-6 rounded-[28px] border border-slate-800 bg-slate-900/90 p-6 shadow-xl shadow-black/20">
+  <section class="mt-6 rounded-[28px] border border-slate-800 bg-slate-900/80 p-6 shadow-lg shadow-black/10">
     <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Pendientes</p>
     <h2 class="mt-2 text-2xl font-black text-white">Fuentes futuras preparadas</h2>
     <p class="mt-2 text-sm leading-6 text-slate-400">Aqui quedan solo las fuentes que siguen en cola de implementacion real. La ruta recomendada para Upwork es alertas oficiales por correo o importacion externa.</p>
-    <div class="mt-4 grid gap-4 md:grid-cols-3">
+    <div class="mt-4 grid gap-4 md:grid-cols-3 opacity-90">
       {% for policy in future_policies %}
         <article class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
           <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Pendiente</p>

@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Comparativa de trabajo — Scrapperlanas</title>
+  <style>
+    :root {
+      --bg: #f4f8fc;
+      --bg-2: #eef4fb;
+      --panel: rgba(255, 255, 255, 0.9);
+      --panel-2: rgba(248, 251, 255, 0.96);
+      --text: #16324f;
+      --muted: #5c7793;
+      --line: rgba(57, 122, 209, 0.16);
+      --blue: #3f83f8;
+      --cyan: #22c7e8;
+      --violet: #8b7cff;
+      --green: #20b486;
+      --amber: #f0b429;
+      --red: #f06078;
+      --shadow: 0 20px 50px rgba(28, 63, 109, 0.12);
+      --radius: 24px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(34, 199, 232, 0.14), transparent 24%),
+        radial-gradient(circle at top right, rgba(139, 124, 255, 0.12), transparent 22%),
+        linear-gradient(180deg, #f8fbff 0%, #f1f6fc 45%, #ebf2fa 100%);
+      min-height: 100vh;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(57, 122, 209, 0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(57, 122, 209, 0.035) 1px, transparent 1px);
+      background-size: 32px 32px;
+      opacity: 0.6;
+      mask-image: linear-gradient(to bottom, rgba(255,255,255,0.8), transparent 82%);
+    }
+
+    .wrap {
+      width: min(1200px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 28px 0 64px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      border-radius: 32px;
+      border: 1px solid var(--line);
+      padding: 36px;
+      background: linear-gradient(135deg, rgba(255,255,255,0.96), rgba(243,248,255,0.94));
+      box-shadow: var(--shadow);
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      right: -80px;
+      bottom: -80px;
+      width: 280px;
+      height: 280px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(63, 131, 248, 0.18), transparent 65%);
+      filter: blur(8px);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: rgba(34, 199, 232, 0.1);
+      border: 1px solid rgba(34, 199, 232, 0.18);
+      color: #0d84a0;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 16px 0 12px;
+      font-size: clamp(34px, 5vw, 58px);
+      line-height: 1.02;
+      letter-spacing: -0.04em;
+      color: #0f2740;
+    }
+
+    .subtitle {
+      max-width: 840px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1.7;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 18px;
+      margin-top: 26px;
+    }
+
+    .hero-card,
+    .card {
+      padding: 20px;
+      border-radius: 22px;
+      background: rgba(255,255,255,0.78);
+      border: 1px solid rgba(63, 131, 248, 0.12);
+      box-shadow: 0 10px 30px rgba(58, 100, 155, 0.08);
+      backdrop-filter: blur(8px);
+    }
+
+    .hero-card h3,
+    .card h3 {
+      margin: 0 0 12px;
+      font-size: 18px;
+      letter-spacing: -0.01em;
+      color: #143252;
+    }
+
+    .hero-card p,
+    .card p,
+    li {
+      color: var(--muted);
+      line-height: 1.65;
+    }
+
+    ul {
+      margin: 0;
+      padding-left: 20px;
+    }
+
+    li { margin: 8px 0; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .stat {
+      padding: 16px;
+      border-radius: 18px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(244,249,255,0.92));
+      border: 1px solid rgba(63,131,248,0.12);
+    }
+
+    .stat .k {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .stat .v {
+      margin-top: 8px;
+      font-size: 24px;
+      font-weight: 800;
+      color: #153558;
+    }
+
+    .section {
+      margin-top: 24px;
+      border-radius: var(--radius);
+      overflow: hidden;
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, var(--panel), var(--panel-2));
+      box-shadow: var(--shadow);
+    }
+
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 22px 24px;
+      border-bottom: 1px solid rgba(63,131,248,0.1);
+      background: linear-gradient(90deg, rgba(63,131,248,0.08), rgba(34,199,232,0.05));
+    }
+
+    .section-title {
+      margin: 0;
+      font-size: 27px;
+      letter-spacing: -0.02em;
+      color: #112b47;
+    }
+
+    .tag {
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      border: 1px solid rgba(63,131,248,0.12);
+      background: rgba(255,255,255,0.7);
+      color: #2f5f93;
+      white-space: nowrap;
+    }
+
+    .body { padding: 24px; }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .timeline {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      gap: 14px;
+    }
+
+    .timeline li {
+      position: relative;
+      margin: 0;
+      padding: 16px 18px 16px 58px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.76);
+      border: 1px solid rgba(63,131,248,0.12);
+    }
+
+    .timeline li::before {
+      content: attr(data-step);
+      position: absolute;
+      left: 16px;
+      top: 16px;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-size: 13px;
+      font-weight: 800;
+      color: white;
+      background: linear-gradient(135deg, var(--blue), var(--cyan));
+      box-shadow: 0 10px 20px rgba(63,131,248,0.22);
+    }
+
+    .good li::marker { color: var(--green); }
+    .warn li::marker { color: var(--amber); }
+    .risk li::marker { color: var(--red); }
+    .violet li::marker { color: var(--violet); }
+
+    .compare {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+
+    .compare .card:first-child {
+      border-top: 4px solid rgba(240, 180, 41, 0.85);
+    }
+
+    .compare .card:last-child {
+      border-top: 4px solid rgba(32, 180, 134, 0.85);
+    }
+
+    .quote {
+      padding: 24px;
+      border-radius: 24px;
+      background: linear-gradient(135deg, rgba(255,255,255,0.84), rgba(237,245,255,0.9));
+      border: 1px solid rgba(34,199,232,0.14);
+      color: #274564;
+      font-size: 18px;
+      line-height: 1.8;
+      box-shadow: 0 14px 40px rgba(34, 86, 153, 0.1);
+    }
+
+    .final {
+      margin-top: 24px;
+      padding: 28px;
+      border-radius: 28px;
+      border: 1px solid rgba(34,199,232,0.14);
+      background: linear-gradient(135deg, rgba(232, 247, 255, 0.98), rgba(245, 241, 255, 0.95));
+      box-shadow: var(--shadow);
+    }
+
+    .final h2 {
+      margin: 0 0 12px;
+      font-size: 30px;
+      color: #122e4c;
+    }
+
+    .final p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.75;
+      font-size: 17px;
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .chip {
+      padding: 10px 14px;
+      border-radius: 999px;
+      font-weight: 700;
+      background: rgba(255,255,255,0.7);
+      border: 1px solid rgba(63,131,248,0.12);
+      color: #23486f;
+    }
+
+    @media (max-width: 980px) {
+      .hero-grid,
+      .grid-2,
+      .grid-3,
+      .stats,
+      .compare {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .wrap { width: min(100% - 20px, 100%); }
+      .hero,
+      .body,
+      .section-head,
+      .final { padding: 18px; }
+      .hero-grid,
+      .grid-2,
+      .grid-3,
+      .stats,
+      .compare {
+        grid-template-columns: 1fr;
+      }
+      h1 { font-size: 36px; }
+      .section-title { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="hero">
+      <div class="eyebrow">Scrapperlanas · Comparativa de avance</div>
+      <h1>Del arranque incierto al MVP funcional</h1>
+      <p class="subtitle">
+        Este documento resume el trabajo realizado desde que se tomó el proyecto, se clonó y se intentó correr en local, hasta el punto actual en que Scrapperlanas ya opera como un MVP funcional, medible y usable. fileciteturn32file0
+      </p>
+
+      <div class="hero-grid">
+        <div class="hero-card">
+          <h3>Qué documenta</h3>
+          <ul class="good">
+            <li>En qué estado se recibió el proyecto.</li>
+            <li>Qué problemas aparecieron al inicio.</li>
+            <li>Qué se corrigió e implementó.</li>
+            <li>Cómo quedó el sistema hasta hoy.</li>
+            <li>Qué valor real tuvo el trabajo realizado. fileciteturn32file0</li>
+          </ul>
+        </div>
+        <div class="hero-card">
+          <h3>Resultado general</h3>
+          <p>
+            Scrapperlanas pasó de ser una base prometedora, pero todavía ambigua, a una consola operativa freelance-first cerrada como MVP, con fuentes reales, IA funcional, frontend reorganizado y métricas mínimas para operar con criterio. fileciteturn32file0
+          </p>
+        </div>
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <div class="k">Inicio</div>
+          <div class="v">Base ambigua</div>
+        </div>
+        <div class="stat">
+          <div class="k">Local</div>
+          <div class="v">Stack arriba</div>
+        </div>
+        <div class="stat">
+          <div class="k">IA</div>
+          <div class="v">Gemini activo</div>
+        </div>
+        <div class="stat">
+          <div class="k">Estado actual</div>
+          <div class="v">MVP funcional</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2 class="section-title">1. Estado inicial del proyecto</h2>
+        <div class="tag">Punto de partida</div>
+      </div>
+      <div class="body grid-2">
+        <div class="card">
+          <h3>Situación observada al recibirlo</h3>
+          <ul class="risk">
+            <li>El proyecto existía en repositorio, pero no estaba validado de punta a punta en local.</li>
+            <li>Era necesario levantarlo en Docker y entender cómo se conectaban sus piezas reales.</li>
+            <li>Había ambigüedad entre lo que parecía soportar y lo que realmente funcionaba.</li>
+            <li>El dashboard no reflejaba bien si llegaban oportunidades reales o solo demo.</li>
+            <li>La experiencia frontend estaba cargada y poco jerarquizada. fileciteturn32file0</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Lectura inicial</h3>
+          <p>
+            El proyecto se recibió como una base prometedora, pero todavía no cerrada como producto operativo confiable. El objetivo inicial no fue agregar funciones, sino volverlo ejecutable, entendible y verificable en local. fileciteturn32file0
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2 class="section-title">2. Primer objetivo de trabajo</h2>
+        <div class="tag">Puesta en marcha</div>
+      </div>
+      <div class="body">
+        <div class="card">
+          <ul class="good">
+            <li>Correr en local.</li>
+            <li>Levantar servicios correctamente.</li>
+            <li>Mostrar datos en dashboard.</li>
+            <li>Diferenciar entre demo y real.</li>
+            <li>Validar fuentes reales.</li>
+            <li>Confirmar qué servía y qué no.</li>
+            <li>Convertirlo en una consola utilizable. fileciteturn32file0</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2 class="section-title">3. Línea de trabajo realizada</h2>
+        <div class="tag">Etapas clave</div>
+      </div>
+      <div class="body">
+        <ol class="timeline">
+          <li data-step="1"><strong>Puesta en marcha en local.</strong> Se levantó el proyecto con Docker, se corrigió el arranque de n8n, se validó app web + PostgreSQL + n8n y se revisó el estado real de la base de datos. fileciteturn32file0</li>
+          <li data-step="2"><strong>Estabilización del dashboard.</strong> Se corrigió la mezcla entre demo y real, se hicieron visibles badges y señales operativas, y se ajustó la vista para priorizar mejor oportunidades reales. fileciteturn32file0</li>
+          <li data-step="3"><strong>Validación de fuentes reales.</strong> Se activaron, probaron, descartaron o reorientaron varias fuentes para separar señal de ruido y dejar una base freelance-first útil. fileciteturn32file0</li>
+          <li data-step="4"><strong>Reorientación del producto.</strong> Se dejó claro que Scrapperlanas debía enfocarse en programación, automatización, scraping, APIs, integraciones, backend e IA aplicada, evitando que pareciera una bolsa genérica de empleo. fileciteturn32file0</li>
+          <li data-step="5"><strong>Integración real de IA.</strong> Se activó Gemini, se validó el fallback heurístico y se confirmó que la IA ya participa en score, resumen, veredicto, plan y respuesta sugerida. fileciteturn32file0</li>
+          <li data-step="6"><strong>Trazabilidad y métricas.</strong> Se agregó trazabilidad visual del origen de análisis y se incorporaron métricas mínimas como impacto por IA, resumen por fuente y tiempo a decisión. fileciteturn32file0</li>
+          <li data-step="7"><strong>Rediseño estructural del frontend.</strong> Se reorganizaron dashboard, detalle, settings y navegación para convertir el sistema en una consola operativa más clara y usable. fileciteturn32file0</li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2 class="section-title">4. Fuentes y orientación del producto</h2>
+        <div class="tag">Freelance-first</div>
+      </div>
+      <div class="body grid-2">
+        <div class="card">
+          <h3>Aprendizajes clave</h3>
+          <ul class="warn">
+            <li>No toda fuente era útil para freelance-first.</li>
+            <li>Varias fuentes traían empleo formal/corporativo, no proyectos freelance técnicos.</li>
+            <li>Algunas fuentes estaban bloqueadas o eran poco viables en runtime real.</li>
+            <li>Hubo que separar fuentes útiles, de apoyo, futuras y fuentes a apagar. fileciteturn32file0</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Fuentes que terminaron aportando valor real</h3>
+          <ul class="good">
+            <li>freelancer_com</li>
+            <li>peopleperhour</li>
+            <li>weworkremotely</li>
+          </ul>
+          <p style="margin-top:12px;">
+            Como resultado, se dejó una base mucho más alineada a freelance-first y menos contaminada por ruido innecesario. fileciteturn32file0
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2 class="section-title">5. IA, scoring y trazabilidad</h2>
+        <div class="tag">Inteligencia útil</div>
+      </div>
+      <div class="body grid-3">
+        <div class="card">
+          <h3>Integración real de IA</h3>
+          <ul class="good">
+            <li>Soporte validado para heuristic, gemini, deepseek y ollama.</li>
+            <li>Gemini activado como proveedor real.</li>
+            <li>Fallback heurístico confirmado.</li>
+            <li>Score final afectado por score_delta. fileciteturn32file0</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Qué se logró</h3>
+          <ul>
+            <li>Resumen IA</li>
+            <li>Veredicto IA</li>
+            <li>Plan de ataque</li>
+            <li>Respuesta sugerida</li>
+            <li>Fit label y fit reason</li>
+            <li>Recommended action / state</li>
+            <li>Confidence y ajuste real del score. fileciteturn32file0</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Trazabilidad agregada</h3>
+          <ul class="violet">
+            <li>Gemini</li>
+            <li>Fallback heurístico</li>
+            <li>Captura/parsing</li>
+            <li>Reglas/mixto</li>
+          </ul>
+          <p style="margin-top:12px;">Eso volvió mucho más claro el origen de cada bloque del detalle. fileciteturn32file0</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2 class="section-title">6. Métricas y rediseño estructural</h2>
+        <div class="tag">Operación visible</div>
+      </div>
+      <div class="body grid-2">
+        <div class="card">
+          <h3>Métricas incorporadas</h3>
+          <ul class="good">
+            <li>Impacto por proveedor de IA.</li>
+            <li>Conteo Gemini vs heuristic.</li>
+            <li>Acciones sugeridas por modelo.</li>
+            <li>Resumen por fuente.</li>
+            <li>Score promedio por fuente.</li>
+            <li>Distribución de estados.</li>
+            <li>Tiempo a decisión. fileciteturn32file0</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Rediseño estructural del frontend</h3>
+          <ul>
+            <li>Dashboard: mejor separación entre control, radar e impacto.</li>
+            <li>Detalle: agrupado en análisis, operación y evidencia.</li>
+            <li>Settings: reordenado por intención operativa.</li>
+            <li>Navegación/header: jerarquía más clara entre navegación principal y subnavegación. fileciteturn32file0</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2 class="section-title">7. Antes vs ahora</h2>
+        <div class="tag">Comparativa directa</div>
+      </div>
+      <div class="body compare">
+        <div class="card">
+          <h3>Antes</h3>
+          <ul class="risk">
+            <li>Proyecto levantable pero no validado de punta a punta.</li>
+            <li>Dashboard ambiguo.</li>
+            <li>Fuentes mezcladas y poco alineadas.</li>
+            <li>IA no validada en operación real.</li>
+            <li>Frontend cargado y poco jerarquizado.</li>
+            <li>Poco claro qué era demo, qué era real y qué servía.</li>
+            <li>Sin lectura suficiente de valor operativo. fileciteturn32file0</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Ahora</h3>
+          <ul class="good">
+            <li>Stack funcionando en local.</li>
+            <li>Dashboard claro y operativo.</li>
+            <li>Fuentes reales orientadas a freelance-first.</li>
+            <li>Gemini ya funcionando dentro del flujo.</li>
+            <li>Fallback heurístico activo y útil.</li>
+            <li>Trazabilidad clara del origen de análisis.</li>
+            <li>Métricas mínimas y tiempo a decisión visibles.</li>
+            <li>Frontend reordenado y consistente.</li>
+            <li>MVP cerrado y listo para operación real. fileciteturn32file0</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2 class="section-title">8. Valor del trabajo realizado</h2>
+        <div class="tag">Impacto real</div>
+      </div>
+      <div class="body grid-2">
+        <div class="card">
+          <h3>No fue solo hacerlo correr</h3>
+          <p>
+            El valor del trabajo no estuvo únicamente en levantar el proyecto, sino en convertir una base prometedora en un MVP funcional, aclarar el objetivo real del producto, separar ruido de señal, validar fuentes, integrar IA útil sin sobreautomatizar y ordenar el frontend para que el sistema se pueda usar de verdad. fileciteturn32file0
+          </p>
+        </div>
+        <div class="card">
+          <h3>Base que se dejó</h3>
+          <ul class="good">
+            <li>Operación local entendible.</li>
+            <li>Producto alineado a freelance-first.</li>
+            <li>IA ya incorporada en el flujo.</li>
+            <li>Métricas mínimas para medir valor.</li>
+            <li>Frontend usable como consola operativa.</li>
+            <li>Base sólida para operar y aprender antes de expandir. fileciteturn32file0</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2 class="section-title">9. Cierre corto sugerido</h2>
+        <div class="tag">Versión breve</div>
+      </div>
+      <div class="body">
+        <div class="quote">
+          Desde que tomé Scrapperlanas, el trabajo consistió en levantarlo correctamente en local, estabilizar su operación, aclarar su enfoque freelance-first, depurar fuentes, validar una capa real de IA, reordenar su frontend y cerrar el sistema como un MVP operativo.<br><br>
+          El resultado actual ya no es solo un repositorio funcional: es una consola real para capturar, priorizar y revisar oportunidades freelance técnicas con apoyo de heurística e IA, lista para operar y medir valor real. fileciteturn32file0
+        </div>
+      </div>
+    </section>
+
+    <section class="final">
+      <h2>Conclusión</h2>
+      <p>
+        Desde que se tomó el proyecto hasta hoy, el avance principal fue convertir Scrapperlanas de una base técnica todavía ambigua en una consola operativa freelance-first cerrada como MVP. Hoy el sistema ya permite capturar, priorizar, revisar, decidir y medir, lo que convierte este trabajo en algo más que una puesta en marcha técnica: fue definición, estabilización, enfoque, integración y cierre real del producto. fileciteturn32file0
+      </p>
+      <div class="chips">
+        <span class="chip">Docker y local listos</span>
+        <span class="chip">Fuentes validadas</span>
+        <span class="chip">Gemini operativo</span>
+        <span class="chip">Dashboard claro</span>
+        <span class="chip">Frontend reorganizado</span>
+        <span class="chip">MVP funcional</span>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

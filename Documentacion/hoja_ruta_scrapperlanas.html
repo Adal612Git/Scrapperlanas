@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hoja de Ruta Post-MVP — Scrapperlanas</title>
+  <style>
+    :root {
+      --bg: #07111f;
+      --panel: rgba(10, 22, 40, 0.88);
+      --panel-2: rgba(13, 28, 49, 0.92);
+      --line: rgba(117, 187, 255, 0.18);
+      --text: #e9f3ff;
+      --muted: #96aeca;
+      --cyan: #4de2ff;
+      --blue: #4f8cff;
+      --violet: #8b7cff;
+      --green: #34d399;
+      --amber: #fbbf24;
+      --red: #fb7185;
+      --shadow: 0 18px 60px rgba(0, 0, 0, 0.35);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(77, 226, 255, 0.16), transparent 28%),
+        radial-gradient(circle at top right, rgba(139, 124, 255, 0.18), transparent 22%),
+        linear-gradient(180deg, #050c18 0%, #07111f 48%, #091527 100%);
+      min-height: 100vh;
+    }
+
+    .grid-bg::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
+      background-size: 32px 32px;
+      mask-image: linear-gradient(to bottom, rgba(255,255,255,0.35), transparent 80%);
+      opacity: 0.35;
+    }
+
+    .wrap {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 32px 0 56px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      padding: 34px;
+      background: linear-gradient(135deg, rgba(12, 27, 48, 0.95), rgba(7, 18, 34, 0.92));
+      box-shadow: var(--shadow);
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: auto -80px -80px auto;
+      width: 260px;
+      height: 260px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(77,226,255,0.26), transparent 65%);
+      filter: blur(8px);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(77, 226, 255, 0.25);
+      background: rgba(77, 226, 255, 0.08);
+      color: var(--cyan);
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      font-size: 12px;
+    }
+
+    h1 {
+      margin: 16px 0 10px;
+      font-size: clamp(34px, 5vw, 56px);
+      line-height: 1.02;
+      letter-spacing: -0.03em;
+    }
+
+    .subtitle {
+      max-width: 840px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1.6;
+    }
+
+    .hero-stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 28px;
+    }
+
+    .mini-card {
+      padding: 16px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      backdrop-filter: blur(8px);
+    }
+
+    .mini-card .k {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .mini-card .v {
+      margin-top: 8px;
+      font-size: 24px;
+      font-weight: 800;
+    }
+
+    .section {
+      margin-top: 26px;
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: linear-gradient(180deg, var(--panel), var(--panel-2));
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 22px 24px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      background: linear-gradient(90deg, rgba(79,140,255,0.10), rgba(77,226,255,0.04));
+    }
+
+    .section-title {
+      margin: 0;
+      font-size: 26px;
+      letter-spacing: -0.02em;
+    }
+
+    .section-tag {
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.05);
+      white-space: nowrap;
+    }
+
+    .phase-1 .section-tag { color: var(--cyan); }
+    .phase-2 .section-tag { color: var(--amber); }
+    .phase-3 .section-tag { color: var(--violet); }
+    .phase-4 .section-tag { color: var(--red); }
+    .phase-5 .section-tag { color: var(--green); }
+
+    .section-body {
+      padding: 24px;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 22px;
+    }
+
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .card {
+      padding: 18px;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.035);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .card h3 {
+      margin: 0 0 12px;
+      font-size: 17px;
+      letter-spacing: -0.01em;
+    }
+
+    .card p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+
+    ul {
+      margin: 0;
+      padding-left: 20px;
+      color: var(--text);
+    }
+
+    li {
+      margin: 8px 0;
+      line-height: 1.55;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .signal-list li::marker { color: var(--green); }
+    .risk-list li::marker { color: var(--red); }
+
+    .ordered {
+      counter-reset: step;
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      gap: 14px;
+    }
+
+    .ordered li {
+      position: relative;
+      margin: 0;
+      padding: 14px 16px 14px 56px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.035);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .ordered li::before {
+      counter-increment: step;
+      content: counter(step);
+      position: absolute;
+      left: 16px;
+      top: 14px;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-size: 13px;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--blue), var(--cyan));
+      color: white;
+      box-shadow: 0 8px 24px rgba(79, 140, 255, 0.28);
+    }
+
+    .final {
+      margin-top: 26px;
+      border-radius: 28px;
+      padding: 28px;
+      background: linear-gradient(135deg, rgba(52, 211, 153, 0.12), rgba(79, 140, 255, 0.08));
+      border: 1px solid rgba(52, 211, 153, 0.2);
+      box-shadow: var(--shadow);
+    }
+
+    .final h2 {
+      margin: 0 0 12px;
+      font-size: 28px;
+    }
+
+    .final p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 17px;
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .chip {
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    @media (max-width: 980px) {
+      .hero-stats,
+      .two-col,
+      .card-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .wrap { width: min(100% - 20px, 100%); }
+      .hero, .section-body, .section-head, .final { padding: 18px; }
+      .hero-stats,
+      .two-col,
+      .card-grid {
+        grid-template-columns: 1fr;
+      }
+      h1 { font-size: 34px; }
+      .section-title { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="grid-bg"></div>
+  <main class="wrap">
+    <section class="hero">
+      <div class="eyebrow">Scrapperlanas · Roadmap Post-MVP</div>
+      <h1>Hoja de Ruta Estratégica</h1>
+      <p class="subtitle">
+        Un plan claro para consolidar valor real después del MVP: observar con criterio, ajustar con datos reales y expandir solo cuando la señal operativa lo justifique.
+      </p>
+      <div class="hero-stats">
+        <div class="mini-card">
+          <div class="k">Fase 1</div>
+          <div class="v">Observación</div>
+        </div>
+        <div class="mini-card">
+          <div class="k">Fase 2</div>
+          <div class="v">Ajuste</div>
+        </div>
+        <div class="mini-card">
+          <div class="k">Fase 3</div>
+          <div class="v">Expansión</div>
+        </div>
+        <div class="mini-card">
+          <div class="k">Horizonte</div>
+          <div class="v">2–4 semanas</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section phase-1">
+      <div class="section-head">
+        <h2 class="section-title">Fase 1 — Observación</h2>
+        <div class="section-tag">Medir antes de mover</div>
+      </div>
+      <div class="section-body two-col">
+        <div>
+          <div class="card-grid">
+            <div class="card">
+              <h3>Qué observar</h3>
+              <ul class="signal-list">
+                <li>Qué fuente aporta oportunidades realmente útiles.</li>
+                <li>Qué fuente mete más ruido.</li>
+                <li>Qué tan seguido Gemini acierta en priorización.</li>
+                <li>Qué tan rápido se toma una decisión útil.</li>
+                <li>Qué porcentaje termina en INTERESANTE, APLICADO o FOLLOW_UP.</li>
+                <li>Qué parte del flujo sigue requiriendo revisión manual pesada.</li>
+              </ul>
+            </div>
+            <div class="card">
+              <h3>Métricas a mirar</h3>
+              <ul>
+                <li>Capturas por fuente.</li>
+                <li>Score promedio por fuente.</li>
+                <li>Ratio de apply_now / review_today / clarify_scope / skip.</li>
+                <li>Distribución por estado.</li>
+                <li>Tiempo a decisión, APLICADO y FOLLOW_UP.</li>
+                <li>Gemini vs heuristic.</li>
+                <li>Score delta promedio por modelo.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="card">
+            <h3>Ventana recomendada</h3>
+            <p>
+              Observa de <strong>2 a 4 semanas</strong> o hasta reunir volumen suficiente para detectar patrones claros por fuente, tipo de oferta y calidad operativa.
+            </p>
+          </div>
+          <div class="card" style="margin-top:18px;">
+            <h3>Señales de que vamos bien</h3>
+            <ul class="signal-list">
+              <li>Gemini sube oportunidades útiles con consistencia.</li>
+              <li>El tiempo a decisión baja.</li>
+              <li>Las fuentes activas generan más valor que ruido.</li>
+              <li>El dashboard se usa como consola real.</li>
+            </ul>
+          </div>
+          <div class="card" style="margin-top:18px;">
+            <h3>Señales de alerta</h3>
+            <ul class="risk-list">
+              <li>Mucho volumen y poca utilidad.</li>
+              <li>Demasiadas oportunidades quedan en NUEVO.</li>
+              <li>apply_now es raro o poco confiable.</li>
+              <li>Una fuente consume mucho tiempo para poca ganancia.</li>
+              <li>Gemini no mejora frente a heurística de forma visible.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section phase-2">
+      <div class="section-head">
+        <h2 class="section-title">Fase 2 — Ajuste</h2>
+        <div class="section-tag">Afinar con evidencia</div>
+      </div>
+      <div class="section-body card-grid">
+        <div class="card">
+          <h3>Qué ajustar primero</h3>
+          <ul>
+            <li>Pesos del scoring heurístico.</li>
+            <li>Umbrales de prioridad.</li>
+            <li>Filtros por fuente.</li>
+            <li>Texto de fit_reason y recommended_action si se nota genérico.</li>
+            <li>Frecuencia de fuentes que aportan ruido.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Qué tocar después</h3>
+          <ul>
+            <li>Pequeñas mejoras en IA si se repiten fallas claras.</li>
+            <li>Refinar tiempo a decisión por fuente.</li>
+            <li>Limpieza de labels o badges si confunden la operación.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Qué NO tocar todavía</h3>
+          <ul class="risk-list">
+            <li>Embeddings.</li>
+            <li>DeepSeek como reemplazo.</li>
+            <li>Más fuentes nuevas.</li>
+            <li>Rediseño visual grande.</li>
+            <li>Automatización agresiva fuera del sistema.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Decisiones posibles con los datos</h3>
+          <ul class="signal-list">
+            <li>Mantener o bajar una fuente.</li>
+            <li>Subir o bajar su frecuencia.</li>
+            <li>Mover una fuente de activa a futura.</li>
+            <li>Reforzar o aflojar Gemini.</li>
+            <li>Determinar si el producto ahorra tiempo real o solo organiza ruido.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section phase-3">
+      <div class="section-head">
+        <h2 class="section-title">Fase 3 — Expansión</h2>
+        <div class="section-tag">Escalar solo con señal clara</div>
+      </div>
+      <div class="section-body two-col">
+        <div>
+          <div class="card">
+            <h3>Orden recomendado de evaluación</h3>
+            <ol class="ordered">
+              <li><strong>Más analítica ligera</strong><br><span class="muted">Primero más claridad operativa, no complejidad pesada.</span></li>
+              <li><strong>DeepSeek</strong><br><span class="muted">Solo como comparación secundaria de proveedor.</span></li>
+              <li><strong>Upwork por vía segura</strong><br><span class="muted">Nunca como scraping agresivo.</span></li>
+              <li><strong>Embeddings</strong><br><span class="muted">Solo si el ranking actual ya no alcanza.</span></li>
+              <li><strong>Más fuentes</strong><br><span class="muted">Solo cuando las actuales ya demuestren valor real.</span></li>
+            </ol>
+          </div>
+        </div>
+        <div>
+          <div class="card">
+            <h3>Prerrequisitos por frente</h3>
+            <ul>
+              <li><strong>Analítica ligera:</strong> patrones claros por fuente y uso real de métricas actuales.</li>
+              <li><strong>DeepSeek:</strong> Gemini ya validado como útil y necesidad real de benchmark.</li>
+              <li><strong>Upwork:</strong> vía segura, sostenible y no invasiva.</li>
+              <li><strong>Embeddings:</strong> solo si heurística + IA ya no bastan para ranking y matching.</li>
+              <li><strong>Más fuentes:</strong> únicamente si las actuales ya generan valor medible.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section phase-4">
+      <div class="section-head">
+        <h2 class="section-title">Qué NO conviene hacer todavía</h2>
+        <div class="section-tag">Evitar ruido y deuda</div>
+      </div>
+      <div class="section-body">
+        <div class="card">
+          <ul class="risk-list">
+            <li>No meter más fuentes por impulso.</li>
+            <li>No tocar embeddings todavía.</li>
+            <li>No intentar reemplazar Gemini aún.</li>
+            <li>No abrir Upwork por scraping invasivo.</li>
+            <li>No rehacer el frontend de nuevo.</li>
+            <li>No meter analítica pesada o compleja.</li>
+            <li>No sobreautomatizar decisiones que aún requieren criterio humano.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="final phase-5">
+      <h2>Veredicto Final</h2>
+      <p>
+        La ruta correcta ahora es <strong>observar primero</strong>, <strong>ajustar con datos reales</strong> y <strong>expandir solo cuando haya señal clara de valor</strong>. La mejor jugada no es crecer por ansiedad, sino consolidar rendimiento real del producto.
+      </p>
+      <div class="chips">
+        <span class="chip">2–4 semanas de observación</span>
+        <span class="chip">Ajustes pequeños y controlados</span>
+        <span class="chip">Expansión selectiva</span>
+        <span class="chip">Sin embeddings todavía</span>
+        <span class="chip">Gemini como IA actual</span>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

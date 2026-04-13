@@ -6,80 +6,92 @@
     <title>{% block title %}Scrapperlanas{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260413-1') }}">
+    <script src="{{ url_for('static', filename='app.js', v='20260413-1') }}" defer></script>
   </head>
   <body class="min-h-screen bg-slate-950 text-slate-300 selection:bg-blue-500/30">
     {% if g.user %}
-      <div class="relative min-h-screen overflow-hidden">
+      <div class="relative min-h-screen">
         <div class="pointer-events-none absolute inset-x-0 top-[-12rem] mx-auto h-96 w-96 rounded-full bg-blue-600/20 blur-[120px]"></div>
         <div class="pointer-events-none absolute bottom-[-10rem] right-[-6rem] h-80 w-80 rounded-full bg-fuchsia-600/15 blur-[120px]"></div>
 
         <div id="app-shell" class="relative z-10 min-h-screen">
-          <header class="fixed inset-x-0 top-0 z-30 border-b border-slate-800 bg-slate-950/90 backdrop-blur-xl">
-            <div class="mx-auto flex max-w-[1600px] flex-col gap-2 px-4 py-2.5 sm:px-6 lg:px-8">
-              <div class="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-start">
-                <div class="flex flex-wrap items-center gap-2">
-                  <a class="flex items-center gap-2 rounded-2xl border border-slate-800 bg-slate-900/70 px-3 py-1.5 hover:border-blue-500/30" href="{{ url_for('main.dashboard') }}">
-                    <span class="grid h-9 w-9 place-items-center rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-400 text-[11px] font-black text-white shadow-[0_0_20px_rgba(59,130,246,0.35)]">SL</span>
-                    <span class="min-w-0">
+          <aside id="main-sidebar" class="fixed z-30 border-r border-slate-800 bg-slate-950/92 backdrop-blur-xl panel-transition">
+            <div class="flex h-full flex-col gap-4 p-3">
+              <div class="rounded-[1.5rem] border border-slate-800 bg-slate-900/70 p-2">
+                <div class="flex items-center gap-2 rounded-2xl border border-slate-800 bg-slate-950/70 p-2">
+                  <a class="flex min-w-0 flex-1 items-center gap-2 rounded-2xl px-2 py-1.5 hover:bg-slate-800/70" href="{{ url_for('main.dashboard') }}">
+                    <span class="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-400 text-[11px] font-black text-white shadow-[0_0_20px_rgba(59,130,246,0.35)]">SL</span>
+                    <span class="sidebar-brand-copy min-w-0">
                       <strong class="block text-sm font-black tracking-wide text-white">Scrapperlanas</strong>
-                      <small class="text-[11px] uppercase tracking-[0.24em] text-slate-500">Operating shell</small>
+                      <small class="sidebar-label text-[11px] uppercase tracking-[0.24em] text-slate-500">Operating shell</small>
                     </span>
                   </a>
-                  <nav class="flex flex-1 flex-wrap gap-2">
-                    <a href="{{ url_for('main.dashboard') }}" class="sidebar-nav-link {% if request.endpoint == 'main.dashboard' %}is-nav-active{% endif %} inline-flex items-center gap-2 rounded-2xl border border-transparent px-3 py-2 text-sm font-bold text-slate-300 hover:border-slate-700 hover:bg-slate-800 hover:text-white">
-                      <i class="fa-solid fa-inbox sidebar-icon"></i>
-                      <span class="sidebar-text">Dashboard</span>
-                    </a>
-                    <a href="{{ url_for('main.dashboard') }}#visualizacion" data-section-target="visualizacion" class="sidebar-nav-link inline-flex items-center gap-2 rounded-2xl border border-transparent px-3 py-2 text-sm font-semibold text-slate-400 hover:border-slate-700 hover:bg-slate-800 hover:text-white">
-                      <i class="fa-solid fa-chart-pie sidebar-icon"></i>
-                      <span class="sidebar-text">Visualizacion</span>
-                    </a>
-                    <a href="{{ url_for('main.dashboard') }}#historial" data-section-target="historial" class="sidebar-nav-link inline-flex items-center gap-2 rounded-2xl border border-transparent px-3 py-2 text-sm font-semibold text-slate-400 hover:border-slate-700 hover:bg-slate-800 hover:text-white">
-                      <i class="fa-solid fa-table-columns sidebar-icon"></i>
-                      <span class="sidebar-text">Kanban ofertas</span>
-                    </a>
-                    <a href="{{ url_for('main.dashboard') }}#busquedas" data-section-target="busquedas" class="sidebar-nav-link inline-flex items-center gap-2 rounded-2xl border border-transparent px-3 py-2 text-sm font-semibold text-slate-400 hover:border-slate-700 hover:bg-slate-800 hover:text-white">
-                      <i class="fa-solid fa-bookmark sidebar-icon"></i>
-                      <span class="sidebar-text">Vistas guardadas</span>
-                    </a>
-                    <a href="{{ url_for('main.dashboard') }}#alertas" data-section-target="alertas" class="sidebar-nav-link inline-flex items-center gap-2 rounded-2xl border border-transparent px-3 py-2 text-sm font-semibold text-slate-400 hover:border-slate-700 hover:bg-slate-800 hover:text-white">
-                      <i class="fa-solid fa-bell sidebar-icon"></i>
-                      <span class="sidebar-text">Alertas</span>
-                    </a>
-                    <a href="{{ url_for('main.settings') }}" class="sidebar-nav-link {% if request.endpoint == 'main.settings' %}is-nav-active{% endif %} inline-flex items-center gap-2 rounded-2xl border border-transparent px-3 py-2 text-sm font-semibold text-slate-400 hover:border-slate-700 hover:bg-slate-800 hover:text-white">
-                      <i class="fa-solid fa-sliders sidebar-icon"></i>
-                      <span class="sidebar-text">Ajustes del scrapper</span>
-                    </a>
-                    <div class="flex flex-wrap gap-2">
-                      {% block page_actions %}{% endblock %}
-                    </div>
-                  </nav>
                 </div>
               </div>
-              <div class="flex flex-col gap-2 border-t border-slate-800 pt-2 xl:flex-row xl:items-start xl:justify-between">
-                <div class="flex flex-wrap items-center gap-2">
-                  {% block page_status %}
-                    <span class="rounded-full border border-blue-500/30 bg-blue-500/15 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-blue-200">Live</span>
-                  {% endblock %}
+
+              <nav class="flex-1 rounded-[1.5rem] border border-slate-800 bg-slate-900/60 p-2">
+                <div class="px-2 py-2">
+                  <p class="sidebar-label text-[10px] font-bold uppercase tracking-[0.28em] text-slate-500">Dashboard</p>
                 </div>
-                <div class="flex flex-wrap items-center justify-end gap-2">
-                  {% block page_secondary_actions %}{% endblock %}
+                <div class="space-y-2">
+                  <a href="{{ url_for('main.dashboard') }}#home" data-section-target="home" class="sidebar-nav-link flex items-center gap-3 rounded-2xl border border-transparent px-3 py-3 text-sm font-semibold text-slate-400 hover:border-slate-700 hover:bg-slate-800 hover:text-white">
+                    <i class="fa-solid fa-house sidebar-icon"></i>
+                    <span class="sidebar-text">Home</span>
+                  </a>
+                  <a href="{{ url_for('main.dashboard') }}#visualizacion" data-section-target="visualizacion" class="sidebar-nav-link flex items-center gap-3 rounded-2xl border border-transparent px-3 py-3 text-sm font-semibold text-slate-400 hover:border-slate-700 hover:bg-slate-800 hover:text-white">
+                    <i class="fa-solid fa-chart-line sidebar-icon"></i>
+                    <span class="sidebar-text">Visualizacion</span>
+                  </a>
+                  <a href="{{ url_for('main.dashboard') }}#inbox" data-section-target="inbox" class="sidebar-nav-link flex items-center gap-3 rounded-2xl border border-transparent px-3 py-3 text-sm font-semibold text-slate-400 hover:border-slate-700 hover:bg-slate-800 hover:text-white">
+                    <i class="fa-solid fa-inbox sidebar-icon"></i>
+                    <span class="sidebar-text">Ofertas capturadas</span>
+                  </a>
+                  <a href="{{ url_for('main.dashboard') }}#historial" data-section-target="historial" class="sidebar-nav-link flex items-center gap-3 rounded-2xl border border-transparent px-3 py-3 text-sm font-semibold text-slate-400 hover:border-slate-700 hover:bg-slate-800 hover:text-white">
+                    <i class="fa-solid fa-table-columns sidebar-icon"></i>
+                    <span class="sidebar-text">Kanban ofertas</span>
+                  </a>
+                  <a href="{{ url_for('main.dashboard') }}#busquedas" data-section-target="busquedas" class="sidebar-nav-link flex items-center gap-3 rounded-2xl border border-transparent px-3 py-3 text-sm font-semibold text-slate-400 hover:border-slate-700 hover:bg-slate-800 hover:text-white">
+                    <i class="fa-solid fa-bookmark sidebar-icon"></i>
+                    <span class="sidebar-text">Vistas guardadas</span>
+                  </a>
+                  <a href="{{ url_for('main.dashboard') }}#alertas" data-section-target="alertas" class="sidebar-nav-link flex items-center gap-3 rounded-2xl border border-transparent px-3 py-3 text-sm font-semibold text-slate-400 hover:border-slate-700 hover:bg-slate-800 hover:text-white">
+                    <i class="fa-solid fa-bell sidebar-icon"></i>
+                    <span class="sidebar-text">Alertas</span>
+                  </a>
+                </div>
+              </nav>
+
+              <div class="rounded-[1.5rem] border border-slate-800 bg-slate-900/60 p-2">
+                <a href="{{ url_for('main.settings') }}" class="sidebar-nav-link {% if request.endpoint == 'main.settings' %}is-nav-active{% endif %} flex items-center gap-3 rounded-2xl border border-transparent px-3 py-3 text-sm font-semibold text-slate-400 hover:border-slate-700 hover:bg-slate-800 hover:text-white">
+                  <i class="fa-solid fa-sliders sidebar-icon"></i>
+                  <span class="sidebar-text">Ajustes del scrapper</span>
+                </a>
+              </div>
+
+              <div class="sidebar-user-actions rounded-[1.5rem] border border-slate-800 bg-slate-900/60 p-2">
+                <div class="flex items-center justify-between gap-2 rounded-2xl border border-slate-800 bg-slate-950/70 px-3 py-2">
+                  <div class="sidebar-user-copy min-w-0">
+                    <p class="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">Perfil</p>
+                    <p class="mt-1 truncate text-sm font-semibold text-slate-300">{{ g.user["email"] }}</p>
+                  </div>
                   <form action="{{ url_for('auth.logout') }}" method="post">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="inline-flex items-center justify-center gap-2 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-sm font-semibold text-rose-200 hover:bg-rose-500/15">
+                    <button type="submit" class="inline-flex items-center justify-center gap-2 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm font-semibold text-rose-200 hover:bg-rose-500/15">
                       <i class="fa-solid fa-right-from-bracket"></i>
-                      <span class="sidebar-text">Cerrar sesion</span>
+                      <span class="sidebar-text">Salir</span>
                     </button>
                   </form>
                 </div>
               </div>
-            </div>
-          </header>
 
-          <main class="min-w-0 pt-[7.5rem] sm:pt-[8rem] lg:pt-[8.25rem]">
-            <div class="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">
+              {% block page_secondary_actions %}{% endblock %}
+              {% block page_actions %}{% endblock %}
+            </div>
+          </aside>
+
+          <main class="min-w-0 pt-8">
+            <div class="w-full px-3 py-8 sm:px-4 lg:px-5">
               {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
                   <section class="mb-6 grid gap-3">

@@ -342,6 +342,16 @@ DEFAULT_UPWORK_POLICY_CONFIG = {
 
 DEFAULT_SOURCE_POLICIES = (
     {
+        "source_key": "freelancer_com",
+        "display_name": "Freelancer.com",
+        "method": "public_search_html",
+        "risk_level": "low",
+        "frequency_minutes": 180,
+        "enabled": 1,
+        "config_json": json.dumps(DEFAULT_FREELANCER_POLICY_CONFIG, ensure_ascii=False),
+        "notes": "Fuente freelance activa: lectura publica por HTML de busqueda/proyectos con filtros de programacion y automatizacion.",
+    },
+    {
         "source_key": "workana_projects",
         "display_name": "Workana Public Projects",
         "method": "public_project_pages",
@@ -370,16 +380,6 @@ DEFAULT_SOURCE_POLICIES = (
         "enabled": 0,
         "config_json": json.dumps(DEFAULT_EMAIL_ALERTS_POLICY_CONFIG, ensure_ascii=False),
         "notes": "Fuente recomendada para Upwork, Workana y otros marketplaces via n8n: captura alertas oficiales por correo y empujalas al import interno.",
-    },
-    {
-        "source_key": "freelancer_com",
-        "display_name": "Freelancer.com",
-        "method": "public_search_html",
-        "risk_level": "low",
-        "frequency_minutes": 180,
-        "enabled": 1,
-        "config_json": json.dumps(DEFAULT_FREELANCER_POLICY_CONFIG, ensure_ascii=False),
-        "notes": "Fuente freelance activa: lectura publica por HTML de busqueda/proyectos con filtros de programacion y automatizacion.",
     },
     {
         "source_key": "peopleperhour",
@@ -563,11 +563,11 @@ def _refresh_source_policy_defaults(db: Database) -> None:
             frequency_minutes = 120,
             config_json = ?,
             notes = ?
-        WHERE source_key = 'weworkremotely'
+        WHERE source_key = 'freelancer_com'
         """,
         (
-            json.dumps(DEFAULT_WWR_POLICY_CONFIG, ensure_ascii=False),
-            "Fuente publica RSS para remoto. Mantener polling conservador y filtros ligeros para no perder vacantes utiles.",
+            json.dumps(DEFAULT_FREELANCER_POLICY_CONFIG, ensure_ascii=False),
+            "Fuente freelance activa: lectura publica por HTML de busqueda/proyectos con filtros de programacion y automatizacion.",
         ),
     )
 
@@ -591,7 +591,7 @@ def _refresh_source_policy_defaults(db: Database) -> None:
             continue
 
         if demo_data:
-            if source_key in {"weworkremotely"}:
+            if source_key in {"freelancer_com"}:
                 db.execute(
                     """
                     UPDATE source_policies
@@ -602,9 +602,9 @@ def _refresh_source_policy_defaults(db: Database) -> None:
                     WHERE id = ?
                     """,
                     (
-                        120,
-                        json.dumps(DEFAULT_WWR_POLICY_CONFIG, ensure_ascii=False),
-                        "Fuente publica RSS para remoto. Mantener polling conservador y filtros ligeros para no perder vacantes utiles.",
+                        180,
+                        json.dumps(DEFAULT_FREELANCER_POLICY_CONFIG, ensure_ascii=False),
+                        "Fuente freelance activa: lectura publica por HTML de busqueda/proyectos con filtros de programacion y automatizacion.",
                         row["id"],
                     ),
                 )
