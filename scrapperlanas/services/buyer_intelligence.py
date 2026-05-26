@@ -8,6 +8,8 @@ from difflib import SequenceMatcher
 from typing import Any, Mapping
 from urllib.parse import urlparse
 
+from .quality import is_quality_noise_mapping
+
 
 COMMON_COMPANY_SUFFIXES = (
     "s a de c v",
@@ -62,6 +64,8 @@ def normalize_buyer_name(value) -> str:
 
 
 def find_or_create_buyer_account(db, opportunity: Mapping[str, Any]) -> dict | None:
+    if is_quality_noise_mapping(opportunity):
+        return None
     identity = _identity_from_opportunity(opportunity)
     if not identity["normalized_domain"] and not identity["normalized_name"]:
         return None
@@ -218,7 +222,14 @@ def recalculate_buyer_account(db, account_id: int) -> dict:
 
 
 def assign_missing_buyer_accounts(db, *, limit: int | None = None) -> int:
-    query = "SELECT id FROM opportunities WHERE buyer_account_id IS NULL ORDER BY id ASC"
+    query = """
+        SELECT id
+        FROM opportunities
+        WHERE buyer_account_id IS NULL
+          AND state NOT IN ('DESCARTADO', 'SOSPECHOSO')
+          AND COALESCE(commercial_status, 'new') <> 'ignored'
+        ORDER BY id ASC
+    """
     params: list[Any] = []
     if limit is not None:
         query += " LIMIT ?"
@@ -523,26 +534,27 @@ def _best_identity(account, opportunities: list[dict]) -> dict:
 
 
 def _account_metrics(opportunities: list[dict]) -> dict:
-    opportunity_count = len(opportunities)
-    active = [opportunity for opportunity in opportunities if _status(opportunity) not in {"ignored", "lost"}]
+    usable_opportunities = [opportunity for opportunity in opportunities if not is_quality_noise_mapping(opportunity)]
+    opportunity_count = len(usable_opportunities)
+    active = [opportunity for opportunity in usable_opportunities if _status(opportunity) not in {"ignored", "lost"}]
     active_a1_count = sum(1 for opportunity in active if _tier(opportunity) == "A1")
     active_a2_count = sum(1 for opportunity in active if _tier(opportunity) == "A2")
-    ignored_count = sum(1 for opportunity in opportunities if _status(opportunity) == "ignored")
-    lost_count = sum(1 for opportunity in opportunities if _status(opportunity) == "lost")
-    won_count = sum(1 for opportunity in opportunities if _status(opportunity) == "won")
-    proposal_count = sum(1 for opportunity in opportunities if _status(opportunity) in {"proposal", "won"})
-    replied_count = sum(1 for opportunity in opportunities if _status(opportunity) in {"replied", "discovery", "proposal", "won", "lost"})
+    ignored_count = sum(1 for opportunity in opportunities if _status(opportunity) == "ignored" or is_quality_noise_mapping(opportunity))
+    lost_count = sum(1 for opportunity in usable_opportunities if _status(opportunity) == "lost")
+    won_count = sum(1 for opportunity in usable_opportunities if _status(opportunity) == "won")
+    proposal_count = sum(1 for opportunity in usable_opportunities if _status(opportunity) in {"proposal", "won"})
+    replied_count = sum(1 for opportunity in usable_opportunities if _status(opportunity) in {"replied", "discovery", "proposal", "won", "lost"})
     contacted_count = sum(
         1
-        for opportunity in opportunities
+        for opportunity in usable_opportunities
         if _status(opportunity) in {"contacted", "followup_due", "replied", "discovery", "proposal", "won", "lost"}
         or opportunity.get("last_contacted_at")
     )
     scores = [int(opportunity.get("score_total") or opportunity.get("score") or 0) for opportunity in active]
     average_score = round(sum(scores) / len(scores)) if scores else 0
-    total_estimated_value = sum(_estimated_value(opportunity) for opportunity in opportunities)
-    total_proposal_value = sum(_int_value(opportunity.get("proposal_value")) for opportunity in opportunities)
-    total_won_value = sum(_int_value(opportunity.get("won_value")) for opportunity in opportunities)
+    total_estimated_value = sum(_estimated_value(opportunity) for opportunity in active)
+    total_proposal_value = sum(_int_value(opportunity.get("proposal_value")) for opportunity in usable_opportunities)
+    total_won_value = sum(_int_value(opportunity.get("won_value")) for opportunity in usable_opportunities)
     account_score = _account_score(
         average_score=average_score,
         opportunity_count=opportunity_count,
@@ -556,7 +568,7 @@ def _account_metrics(opportunities: list[dict]) -> dict:
         total_estimated_value=total_estimated_value,
         total_proposal_value=total_proposal_value,
         total_won_value=total_won_value,
-        opportunities=opportunities,
+        opportunities=usable_opportunities,
     )
     account_tier = _account_tier(
         score=account_score,
@@ -567,8 +579,8 @@ def _account_metrics(opportunities: list[dict]) -> dict:
     )
     return {
         "opportunity_count": opportunity_count,
-        "a1_count": sum(1 for opportunity in opportunities if _tier(opportunity) == "A1"),
-        "a2_count": sum(1 for opportunity in opportunities if _tier(opportunity) == "A2"),
+        "a1_count": sum(1 for opportunity in usable_opportunities if _tier(opportunity) == "A1"),
+        "a2_count": sum(1 for opportunity in usable_opportunities if _tier(opportunity) == "A2"),
         "contacted_count": contacted_count,
         "replied_count": replied_count,
         "proposal_count": proposal_count,
@@ -580,15 +592,15 @@ def _account_metrics(opportunities: list[dict]) -> dict:
         "total_won_value": total_won_value,
         "account_score": account_score,
         "account_tier": account_tier,
-        "primary_pain_signals": _top_json_values(opportunities, "pain_signals", limit=6),
-        "required_skills": _top_json_values(opportunities, "required_skills", limit=6),
-        "contact_signals": _top_json_values(opportunities, "contact_signals", limit=5),
-        "evidence_summary": _top_json_values(opportunities, "evidence_snippets", limit=5),
-        "last_contacted_at": _max_text(opportunity.get("last_contacted_at") for opportunity in opportunities),
-        "next_followup_at": _min_future_or_due(opportunity.get("next_followup_at") for opportunity in opportunities if _status(opportunity) not in CLOSED_STATUSES),
-        "commercial_status": _account_status(opportunities),
-        "first_seen_at": _min_text(opportunity.get("created_at") for opportunity in opportunities) or "",
-        "last_seen_at": _max_text((opportunity.get("posted_at") or opportunity.get("created_at")) for opportunity in opportunities) or "",
+        "primary_pain_signals": _top_json_values(active, "pain_signals", limit=6),
+        "required_skills": _top_json_values(active, "required_skills", limit=6),
+        "contact_signals": _top_json_values(active, "contact_signals", limit=5),
+        "evidence_summary": _top_json_values(active, "evidence_snippets", limit=5),
+        "last_contacted_at": _max_text(opportunity.get("last_contacted_at") for opportunity in usable_opportunities),
+        "next_followup_at": _min_future_or_due(opportunity.get("next_followup_at") for opportunity in usable_opportunities if _status(opportunity) not in CLOSED_STATUSES),
+        "commercial_status": _account_status(usable_opportunities),
+        "first_seen_at": _min_text(opportunity.get("created_at") for opportunity in usable_opportunities) or "",
+        "last_seen_at": _max_text((opportunity.get("posted_at") or opportunity.get("created_at")) for opportunity in usable_opportunities) or "",
     }
 
 

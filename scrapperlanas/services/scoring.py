@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from .ingestion import NormalizedOpportunity
+from .quality import QualityAssessment, apply_quality_to_score, assess_opportunity_quality
 
 
 TARGET_TERMS = (
@@ -96,6 +97,7 @@ def score_commercial_opportunity(
     preferred_keywords: tuple[str, ...] = (),
     min_budget: int = 0,
     now: datetime | None = None,
+    quality: QualityAssessment | None = None,
 ) -> dict:
     runtime_now = (now or datetime.now(UTC)).astimezone(UTC)
     enrichment = enrichment or {}
@@ -128,7 +130,7 @@ def score_commercial_opportunity(
     reasons = _unique(reasons)[:6]
     next_best_action = _next_best_action(tier, opportunity)
 
-    return {
+    result = {
         "score_total": max(0, min(100, total)),
         "score_money": money,
         "score_fit": fit,
@@ -142,6 +144,7 @@ def score_commercial_opportunity(
         "deadline_at": opportunity.deadline_at,
         "estimated_value": budget_anchor,
     }
+    return apply_quality_to_score(result, quality or assess_opportunity_quality(opportunity))
 
 
 def _money_score(

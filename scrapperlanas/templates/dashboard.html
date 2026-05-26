@@ -93,6 +93,25 @@
     </article>
   </section>
 
+  <section class="loto-panel mt-4">
+    <p class="loto-card-eyebrow">Opportunity Quality Firewall</p>
+    <h2>Calidad real de ingesta</h2>
+    <div class="mt-4 grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+      <span class="loto-badge">Total ingestados: {{ metrics.quality.total_ingested }}</span>
+      <span class="loto-badge">Contactables reales: {{ metrics.quality.contactable }}</span>
+      <span class="loto-badge">Revision: {{ metrics.quality.review_required }}</span>
+      <span class="loto-badge">Ruido rechazado: {{ metrics.quality.rejected_noise }}</span>
+      <span class="loto-badge">Subreddit bloqueado: {{ metrics.quality.blocked_subreddit }}</span>
+      <span class="loto-badge">Duplicados ocultos: {{ metrics.quality.duplicates }}</span>
+      <span class="loto-badge">Sospechosos: {{ metrics.quality.suspect }}</span>
+      <span class="loto-badge">Presupuesto dudoso: {{ metrics.quality.budget_dubious }}</span>
+      <span class="loto-badge">Sin comprador: {{ metrics.quality.no_buyer }}</span>
+      {% for reason in metrics.quality.top_rejection_reasons[:3] %}
+        <span class="loto-badge">{{ reason.reason }}: {{ reason.total }}</span>
+      {% endfor %}
+    </div>
+  </section>
+
   <section class="loto-dashboard-grid mt-4">
     <div class="loto-grid">
       <section id="section-inbox" class="app-section loto-panel">
@@ -112,6 +131,15 @@
 
         <div class="loto-quick-filters mt-4" aria-label="Filtros rapidos">
           {% set quick_filters = [
+            ("contactable", "Solo contactables"),
+            ("review_required", "Revision necesaria"),
+            ("suspect", "Sospechosos"),
+            ("rejected_noise", "Ruido rechazado"),
+            ("duplicates", "Duplicados"),
+            ("reddit_trusted", "Reddit confiable"),
+            ("reddit_hidden", "Reddit oculto"),
+            ("budget_dubious", "Presupuesto dudoso"),
+            ("no_buyer", "Sin comprador"),
             ("high_intent", "Alta intencion"),
             ("budget_visible", "Presupuesto visible"),
             ("uncontacted", "Sin contactar"),
@@ -152,6 +180,7 @@
             {% for item in items %}
               {% set score = item.intelligence.score %}
               {% set nba = item.intelligence.next_best_action %}
+              {% set quality = item.quality %}
               <article class="loto-inbox-row" id="opportunity-{{ item.id }}">
                 <input type="checkbox" name="opportunity_ids" value="{{ item.id }}" aria-label="Seleccionar {{ item.title }}">
                 <div class="min-w-0">
@@ -159,11 +188,19 @@
                     <span class="loto-score-badge grade-{{ score.grade|lower }}">{{ score.grade }} {{ score.numeric_score }}</span>
                     <span class="loto-state-pill">{{ item.commercial_status_label }}</span>
                     <span class="loto-badge">{{ item.source_label }}</span>
+                    <span class="loto-badge">Intencion: {{ quality.commercial_intent_label }}</span>
+                    <span class="loto-badge">Riesgo: {{ quality.risk_level }}</span>
+                    <span class="loto-badge">Comprador: {% if quality.buyer_confidence >= 70 %}Verificado{% elif quality.buyer_confidence >= 50 %}Debil{% else %}No detectado{% endif %}</span>
+                    <span class="loto-badge">Presupuesto: {% if quality.budget.is_valid_commercial_budget %}Valido{% elif quality.budget.raw_evidence %}Dudoso{% else %}No presupuesto{% endif %}</span>
+                    <span class="loto-badge">Estado: {{ quality.quality_stage }}</span>
+                    {% if quality.duplicate_count %}
+                      <span class="loto-badge">Duplicados ocultos: {{ quality.duplicate_count - 1 }}</span>
+                    {% endif %}
                     {% if item.deadline_at %}
                       <span class="loto-badge"><i class="fa-solid fa-clock text-amber-600"></i>{{ item.deadline_display }}</span>
                     {% endif %}
                   </div>
-                  <a class="loto-row-title mt-2 block" href="{{ url_for('main.opportunity_detail', opportunity_id=item.id) }}">{{ item.buyer_name or item.company or "Comprador por validar" }} · {{ item.title }}</a>
+                  <a class="loto-row-title mt-2 block" href="{{ url_for('main.opportunity_detail', opportunity_id=item.id) }}">{{ item.buyer_name or item.company or "Comprador por validar" }} - {{ item.title }}</a>
                   <div class="loto-row-meta">
                     <span>{{ item.buyer_domain or item.application_host }}</span>
                     <span>{{ item.country or "pais no detectado" }}</span>
@@ -172,6 +209,18 @@
                   </div>
                   <p class="loto-row-action mt-2"><strong>Siguiente mejor accion:</strong> {{ nba.label }}. {{ nba.description }}</p>
                   <p class="loto-row-action mt-1"><strong>Por que es {{ score.grade }}:</strong> {{ score.reasons[0] if score.reasons else "Falta evidencia para explicar el score." }}</p>
+                  {% if not quality.is_contactable %}
+                    <details class="mt-3">
+                      <summary class="loto-chip w-fit cursor-pointer">Por que no contactar</summary>
+                      <ul class="loto-simple-list">
+                        {% for reason in quality.rejection_reasons %}
+                          <li>{{ reason }}</li>
+                        {% else %}
+                          <li>No hay comprador, presupuesto o accion comercial suficientemente verificable.</li>
+                        {% endfor %}
+                      </ul>
+                    </details>
+                  {% endif %}
                   <div class="loto-skill-list">
                     {% for skill in item.required_skills[:6] %}
                       <span class="loto-skill">{{ skill }}</span>
@@ -191,10 +240,17 @@
                   </details>
                 </div>
                 <div class="loto-row-actions">
-                  <a class="loto-primary-button" href="{{ url_for('main.opportunity_detail', opportunity_id=item.id) }}#outreach">
-                    <i class="fa-solid fa-pen"></i>
-                    Redactar
-                  </a>
+                  {% if quality.is_contactable %}
+                    <a class="loto-primary-button" href="{{ url_for('main.opportunity_detail', opportunity_id=item.id) }}#outreach">
+                      <i class="fa-solid fa-pen"></i>
+                      Redactar
+                    </a>
+                  {% else %}
+                    <a class="loto-secondary-button" href="{{ url_for('main.opportunity_detail', opportunity_id=item.id) }}">
+                      <i class="fa-solid fa-shield-halved"></i>
+                      Validar
+                    </a>
+                  {% endif %}
                   <a class="loto-secondary-button" href="{{ item.url }}" target="_blank" rel="noreferrer">
                     <i class="fa-solid fa-arrow-up-right-from-square"></i>
                     Investigar
@@ -267,9 +323,13 @@
         {% if copilot_summary.top_opportunity %}
           <h2>{{ copilot_summary.recommendation.label }}</h2>
           <p class="mt-2 text-sm">{{ copilot_summary.recommendation.description }}</p>
-          <p class="mt-2 text-sm"><strong>{{ copilot_summary.top_opportunity.buyer_name or copilot_summary.top_opportunity.company or "Comprador por validar" }}</strong> · {{ copilot_summary.top_opportunity.title }}</p>
+          <p class="mt-2 text-sm"><strong>{{ copilot_summary.top_opportunity.buyer_name or copilot_summary.top_opportunity.company or "Comprador por validar" }}</strong> - {{ copilot_summary.top_opportunity.title }}</p>
           <div class="mt-4 flex flex-wrap gap-2">
-            <a class="loto-primary-button" href="{{ url_for('main.opportunity_detail', opportunity_id=copilot_summary.top_opportunity.id) }}#outreach">Redactar mensaje</a>
+            {% if copilot_summary.top_opportunity.quality.is_contactable %}
+              <a class="loto-primary-button" href="{{ url_for('main.opportunity_detail', opportunity_id=copilot_summary.top_opportunity.id) }}#outreach">Redactar mensaje</a>
+            {% else %}
+              <span class="loto-badge">No recomiendo contactar todavia</span>
+            {% endif %}
             <a class="loto-secondary-button" href="{{ url_for('main.opportunity_detail', opportunity_id=copilot_summary.top_opportunity.id) }}">Ver detalle</a>
           </div>
         {% else %}
@@ -323,7 +383,7 @@
           <div class="flex items-center justify-between gap-3 border-b border-slate-100 pb-3">
             <div>
               <strong>{{ source.source_label }}</strong>
-              <p class="loto-muted">{{ source.total }} total · A1/A2 {{ source.a1_count + source.a2_count }} · reply {{ source.reply_rate }}%</p>
+              <p class="loto-muted">{{ source.total }} total - contactables {{ source.contactable_count }} - basura {{ source.trash_rate }}% - reply {{ source.reply_rate }}%</p>
             </div>
             <span class="loto-badge">${{ "{:,.0f}".format(source.total_won_value) }}</span>
           </div>
@@ -335,18 +395,18 @@
 
     <article class="loto-panel">
       <p class="loto-card-eyebrow">Cuentas calientes</p>
-      <h2>Compradores con señales acumuladas</h2>
+      <h2>Compradores con senales acumuladas</h2>
       <div class="mt-4 grid gap-3">
         {% for account in hot_accounts[:5] %}
           <a href="{{ url_for('main.account_detail', account_id=account.id) }}" class="loto-inbox-row" style="grid-template-columns: minmax(0,1fr) auto">
             <span>
               <strong>{{ account.name }}</strong>
-              <span class="loto-row-meta">{{ account.domain or "sin dominio" }} · {{ account.estimated_value_display }} · {{ account.opportunity_count }} señales</span>
+              <span class="loto-row-meta">{{ account.domain or "sin dominio" }} - {{ account.estimated_value_display }} - {{ account.opportunity_count }} senales</span>
             </span>
             <span class="loto-score-badge grade-{{ account.account_tier|lower }}">{{ account.account_tier }} {{ account.account_score }}</span>
           </a>
         {% else %}
-          <p class="loto-muted">No hay cuentas calientes todavía.</p>
+          <p class="loto-muted">No hay cuentas calientes todavia.</p>
         {% endfor %}
       </div>
     </article>

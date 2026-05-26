@@ -330,6 +330,22 @@ def test_commercial_proposal_won_and_source_metrics(app, client):
     assert b"Calidad por fuente" in dashboard.data
 
 
+def test_api_intelligence_summary_uses_quality_visibility(app, client):
+    register(client)
+    client.post(
+        "/ingest/run",
+        data={"csrf_token": get_csrf_token(client, "/dashboard")},
+        follow_redirects=True,
+    )
+
+    response = client.get("/api/intelligence/summary")
+
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload["ok"] is True
+    assert payload["summary"]["summary"]
+
+
 def test_outreach_generate_regenerate_and_copy_log(app, client):
     register(client)
     client.post(

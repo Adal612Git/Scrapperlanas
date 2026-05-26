@@ -65,7 +65,7 @@ def test_old_github_issue_without_contact_is_low_priority():
     assert score["score_total"] < 45
 
 
-def test_recent_technical_job_posting_becomes_a2_signal():
+def test_recent_technical_job_posting_without_budget_stays_b_signal():
     opportunity = NormalizedOpportunity(
         external_id="ats-001",
         source_key="greenhouse",
@@ -89,8 +89,9 @@ def test_recent_technical_job_posting_becomes_a2_signal():
 
     score = score_commercial_opportunity(opportunity, base_score=62, now=NOW)
 
-    assert score["score_tier"] in {"A2", "A1"}
+    assert score["score_tier"] == "B"
     assert score["score_fit"] >= 70
+    assert score["score_total"] <= 61
 
 
 def test_expired_opportunity_is_discarded_even_with_good_fit():

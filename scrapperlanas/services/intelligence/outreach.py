@@ -5,6 +5,7 @@ from typing import Any, Mapping
 from .risk import assess_risk
 from .schemas import OutreachDraftV2
 from .utils import budget_amount, clean_text, coerce_list, technical_matches
+from ..quality import assess_opportunity_quality
 
 
 TONE_LABELS = {
@@ -22,6 +23,27 @@ TONE_LABELS = {
 
 def compose_outreach(opportunity: Mapping[str, Any], *, tone: str = "consultivo", language: str = "es") -> OutreachDraftV2:
     selected_tone = TONE_LABELS.get(clean_text(tone).lower(), "consultivo")
+    quality = _quality_payload(opportunity)
+    if quality.get("quality_stage") and quality.get("quality_stage") != "READY_TO_CONTACT":
+        reasons = list(quality.get("rejection_reasons") or quality.get("risk_reasons") or [])
+        reason_lines = "\n".join(f"{index}. {reason}" for index, reason in enumerate(reasons[:4], start=1))
+        body = (
+            "No recomiendo contactar esta oportunidad todavia.\n\n"
+            "Motivos:\n"
+            f"{reason_lines or '1. Falta evidencia comercial verificable.'}\n\n"
+            "Siguiente paso: buscar comprador, dominio, deadline, presupuesto valido y canal oficial antes de redactar."
+        )
+        return OutreachDraftV2(
+            tone=selected_tone,
+            subject="No contactar todavia",
+            body=body,
+            personalization_bullets=[],
+            risks=list(quality.get("risk_reasons") or []),
+            suggested_cta="Validar evidencia comercial antes de contactar",
+            language=language,
+            confidence=90,
+        )
+
     buyer = clean_text(opportunity.get("buyer_name") or opportunity.get("company")) or "equipo"
     title = clean_text(opportunity.get("title")) or "su iniciativa"
     pains = coerce_list(opportunity.get("pain_signals"))
@@ -119,3 +141,13 @@ def _join_human(values: list[str]) -> str:
     if len(cleaned) == 1:
         return cleaned[0]
     return ", ".join(cleaned[:-1]) + " y " + cleaned[-1]
+
+
+def _quality_payload(opportunity: Mapping[str, Any]) -> dict:
+    raw_quality = opportunity.get("quality")
+    if isinstance(raw_quality, dict):
+        return raw_quality
+    analysis = opportunity.get("analysis")
+    if isinstance(analysis, dict) and isinstance(analysis.get("quality"), dict):
+        return analysis["quality"]
+    return assess_opportunity_quality(opportunity).to_dict()

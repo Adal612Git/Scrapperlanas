@@ -8,6 +8,7 @@ from .next_best_action import recommend_next_best_action
 from .risk import assess_risk
 from .schemas import ScoreV2Result
 from .utils import budget_amount, clean_text, combined_text, coerce_list, normalize_domain, parse_datetime, technical_matches
+from ..quality import assess_opportunity_quality
 
 
 BUYING_TERMS = ("budget", "paid", "bounty", "contract", "proposal", "quote", "procurement", "solicitation", "usd", "$")
@@ -19,6 +20,7 @@ def score_v2(opportunity: Mapping[str, Any], *, now: datetime | None = None) -> 
     runtime_now = (now or datetime.now(UTC)).astimezone(UTC)
     text = combined_text(opportunity)
     risk = assess_risk(opportunity, now=runtime_now)
+    quality = assess_opportunity_quality(opportunity)
     evidence = collect_evidence(opportunity)
 
     money_score, money_reasons = _money_score(opportunity, text)
@@ -43,9 +45,11 @@ def score_v2(opportunity: Mapping[str, Any], *, now: datetime | None = None) -> 
         - risk_penalty
     )
     total = max(0, min(100, total))
-    grade = _grade(total, risk_penalty=risk_penalty, opportunity=opportunity)
+    total = min(total, quality.final_score_cap)
+    grade = _grade(total, risk_penalty=risk_penalty, opportunity=opportunity, quality_grade=quality.grade)
     nba = recommend_next_best_action({**dict(opportunity), "score_v2": total, "grade": grade, "scam_risk": risk.scam_risk})
     reasons = [*money_reasons, *fit_reasons, *urgency_reasons, *contact_reasons, *confidence_reasons]
+    reasons.extend([f"Calidad: {quality.quality_stage}.", f"Intencion: {quality.commercial_intent_label}."])
 
     return ScoreV2Result(
         grade=grade,
@@ -182,7 +186,9 @@ def _confidence_score(opportunity: Mapping[str, Any], evidence: list[str]) -> tu
     return min(100, score), reasons
 
 
-def _grade(total: int, *, risk_penalty: int, opportunity: Mapping[str, Any]) -> str:
+def _grade(total: int, *, risk_penalty: int, opportunity: Mapping[str, Any], quality_grade: str = "") -> str:
+    if quality_grade == "REJECTED":
+        return "D"
     if risk_penalty >= 35 or clean_text(opportunity.get("state")).upper() in {"SOSPECHOSO", "DESCARTADO"}:
         return "D"
     if total >= 90:

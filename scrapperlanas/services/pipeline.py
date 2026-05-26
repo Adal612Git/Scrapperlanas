@@ -6,8 +6,14 @@ from datetime import UTC, datetime, timedelta
 from flask import current_app
 
 from .ai import LocalAiAssistant
-from .buyer_intelligence import assign_buyer_account
+from .buyer_intelligence import assign_buyer_account, recalculate_buyer_account
 from .ingestion import NormalizedOpportunity, connector_registry
+from .quality import (
+    QualityAssessment,
+    assess_opportunity_quality,
+    build_duplicate_context,
+    should_assign_buyer_account,
+)
 from .scoring import score_commercial_opportunity
 
 
@@ -516,18 +522,25 @@ def ingest_policy_opportunities(
             (policy["id"],),
         )
 
+    duplicate_context = build_duplicate_context(opportunities)
     prepared_opportunities = []
     for opportunity in opportunities:
+        quality = assess_opportunity_quality(
+            opportunity,
+            policy_config=policy_config,
+            duplicate_hint=duplicate_context.get(id(opportunity), {}),
+        )
         base_score = score_opportunity(
             opportunity,
             preferred_keywords=preferred_keywords,
             min_budget=min_budget,
         )
-        prepared_opportunities.append((base_score, opportunity))
+        base_score = min(base_score, quality.final_score_cap)
+        prepared_opportunities.append((base_score, quality, opportunity))
 
     prepared_opportunities.sort(key=lambda item: item[0], reverse=True)
 
-    for base_score, opportunity in prepared_opportunities:
+    for base_score, quality, opportunity in prepared_opportunities:
         if not opportunity.url:
             policy_stats["skipped"] += 1
             continue
@@ -568,6 +581,7 @@ def ingest_policy_opportunities(
             opportunity=opportunity,
             enrichment=enrichment,
             base_score=base_score,
+            quality=quality,
             preferred_keywords=preferred_keywords,
             min_budget=min_budget,
             now=runtime_now,
@@ -640,10 +654,30 @@ def _store_enriched_opportunity(
     opportunity: NormalizedOpportunity,
     enrichment: dict,
     base_score: int,
+    quality: QualityAssessment,
     preferred_keywords: tuple[str, ...] = (),
     min_budget: int = 0,
     now: datetime | None = None,
 ) -> tuple[int, int]:
+    if not quality.budget.is_valid_commercial_budget:
+        opportunity.budget_min = None
+        opportunity.budget_max = None
+        opportunity.estimated_value = None
+        opportunity.budget_text = ""
+    elif quality.budget.amount_min is not None or quality.budget.amount_max is not None:
+        opportunity.budget_min = quality.budget.amount_min
+        opportunity.budget_max = quality.budget.amount_max
+        opportunity.estimated_value = quality.budget.amount_max or quality.budget.amount_min
+        opportunity.budget_text = quality.budget.raw_evidence
+        opportunity.currency = quality.budget.currency
+
+    if quality.risk_level in {"HIGH", "CRITICAL"}:
+        opportunity.risk_level = "high"
+        opportunity.is_suspicious = True
+    elif quality.risk_level == "MEDIUM" and opportunity.risk_level == "low":
+        opportunity.risk_level = "medium"
+    opportunity.risk_reasons = list(dict.fromkeys([*opportunity.risk_reasons, *quality.risk_reasons]))
+
     commercial_score = score_commercial_opportunity(
         opportunity,
         base_score=base_score,
@@ -651,6 +685,7 @@ def _store_enriched_opportunity(
         preferred_keywords=preferred_keywords,
         min_budget=min_budget,
         now=now,
+        quality=quality,
     )
     opportunity.score = commercial_score["score_total"]
     opportunity.ai_summary = enrichment["summary"]
@@ -672,16 +707,19 @@ def _store_enriched_opportunity(
             "missing_info": enrichment.get("missing_info"),
             "model_used": enrichment.get("model_used"),
             "commercial_score": commercial_score,
+            "quality": quality.to_dict(),
         },
         ensure_ascii=False,
     )
 
     existing = db.execute(
-        "SELECT id, commercial_status, next_best_action FROM opportunities WHERE url = ?",
+        "SELECT id, buyer_account_id, commercial_status, next_best_action FROM opportunities WHERE url = ?",
         (opportunity.url,),
     ).fetchone()
 
     next_best_action = _next_best_action_for_ingestion(existing, commercial_score)
+    commercial_status = _commercial_status_for_quality(existing, quality)
+    ignored_reason = _ignored_reason_for_quality(quality)
 
     if existing:
         db.execute(
@@ -725,6 +763,8 @@ def _store_enriched_opportunity(
                 ai_summary = ?,
                 suggested_reply = ?,
                 analysis_json = ?,
+                commercial_status = ?,
+                ignored_reason = ?,
                 is_suspicious = ?,
                 raw_text = ?,
                 updated_at = CURRENT_TIMESTAMP
@@ -769,12 +809,22 @@ def _store_enriched_opportunity(
                 opportunity.ai_summary,
                 opportunity.suggested_reply,
                 analysis_json,
+                commercial_status,
+                ignored_reason,
                 int(opportunity.is_suspicious),
                 opportunity.raw_text,
                 existing["id"],
             ),
         )
-        assign_buyer_account(db, int(existing["id"]))
+        if should_assign_buyer_account(quality):
+            assign_buyer_account(db, int(existing["id"]))
+        elif existing["buyer_account_id"]:
+            account_id = int(existing["buyer_account_id"])
+            db.execute(
+                "UPDATE opportunities SET buyer_account_id = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (existing["id"],),
+            )
+            recalculate_buyer_account(db, account_id)
         _maybe_generate_outreach_drafts(
             db,
             opportunity_id=int(existing["id"]),
@@ -783,7 +833,7 @@ def _store_enriched_opportunity(
         )
         return 0, 1
 
-    initial_state = "SOSPECHOSO" if opportunity.is_suspicious else "NUEVO"
+    initial_state = _initial_state_for_quality(quality, opportunity)
     insert_query = """
     INSERT INTO opportunities (
         external_id,
@@ -826,9 +876,11 @@ def _store_enriched_opportunity(
         suggested_reply,
         analysis_json,
         state,
+        commercial_status,
+        ignored_reason,
         is_suspicious,
         raw_text
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """
     if db.engine == "postgres":
         insert_query += " RETURNING id"
@@ -876,6 +928,8 @@ def _store_enriched_opportunity(
             opportunity.suggested_reply,
             analysis_json,
             initial_state,
+            commercial_status,
+            ignored_reason,
             int(opportunity.is_suspicious),
             opportunity.raw_text,
         ),
@@ -889,7 +943,8 @@ def _store_enriched_opportunity(
         new_state=initial_state,
         note=f"Ingestado desde {opportunity.source_label} con score {opportunity.score}.",
     )
-    assign_buyer_account(db, int(opportunity_id))
+    if should_assign_buyer_account(quality):
+        assign_buyer_account(db, int(opportunity_id))
     _maybe_generate_outreach_drafts(
         db,
         opportunity_id=int(opportunity_id),
@@ -937,6 +992,38 @@ def _next_best_action_for_ingestion(existing, commercial_score: dict) -> str:
     if commercial_status in {"contacted", "followup_due", "replied", "discovery", "proposal", "won", "lost", "ignored", "snoozed"}:
         return str(existing["next_best_action"] or "").strip() or initial_action
     return initial_action
+
+
+def _initial_state_for_quality(quality: QualityAssessment, opportunity: NormalizedOpportunity) -> str:
+    if quality.quality_stage == "SUSPECT" or opportunity.is_suspicious:
+        return "SOSPECHOSO"
+    if quality.quality_stage in {"REJECTED_NOISE", "DUPLICATE", "LOW_VALUE"}:
+        return "DESCARTADO"
+    if quality.quality_stage in {"WATCHLIST", "REVIEW_REQUIRED"}:
+        return "VISTO"
+    return "NUEVO"
+
+
+def _commercial_status_for_quality(existing, quality: QualityAssessment) -> str:
+    if existing:
+        current = str(existing["commercial_status"] or "new").strip().lower()
+        if current in {"contacted", "followup_due", "replied", "discovery", "proposal", "won", "lost", "snoozed"}:
+            return current
+    if quality.quality_stage in {"REJECTED_NOISE", "DUPLICATE", "LOW_VALUE"}:
+        return "ignored"
+    if quality.quality_stage in {"WATCHLIST", "REVIEW_REQUIRED", "SUSPECT"}:
+        return "reviewed"
+    return "new"
+
+
+def _ignored_reason_for_quality(quality: QualityAssessment) -> str:
+    if quality.quality_stage == "DUPLICATE":
+        return "duplicate"
+    if quality.quality_stage == "LOW_VALUE":
+        return "low_value"
+    if quality.quality_stage == "REJECTED_NOISE":
+        return "spammy"
+    return ""
 
 
 def _normalized_opportunity_from_payload(item: dict, policy: dict) -> NormalizedOpportunity | None:

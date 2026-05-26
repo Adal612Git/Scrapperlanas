@@ -16,6 +16,7 @@ from flask import current_app
 from ..db import get_db
 from .connectors.base import ERROR_STATUSES
 from .connectors.registry import connector_for_provider
+from .quality import parse_commercial_budget
 
 
 DEFAULT_REDDIT_URLS = (
@@ -1256,27 +1257,10 @@ def assess_risk(
 
 
 def extract_budget(raw_text: str) -> tuple[int | None, int | None, str, str]:
-    range_match = re.search(
-        r"(?i)(?:usd|\$)?\s*(\d[\d,]*(?:\.\d+)?)\s*(k)?\s*(?:-|to|hasta|y)\s*(?:usd|\$)?\s*(\d[\d,]*(?:\.\d+)?)\s*(k)?(?:\s*usd)?",
-        raw_text,
-    )
-    if range_match:
-        first = _money_to_int(range_match.group(1), range_match.group(2))
-        second = _money_to_int(range_match.group(3), range_match.group(4))
-        budget_text = range_match.group(0).replace("  ", " ").strip()
-        return first, second, budget_text, "USD"
-
-    single_matches = re.findall(r"(?i)(?:usd|\$)\s*(\d[\d,]*(?:\.\d+)?)\s*(k)?", raw_text)
-    suffix_matches = re.findall(r"(?i)\b(\d[\d,]*(?:\.\d+)?)\s*(k)?\s*usd\b", raw_text)
-    amount_matches = [*single_matches, *suffix_matches]
-    if amount_matches:
-        values = [_money_to_int(amount, suffix) for amount, suffix in amount_matches]
-        if values:
-            first_value = values[0]
-            budget_text = f"USD {first_value:,}"
-            return first_value, max(values), budget_text, "USD"
-
-    return None, None, "", "USD"
+    budget = parse_commercial_budget(raw_text)
+    if not budget.is_valid_commercial_budget:
+        return None, None, "", budget.currency
+    return budget.amount_min, budget.amount_max, budget.raw_evidence, budget.currency
 
 
 def _money_to_int(value: str, suffix: str | None) -> int:

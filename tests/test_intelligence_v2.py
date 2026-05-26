@@ -14,10 +14,11 @@ from scrapperlanas.services.intelligence.risk import assess_risk
 
 def _opportunity(**overrides):
     base = {
-        "title": "API integration and operations dashboard",
-        "buyer_name": "conspiracy",
-        "buyer_domain": "reddit.com",
-        "source_label": "Reddit Public JSON",
+        "title": "[Hiring] API integration and operations dashboard",
+        "buyer_name": "Acme Ops",
+        "buyer_domain": "acme.example",
+        "source_label": "Workana Public Projects",
+        "source_key": "workana_projects",
         "source_type": "direct_rfp",
         "country": "US",
         "estimated_value": 151_839,
@@ -30,11 +31,11 @@ def _opportunity(**overrides):
             "Necesita pipeline ETL",
             "Necesita dashboard o visibilidad operativa",
         ],
-        "contact_signals": ["domain:reddit.com"],
+        "contact_signals": ["email:ops@acme.example"],
         "evidence_snippets": ["Budget USD 151839 visible in description."],
         "commercial_status": "new",
         "risk_level": "low",
-        "url": "https://reddit.com/r/conspiracy/example",
+        "url": "https://acme.example/projects/api-dashboard",
     }
     base.update(overrides)
     return base
@@ -121,11 +122,11 @@ def test_next_best_action_prioritizes_outreach_for_a1_with_contact():
 
 
 def test_dedupe_confidence_recommends_merge_for_same_domain_and_contact():
-    left = _opportunity(contact_signals=["email:ops@reddit.com"])
+    left = _opportunity(contact_signals=["email:ops@acme.example"])
     right = _opportunity(
-        buyer_name="Conspiracy",
-        buyer_domain="https://www.reddit.com/path",
-        contact_signals=["email:ops@reddit.com"],
+        buyer_name="Acme Ops",
+        buyer_domain="https://www.acme.example/path",
+        contact_signals=["email:ops@acme.example"],
     )
 
     result = compare_accounts(left, right)
@@ -138,7 +139,7 @@ def test_dedupe_confidence_recommends_merge_for_same_domain_and_contact():
 def test_outreach_composer_uses_real_data_without_inventing_claims():
     draft = compose_outreach(_opportunity(), tone="consultivo")
 
-    assert "conspiracy" in draft.body
+    assert "Acme Ops" in draft.body
     assert "integracion API" in draft.body
     assert "Loto Signal" in draft.body
     assert "expertos mundiales" not in draft.body.lower()

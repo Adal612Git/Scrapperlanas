@@ -5,10 +5,24 @@ from typing import Any, Mapping
 
 from .schemas import NextBestAction
 from .utils import budget_amount, clean_text, coerce_list, parse_datetime
+from ..quality import assess_opportunity_quality
 
 
 def recommend_next_best_action(opportunity: Mapping[str, Any], *, now: datetime | None = None) -> NextBestAction:
     runtime_now = (now or datetime.now(UTC)).astimezone(UTC)
+    quality = _quality_payload(opportunity)
+    quality_stage = clean_text(quality.get("quality_stage")).upper()
+    if quality_stage and quality_stage != "READY_TO_CONTACT":
+        return _action(
+            "REVIEW_RISK" if quality_stage == "SUSPECT" else "WAIT",
+            "No contactar todavia",
+            "Falta evidencia comercial suficiente para redactar outreach directo.",
+            78,
+            88,
+            f"Quality stage {quality_stage}.",
+            blocking_issues=list(quality.get("rejection_reasons") or []),
+        )
+
     grade = clean_text(opportunity.get("grade") or opportunity.get("score_tier") or opportunity.get("priority_tier")).upper()
     status = clean_text(opportunity.get("commercial_status") or opportunity.get("canonical_state") or "new").lower()
     status = status.replace("-", "_")
@@ -52,6 +66,16 @@ def recommend_next_best_action(opportunity: Mapping[str, Any], *, now: datetime 
     if grade in {"C", "D"}:
         return _action("DISCARD_LOW_VALUE", "Descartar bajo valor", "No hay suficiente valor, fit o evidencia para perseguir ahora.", 42, 75, "Score bajo.")
     return _action("WAIT", "Mantener en observacion", "Guardar y esperar mejor evidencia o contacto.", 38, 70, "Oportunidad plausible pero incompleta.")
+
+
+def _quality_payload(opportunity: Mapping[str, Any]) -> dict[str, Any]:
+    raw_quality = opportunity.get("quality")
+    if isinstance(raw_quality, dict):
+        return raw_quality
+    analysis = opportunity.get("analysis")
+    if isinstance(analysis, dict) and isinstance(analysis.get("quality"), dict):
+        return analysis["quality"]
+    return assess_opportunity_quality(opportunity).to_dict()
 
 
 def _action(

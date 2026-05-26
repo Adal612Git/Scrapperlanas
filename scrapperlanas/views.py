@@ -52,6 +52,7 @@ from .services.intelligence import (
 )
 from .services.intelligence.risk import assess_risk
 from .services.intelligence.state_machine import CANONICAL_TO_LEGACY, LEGACY_TO_CANONICAL
+from .services.quality import assess_opportunity_quality
 from .services.outreach import (
     activate_outreach_draft,
     list_active_outreach_drafts,
@@ -230,35 +231,22 @@ def dashboard():
     automation_summary = _automation_summary(db)
     filters = _build_filters(profile)
     rows = _fetch_opportunities(db, filters, limit=240)
-    items = _apply_quick_filter(_sort_items([_serialize_opportunity(row) for row in rows]), filters)
+    items = _apply_quality_visibility(_sort_items([_serialize_opportunity(row) for row in rows]), filters)
+    items = _apply_quick_filter(items, filters)
     items = items[:120]
     all_rows = _fetch_opportunities(db, _blank_filters(), limit=None)
     all_items = _sort_items([_serialize_opportunity(row) for row in all_rows])
     _attach_outreach_summary(db, items)
     _attach_outreach_summary(db, all_items)
 
+    quality_metrics = _quality_metrics(all_items)
     metrics = {
-        "total": db.execute("SELECT COUNT(*) AS total FROM opportunities").fetchone()["total"],
-        "active": db.execute(
-            """
-            SELECT COUNT(*) AS total
-            FROM opportunities
-            WHERE state IN ('NUEVO', 'VISTO', 'INTERESANTE', 'RESPONDIDO', 'APLICADO', 'FOLLOW_UP')
-            """
-        ).fetchone()["total"],
-        "suspicious": db.execute(
-            "SELECT COUNT(*) AS total FROM opportunities WHERE is_suspicious = 1"
-        ).fetchone()["total"],
-        "high_score": db.execute(
-            "SELECT COUNT(*) AS total FROM opportunities WHERE score >= 70"
-        ).fetchone()["total"],
-        "cashflow": db.execute(
-            """
-            SELECT COALESCE(SUM(COALESCE(budget_max, budget_min, 0)), 0) AS total
-            FROM opportunities
-            WHERE score >= 70 AND state <> 'DESCARTADO'
-            """
-        ).fetchone()["total"],
+        "total": len(all_items),
+        "active": quality_metrics["contactable"] + quality_metrics["review_required"] + quality_metrics["watchlist"],
+        "suspicious": quality_metrics["suspect"],
+        "high_score": sum(1 for item in all_items if item["quality"]["is_contactable"]),
+        "cashflow": sum(_budget_anchor(item) for item in all_items if item["quality"]["is_contactable"]),
+        "quality": quality_metrics,
     }
     score_average = db.execute(
         "SELECT ROUND(COALESCE(AVG(score), 0), 1) AS total FROM opportunities"
@@ -591,8 +579,10 @@ def import_opportunities_internal():
 @login_required
 def api_intelligence_summary():
     db = get_db()
+    filters = _blank_filters()
     rows = _fetch_opportunities(db, _blank_filters(), limit=None)
-    items = _sort_items([_serialize_opportunity(row) for row in rows])
+    items = _apply_quality_visibility(_sort_items([_serialize_opportunity(row) for row in rows]), filters)
+    items = _apply_quick_filter(items, filters)
     return jsonify({"ok": True, "summary": _copilot_summary(items, source_performance=_source_performance(items))})
 
 
@@ -1406,7 +1396,8 @@ def export_csv():
     db = get_db()
     filters = _build_filters(_get_profile(db, g.user["id"]))
     rows = _fetch_opportunities(db, filters, limit=None)
-    items = _sort_items([_serialize_opportunity(row) for row in rows])
+    items = _apply_quality_visibility(_sort_items([_serialize_opportunity(row) for row in rows]), filters)
+    items = _apply_quick_filter(items, filters)
 
     output = io.StringIO()
     writer = csv.writer(output)
@@ -1434,11 +1425,25 @@ def export_csv():
             "paso_siguiente",
             "presupuesto",
             "riesgo",
+            "qualityStage",
+            "commercialIntentLabel",
+            "commercialIntentScore",
+            "riskLevel",
+            "riskScore",
+            "riskReasons",
+            "buyerConfidence",
+            "budgetConfidence",
+            "sourceTrustScore",
+            "rejectionReasons",
+            "duplicateClusterId",
+            "duplicateCount",
+            "isContactable",
             "url",
         ]
     )
 
     for item in items:
+        quality = item["quality"]
         writer.writerow(
             [
                 item["id"],
@@ -1463,6 +1468,19 @@ def export_csv():
                 item.get("next_best_action") or item["action_summary"],
                 item["budget_display"],
                 item["risk_level"],
+                quality["quality_stage"],
+                quality["commercial_intent_label"],
+                quality["commercial_intent_score"],
+                quality["risk_level"],
+                quality["risk_score"],
+                "; ".join(quality.get("risk_reasons") or []),
+                quality["buyer_confidence"],
+                quality["budget_confidence"],
+                quality["source_trust_score"],
+                "; ".join(quality.get("rejection_reasons") or []),
+                quality.get("duplicate_cluster_id", ""),
+                quality.get("duplicate_count", 0),
+                "yes" if quality.get("is_contactable") else "no",
                 item["url"],
             ]
         )
@@ -1821,6 +1839,7 @@ def _serialize_opportunity(row) -> dict:
     item["risk_reasons"] = _json_list(item.get("risk_reasons"))
     item["score_reasons"] = _json_list(item.get("score_reasons"))
     item["analysis"] = _json_dict(item.get("analysis_json"))
+    item["quality"] = _quality_payload(item)
     item["budget_display"] = _format_budget(item)
     item["estimated_value_display"] = _format_estimated_value(item)
     item["state_badge_class"] = STATE_BADGE_STYLES.get(item["state"], "border border-slate-600 bg-slate-800 text-slate-300")
@@ -1856,10 +1875,12 @@ def _serialize_opportunity(row) -> dict:
 
 
 def _opportunity_intelligence(item: dict) -> dict:
-    score = score_v2(item)
+    quality = item.get("quality") or _quality_payload(item)
+    score = score_v2({**item, "quality": quality})
     risk = assess_risk(item)
     payload = {
         **item,
+        "quality": quality,
         "grade": score.grade,
         "score_v2": score.numeric_score,
         "scam_risk": risk.scam_risk,
@@ -1874,6 +1895,24 @@ def _opportunity_intelligence(item: dict) -> dict:
         "risk": risk.to_dict(),
         "outreach_preview": outreach.to_dict(),
     }
+
+
+def _quality_payload(item: dict) -> dict:
+    quality = item.get("analysis", {}).get("quality") if isinstance(item.get("analysis"), dict) else None
+    if isinstance(quality, dict):
+        return quality
+    return assess_opportunity_quality(item).to_dict()
+
+
+def _apply_quality_visibility(items: list[dict], filters: dict) -> list[dict]:
+    quick = str(filters.get("quick") or "").strip()
+    if quick in {"rejected_noise", "duplicates", "reddit_hidden", "suspect", "budget_dubious", "no_buyer"}:
+        return items
+    return [
+        item
+        for item in items
+        if item["quality"]["quality_stage"] not in {"REJECTED_NOISE", "DUPLICATE", "LOW_VALUE"}
+    ]
 
 
 def _apply_quick_filter(items: list[dict], filters: dict) -> list[dict]:
@@ -1899,10 +1938,43 @@ def _apply_quick_filter(items: list[dict], filters: dict) -> list[dict]:
         return [item for item in items if len(item["intelligence"]["evidence"]) >= 3]
     if quick == "possible_duplicates":
         return [item for item in items if item.get("buyer_account_id") and item.get("buyer_name")]
+    if quick == "contactable":
+        return [item for item in items if item["quality"]["is_contactable"]]
+    if quick == "review_required":
+        return [item for item in items if item["quality"]["quality_stage"] == "REVIEW_REQUIRED"]
+    if quick == "suspect":
+        return [item for item in items if item["quality"]["quality_stage"] == "SUSPECT"]
+    if quick == "rejected_noise":
+        return [item for item in items if item["quality"]["quality_stage"] == "REJECTED_NOISE"]
+    if quick == "duplicates":
+        return [item for item in items if item["quality"]["quality_stage"] == "DUPLICATE" or item["quality"].get("duplicate_count")]
+    if quick == "reddit_trusted":
+        return [
+            item
+            for item in items
+            if item.get("source_key") == "reddit"
+            and item["quality"]["quality_stage"] in {"READY_TO_CONTACT", "REVIEW_REQUIRED", "WATCHLIST"}
+            and item["quality"]["source_trust_score"] >= 45
+        ]
+    if quick == "reddit_hidden":
+        return [
+            item
+            for item in items
+            if item.get("source_key") == "reddit"
+            and item["quality"]["quality_stage"] in {"REJECTED_NOISE", "DUPLICATE", "LOW_VALUE"}
+        ]
+    if quick == "budget_dubious":
+        return [item for item in items if not item["quality"]["budget"]["is_valid_commercial_budget"]]
+    if quick == "no_buyer":
+        return [item for item in items if item["quality"]["buyer_confidence"] < 50]
     return items
 
 
 def _format_budget(item: dict) -> str:
+    quality = item.get("quality") or {}
+    budget_quality = quality.get("budget") or {}
+    if budget_quality and not budget_quality.get("is_valid_commercial_budget"):
+        return "Presupuesto dudoso" if budget_quality.get("raw_evidence") else "No especificado"
     if item["budget_text"]:
         return item["budget_text"]
     if item["budget_min"] and item["budget_max"]:
@@ -1915,6 +1987,10 @@ def _format_budget(item: dict) -> str:
 
 
 def _format_estimated_value(item: dict) -> str:
+    quality = item.get("quality") or {}
+    budget_quality = quality.get("budget") or {}
+    if budget_quality and not budget_quality.get("is_valid_commercial_budget"):
+        return "Sin valor claro"
     value = item.get("estimated_value") or item.get("budget_max") or item.get("budget_min")
     if not value:
         return "Sin valor claro"
@@ -2285,6 +2361,7 @@ def _priority_profile(item: dict) -> dict:
                 and not _is_commercially_closed(item)
                 and not item.get("is_snoozed_active")
                 and item.get("risk_level") != "high"
+                and item.get("quality", {}).get("is_contactable", False)
             ),
         }
 
@@ -2386,6 +2463,7 @@ def _priority_profile(item: dict) -> dict:
             and not item.get("is_snoozed_active")
             and not management_role
             and not noncore_role
+            and item.get("quality", {}).get("is_contactable", False)
         ),
     }
 
@@ -2395,6 +2473,7 @@ def _focus_items(items: list[dict]) -> list[dict]:
         item
         for item in items
         if item.get("is_focus_candidate") and item.get("state") not in {"APLICADO", "GANADO", "PERDIDO", "DESCARTADO"}
+        and item.get("quality", {}).get("is_contactable")
     ]
     candidates.sort(
         key=lambda item: (
@@ -2416,6 +2495,7 @@ def _tier_items(items: list[dict], *, tier: str, limit: int) -> list[dict]:
         and not _is_commercially_closed(item)
         and not item.get("is_snoozed_active")
         and item.get("commercial_status") in {"new", "reviewed"}
+        and item.get("quality", {}).get("is_contactable")
     ]
     candidates.sort(
         key=lambda item: (
@@ -2438,7 +2518,7 @@ def _daily_plan(items: list[dict]) -> dict:
     return {
         "apply_now": sum(1 for item in active_items if item.get("analysis", {}).get("recommended_action") == "apply_now"),
         "review_today": sum(1 for item in active_items if item.get("analysis", {}).get("recommended_action") == "review_today"),
-        "focus_now": sum(1 for item in active_items if item.get("priority_tier") in {"A1", "A2"}),
+        "focus_now": sum(1 for item in active_items if item.get("priority_tier") in {"A1", "A2"} and item.get("quality", {}).get("is_contactable")),
         "fresh": sum(1 for item in active_items if item.get("freshness_label") in {"muy fresca", "reciente"}),
     }
 
@@ -2454,7 +2534,9 @@ def _sales_cockpit(items: list[dict]) -> dict:
     focus_items = [
         item
         for item in active_items
-        if item.get("priority_tier") in {"A1", "A2"} and item.get("risk_level") != "high"
+        if item.get("priority_tier") in {"A1", "A2"}
+        and item.get("risk_level") != "high"
+        and item.get("quality", {}).get("is_contactable")
     ]
     proposal_value = sum(_budget_anchor(item) for item in focus_items)
     follow_up_items = [
@@ -2471,6 +2553,8 @@ def _sales_cockpit(items: list[dict]) -> dict:
         )
         bucket["total"] += 1
         if item.get("priority_tier") in {"A1", "A2"}:
+            if not item.get("quality", {}).get("is_contactable"):
+                continue
             bucket["focus"] += 1
             bucket["potential"] += _budget_anchor(item)
 
@@ -2491,6 +2575,54 @@ def _sales_cockpit(items: list[dict]) -> dict:
     }
 
 
+def _quality_metrics(items: list[dict]) -> dict:
+    buckets = {
+        "total_ingested": len(items),
+        "rejected_noise": 0,
+        "blocked_subreddit": 0,
+        "suspect": 0,
+        "duplicates": 0,
+        "contactable": 0,
+        "review_required": 0,
+        "watchlist": 0,
+        "low_value": 0,
+        "budget_dubious": 0,
+        "no_buyer": 0,
+        "top_rejection_reasons": [],
+    }
+    reason_counts: dict[str, int] = {}
+    for item in items:
+        quality = item.get("quality") or {}
+        stage = quality.get("quality_stage")
+        if stage == "REJECTED_NOISE":
+            buckets["rejected_noise"] += 1
+        if stage == "SUSPECT":
+            buckets["suspect"] += 1
+        if stage == "DUPLICATE" or quality.get("duplicate_count"):
+            buckets["duplicates"] += 1
+        if stage == "READY_TO_CONTACT" or quality.get("is_contactable"):
+            buckets["contactable"] += 1
+        if stage == "REVIEW_REQUIRED":
+            buckets["review_required"] += 1
+        if stage == "WATCHLIST":
+            buckets["watchlist"] += 1
+        if stage == "LOW_VALUE":
+            buckets["low_value"] += 1
+        if not (quality.get("budget") or {}).get("is_valid_commercial_budget"):
+            buckets["budget_dubious"] += 1
+        if int(quality.get("buyer_confidence") or 0) < 50:
+            buckets["no_buyer"] += 1
+        for reason in quality.get("rejection_reasons") or []:
+            if reason == "blocked_subreddit":
+                buckets["blocked_subreddit"] += 1
+            reason_counts[reason] = reason_counts.get(reason, 0) + 1
+    buckets["top_rejection_reasons"] = sorted(
+        ({"reason": reason, "total": total} for reason, total in reason_counts.items()),
+        key=lambda row: (-row["total"], row["reason"]),
+    )[:6]
+    return buckets
+
+
 def _sales_actions(items: list[dict]) -> dict:
     a1_new = [
         item
@@ -2499,6 +2631,7 @@ def _sales_actions(items: list[dict]) -> dict:
         and item.get("commercial_status") in {"new", "reviewed"}
         and not _is_commercially_closed(item)
         and not item.get("is_snoozed_active")
+        and item.get("quality", {}).get("is_contactable")
     ]
     a2_new = [
         item
@@ -2507,6 +2640,7 @@ def _sales_actions(items: list[dict]) -> dict:
         and item.get("commercial_status") in {"new", "reviewed"}
         and not _is_commercially_closed(item)
         and not item.get("is_snoozed_active")
+        and item.get("quality", {}).get("is_contactable")
     ]
     followups_due = [
         item
@@ -2551,11 +2685,13 @@ def _copilot_summary(items: list[dict], *, source_performance: list[dict]) -> di
         if item.get("state") not in {"GANADO", "PERDIDO", "DESCARTADO"}
         and not _is_commercially_closed(item)
         and not item.get("is_snoozed_active")
+        and item.get("quality", {}).get("quality_stage") not in {"REJECTED_NOISE", "DUPLICATE", "LOW_VALUE"}
     ]
     focus = [
         item
         for item in active_items
-        if item.get("intelligence", {}).get("score", {}).get("grade") in {"A1", "A2"}
+        if item.get("quality", {}).get("is_contactable")
+        and item.get("intelligence", {}).get("score", {}).get("grade") in {"A1", "A2"}
     ]
     focus = _sort_items(focus)
     top_item = focus[0] if focus else (active_items[0] if active_items else None)
@@ -2579,7 +2715,7 @@ def _copilot_summary(items: list[dict], *, source_performance: list[dict]) -> di
     if due_deadlines:
         summary_parts.append(f"{len(due_deadlines)} deadlines estan cerca.")
     if top_source:
-        summary_parts.append(f"{top_source['source_label']} lidera calidad por fuente.")
+        summary_parts.append(f"{top_source['source_label']} lidera por contactables reales.")
     if not summary_parts:
         summary_parts.append("No hay urgencias claras; conviene ejecutar ingesta o ampliar filtros.")
 
@@ -2614,12 +2750,22 @@ def _source_performance(items: list[dict]) -> list[dict]:
                 "lost_count": 0,
                 "ignored_count": 0,
                 "ignored_bad_fit_count": 0,
+                "contactable_count": 0,
+                "rejected_noise_count": 0,
+                "suspect_count": 0,
                 "score_total": 0,
                 "total_won_value": 0,
             },
         )
         bucket["total"] += 1
         bucket["score_total"] += int(item.get("score_total") or item.get("priority_score") or 0)
+        quality = item.get("quality") or {}
+        if quality.get("is_contactable"):
+            bucket["contactable_count"] += 1
+        if quality.get("quality_stage") == "REJECTED_NOISE":
+            bucket["rejected_noise_count"] += 1
+        if quality.get("quality_stage") == "SUSPECT":
+            bucket["suspect_count"] += 1
         grade_v2 = item.get("intelligence", {}).get("score", {}).get("grade") or item.get("priority_tier")
         if grade_v2 == "A1":
             bucket["a1_count"] += 1
@@ -2650,12 +2796,14 @@ def _source_performance(items: list[dict]) -> list[dict]:
         win_rate = bucket["won_count"] / contacted
         ignore_rate = bucket["ignored_count"] / total
         a_focus_rate = (bucket["a1_count"] + bucket["a2_count"]) / total
+        contactable_rate = bucket["contactable_count"] / total
+        trash_rate = (bucket["rejected_noise_count"] + bucket["suspect_count"] + bucket["ignored_count"]) / total
         classification = "Prometedora"
-        if bucket["won_count"] and win_rate >= 0.15 and ignore_rate < 0.4:
+        if bucket["won_count"] and win_rate >= 0.15 and trash_rate < 0.4:
             classification = "Elite"
-        elif ignore_rate >= 0.5:
+        elif trash_rate >= 0.5:
             classification = "Ruidosa"
-        elif bucket["total"] >= 5 and bucket["a1_count"] == 0 and bucket["a2_count"] == 0:
+        elif bucket["total"] >= 5 and bucket["contactable_count"] == 0:
             classification = "Muerta"
 
         rows.append(
@@ -2666,6 +2814,8 @@ def _source_performance(items: list[dict]) -> list[dict]:
                 "proposal_rate": round(proposal_rate * 100),
                 "win_rate": round(win_rate * 100),
                 "ignore_rate": round(ignore_rate * 100),
+                "contactable_rate": round(contactable_rate * 100),
+                "trash_rate": round(trash_rate * 100),
                 "false_positive_rate": round((bucket["ignored_bad_fit_count"] / total) * 100),
                 "a_focus_rate": round(a_focus_rate * 100),
                 "classification": classification,
@@ -2675,9 +2825,9 @@ def _source_performance(items: list[dict]) -> list[dict]:
     rows.sort(
         key=lambda row: (
             row["classification"] not in {"Elite", "Prometedora"},
+            -row["contactable_count"],
+            row["trash_rate"],
             -row["won_count"],
-            -row["a1_count"],
-            -row["a2_count"],
             -row["total_won_value"],
             row["source_label"],
         )
@@ -2715,6 +2865,9 @@ def _numeric_item_value(value) -> int:
 
 
 def _budget_anchor(item: dict) -> int:
+    budget_quality = (item.get("quality") or {}).get("budget") or {}
+    if budget_quality and not budget_quality.get("is_valid_commercial_budget"):
+        return 0
     value = item.get("estimated_value") or item.get("budget_max") or item.get("budget_min") or 0
     try:
         return int(value or 0)

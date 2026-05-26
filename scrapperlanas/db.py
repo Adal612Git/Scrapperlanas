@@ -618,6 +618,72 @@ DEFAULT_REDDIT_POLICY_CONFIG = {
         "whatsapp only",
     ],
     "max_items": 30,
+    "reddit": {
+        "enabled": True,
+        "defaultVisibility": "review_required",
+        "allowlist": [
+            "forhire",
+            "freelance_forhire",
+            "remotework",
+            "remotejobs",
+            "remotepython",
+            "hireaprogrammer",
+            "jobs4bitcoins",
+            "slavelabour",
+            "webdev",
+            "smallbusiness",
+            "entrepreneur",
+            "SaaS",
+            "startups",
+            "n8n",
+            "automation",
+            "nocode",
+        ],
+        "greylist": [
+            "Python",
+            "django",
+            "flask",
+            "reactjs",
+            "node",
+            "programming",
+            "learnprogramming",
+            "datascience",
+            "MachineLearning",
+            "artificial",
+            "LocalLLaMA",
+            "webscraping",
+        ],
+        "blocklist": [
+            "nosleep",
+            "conspiracy",
+            "AskReddit",
+            "AmItheAsshole",
+            "relationship_advice",
+            "worldnews",
+            "news",
+            "politics",
+            "memes",
+            "funny",
+            "gaming",
+            "teenagers",
+            "NoStupidQuestions",
+            "Showerthoughts",
+            "WritingPrompts",
+            "creepypasta",
+            "UnresolvedMysteries",
+            "UFOs",
+            "aliens",
+        ],
+        "minCommercialIntentScore": 65,
+        "hideRejectedByDefault": True,
+        "maxResultsPerRun": 50,
+    },
+    "quality": {
+        "minReadyToContactScore": 75,
+        "minBuyerConfidence": 50,
+        "rejectCriticalRisk": True,
+        "hideDuplicates": True,
+    },
 }
 
 DEFAULT_WORKANA_POLICY_CONFIG = {
@@ -1458,7 +1524,10 @@ def _refresh_source_policy_defaults(db: Database) -> None:
             )
             continue
 
-        if source_key == "reddit" and _is_blank_or_legacy_reddit_config(config):
+        if source_key == "reddit" and (
+            _is_blank_or_legacy_reddit_config(config)
+            or _config_missing_keys(config, "reddit", "quality")
+        ):
             db.execute(
                 """
                 UPDATE source_policies

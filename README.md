@@ -11,6 +11,7 @@ Loto Signal es una consola operativa para detectar, priorizar y dar seguimiento 
 - Ingesta multifuente: demo, Reddit, Workana, GitHub Issues, SAM.gov, Greenhouse, Lever, Ashby, Workable, Hacker News Algolia, TED EU, UK Find a Tender, UK Contracts Finder y World Bank Procurement.
 - Normalizacion de comprador, dominio, pais, presupuesto, deadline, skills, dolores, contacto, evidencia y URL de accion.
 - Intelligence V2 deterministica: score explicable A1/A2/B/C/D, risk engine, evidence engine, dedupe/account intelligence, next best action y outreach composer.
+- Opportunity Quality Firewall para cortar ruido de Reddit, scams, contenido SEO, ficcion, discusiones sin comprador, duplicados y presupuestos mal interpretados.
 - Pipeline comercial con estados historicos y maquina canonica: `new`, `triaged`, `interesting`, `outreach_drafted`, `contacted`, `replied`, `proposal_drafted`, `proposal_sent`, `follow_up_due`, `won`, `lost`, `suspicious`, `discarded`, `archived`.
 - Copiloto comercial con resumen de pipeline, deadlines, fuente de mejor calidad, riesgos, borrador de outreach y accion recomendada.
 - Agrupacion de compradores en cuentas, deteccion de duplicados y merge.
@@ -131,6 +132,7 @@ Guia operativa: [automation/n8n/README.md](automation/n8n/README.md).
 ## Documentacion Operativa
 
 - [Redisenio e inteligencia](docs/operacion/loto-signal-redesign-intelligence-2026-05-26.md)
+- [Quality hardening](docs/operacion/scrapperlanas-quality-hardening-2026-05-26.md)
 - [Maquina de estados](docs/operacion/loto-signal-state-machine.md)
 - [Intelligence V2](docs/operacion/loto-signal-intelligence-v2.md)
 
