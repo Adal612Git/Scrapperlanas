@@ -33,6 +33,8 @@ Se retiraron `prototipo.html` y `Scrapperlanas-Mockups.html` porque eran mockups
 
 El archivo `logo.jpg` no existia al iniciar esta entrega. Existia `logosLotos.png` como asset local no versionado, asi que se genero `logo.jpg` desde el cuadrante superior izquierdo de ese mosaico y se copio a `scrapperlanas/static/logo.jpg`.
 
+Decision confirmada por producto: ese `logo.jpg` queda como logo oficial definitivo para Loto Signal.
+
 Uso integrado:
 
 - favicon en `base.html`
@@ -41,7 +43,7 @@ Uso integrado:
 - settings/marca
 - fallback textual `Loto Signal` si la imagen no carga
 
-Riesgo pendiente: confirmar con negocio si `logosLotos.png` era la fuente oficial final. El producto ya usa `logo.jpg`, pero conviene validar el asset definitivo.
+`logosLotos.png` se conserva fuera de git como fuente local auxiliar; la app versiona y usa `logo.jpg`.
 
 ## Cambios de Marca
 
@@ -201,13 +203,19 @@ Resultado actual:
 
 ```text
 python -m pytest -q
-78 passed
+79 passed
 python -m compileall -q scrapperlanas tests
 ok
 docker compose config
 ok
 pip-audit -r requirements.txt
 No known vulnerabilities found
+pip-audit -r requirements-dev.txt
+No known vulnerabilities found
+python -m pytest tests/test_ui_playwright.py -q -s
+1 passed
+Playwright
+playwright==1.60.0, Chromium instalado
 Servidor smoke
 http://127.0.0.1:5051/auth/login 200, /static/logo.jpg 200
 ```
@@ -226,7 +234,11 @@ Pruebas nuevas:
 
 Nota: `docker compose config` carga `.env` local para renderizar. La validacion paso, pero no se documentan ni se imprimen secretos. `pip-audit` se ejecuto desde un venv temporal y fue eliminado al terminar.
 
-Screenshots: no se generaron porque Playwright no esta instalado en este entorno. Se hizo smoke HTTP del login y del logo.
+Screenshots generados por Playwright:
+
+- `.tmp/playwright/loto-signal-dashboard-empty-desktop.png`
+- `.tmp/playwright/loto-signal-dashboard-data-desktop.png`
+- `.tmp/playwright/loto-signal-login-mobile.png`
 
 ## Como Correr Local
 
@@ -244,7 +256,6 @@ http://127.0.0.1:5000
 
 ## Riesgos Pendientes
 
-- Validar que `logo.jpg` generado desde `logosLotos.png` sea el asset oficial final.
 - La UI principal fue redisenada profundamente; otras pantallas se armonizaron con CSS y cambios puntuales, pero pueden recibir una segunda pasada visual.
 - La deteccion de duplicados V2 ya existe como modulo y endpoint, pero persistir `duplicate_confidence` por cuenta/oportunidad puede ser una mejora posterior.
 - No se agregaron migraciones porque la entrega mantuvo cambios compatibles con el esquema actual.

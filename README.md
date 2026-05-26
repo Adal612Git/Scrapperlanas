@@ -42,6 +42,7 @@ Para pruebas:
 
 ```powershell
 python -m pip install -r requirements-dev.txt
+python -m playwright install chromium
 python -m pytest -q
 ```
 
@@ -138,3 +139,5 @@ Guia operativa: [automation/n8n/README.md](automation/n8n/README.md).
 ```powershell
 python -m pytest -q
 ```
+
+La suite incluye un smoke visual con Playwright/Chromium que valida login, logo, Inbox inteligente, ingesta demo y screenshots en `.tmp/playwright/`.
