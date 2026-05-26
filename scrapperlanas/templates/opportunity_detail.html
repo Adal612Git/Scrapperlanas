@@ -52,6 +52,14 @@
             <p class="mt-2 text-xl font-black text-white">{{ opportunity.priority_tier }} / {{ opportunity.priority_label }}</p>
           </article>
           <article class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+            <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Valor estimado</p>
+            <p class="mt-2 text-xl font-black text-white">{{ opportunity.estimated_value_display }}</p>
+          </article>
+          <article class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+            <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Deadline</p>
+            <p class="mt-2 text-xl font-black text-white">{{ opportunity.deadline_display }}</p>
+          </article>
+          <article class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
             <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Confianza IA</p>
             <p class="mt-2 text-xl font-black text-white">{{ opportunity.analysis.confidence or 0 }}/100</p>
           </article>
@@ -68,6 +76,131 @@
             <p class="mt-2 text-xl font-black text-white">{{ opportunity.freshness_label }}</p>
           </article>
         </div>
+
+        <div class="mt-5 rounded-[24px] border border-emerald-500/20 bg-emerald-500/10 p-5">
+          <p class="text-xs font-bold uppercase tracking-[0.24em] text-emerald-200">Por que esto puede convertirse en dinero</p>
+          <div class="mt-4 grid gap-3 md:grid-cols-5">
+            <div class="rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
+              <p class="text-xs uppercase tracking-[0.18em] text-slate-500">Dinero</p>
+              <p class="mt-2 text-lg font-black text-white">{{ opportunity.score_breakdown.money }}</p>
+            </div>
+            <div class="rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
+              <p class="text-xs uppercase tracking-[0.18em] text-slate-500">Fit</p>
+              <p class="mt-2 text-lg font-black text-white">{{ opportunity.score_breakdown.fit }}</p>
+            </div>
+            <div class="rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
+              <p class="text-xs uppercase tracking-[0.18em] text-slate-500">Urgencia</p>
+              <p class="mt-2 text-lg font-black text-white">{{ opportunity.score_breakdown.urgency }}</p>
+            </div>
+            <div class="rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
+              <p class="text-xs uppercase tracking-[0.18em] text-slate-500">Contacto</p>
+              <p class="mt-2 text-lg font-black text-white">{{ opportunity.score_breakdown.contactability }}</p>
+            </div>
+            <div class="rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
+              <p class="text-xs uppercase tracking-[0.18em] text-slate-500">Confianza</p>
+              <p class="mt-2 text-lg font-black text-white">{{ opportunity.score_breakdown.confidence }}</p>
+            </div>
+          </div>
+          <p class="mt-4 text-sm leading-7 text-slate-200">{{ opportunity.next_best_action or opportunity.action_summary }}</p>
+          {% if opportunity.score_reasons %}
+            <ul class="mt-3 list-disc space-y-1 pl-5 text-sm text-slate-300">
+              {% for reason in opportunity.score_reasons[:4] %}
+                <li>{{ reason }}</li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+        </div>
+      </section>
+
+      <section id="outreach" class="rounded-[28px] border border-cyan-500/20 bg-slate-900/90 p-6 shadow-xl shadow-black/20">
+        <div class="flex flex-col gap-4 border-b border-slate-800 pb-5 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p class="text-xs font-bold uppercase tracking-[0.24em] text-cyan-300/80">Mensajes listos</p>
+            <h2 class="mt-2 text-2xl font-black text-white">Outreach comercial</h2>
+            <p class="mt-2 text-sm leading-6 text-slate-400">Mensajes rule-based con evidencia trazable. Nada se envia automatico.</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            {% if outreach_drafts %}
+              <form action="{{ url_for('main.outreach_regenerate', opportunity_id=opportunity.id) }}" method="post">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="next" value="{{ request.path }}">
+                <button type="submit" class="inline-flex items-center gap-2 rounded-2xl border border-cyan-500/30 bg-cyan-500/15 px-4 py-2.5 text-sm font-bold text-cyan-200 hover:bg-cyan-500/20">
+                  <i class="fa-solid fa-rotate"></i>
+                  Regenerar drafts
+                </button>
+              </form>
+            {% else %}
+              <form action="{{ url_for('main.outreach_generate', opportunity_id=opportunity.id) }}" method="post">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="next" value="{{ request.path }}">
+                <button type="submit" class="inline-flex items-center gap-2 rounded-2xl border border-cyan-500/30 bg-cyan-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-cyan-500">
+                  <i class="fa-solid fa-wand-magic-sparkles"></i>
+                  Generar mensajes
+                </button>
+              </form>
+            {% endif %}
+          </div>
+        </div>
+
+        {% if outreach_drafts %}
+          <div class="mt-5 grid gap-4 lg:grid-cols-3">
+            <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+              <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Canal recomendado</p>
+              <p class="mt-2 text-xl font-black text-white">{{ outreach_primary.channel if outreach_primary else "unknown" }}</p>
+            </div>
+            <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 lg:col-span-2">
+              <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Asunto sugerido</p>
+              <p class="mt-2 text-sm font-semibold text-white">{{ outreach_primary.subject if outreach_primary else "Sin asunto" }}</p>
+            </div>
+          </div>
+
+          <div class="mt-5 grid gap-4 xl:grid-cols-2">
+            {% for draft in outreach_drafts %}
+              <article class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">{{ draft.draft_type }} / {{ draft.channel }}</p>
+                    <h3 class="mt-2 text-base font-black text-white">{{ draft.subject }}</h3>
+                  </div>
+                  <div class="flex shrink-0 flex-wrap gap-2">
+                    <button type="button" data-copy-target="outreach-draft-{{ draft.id }}" data-copy-log-url="{{ url_for('main.outreach_copy_log', opportunity_id=opportunity.id, draft_id=draft.id) }}" class="rounded-xl border border-cyan-500/30 bg-cyan-500/15 px-3 py-2 text-xs font-bold text-cyan-200 hover:bg-cyan-500/20">Copiar</button>
+                    {% if draft.draft_type == "initial" %}
+                      <form action="{{ url_for('main.commercial_contacted', opportunity_id=opportunity.id) }}" method="post">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="next" value="{{ request.path }}">
+                        <input type="hidden" name="contact_channel" value="{{ draft.channel }}">
+                        <input type="hidden" name="message_snapshot" value="{{ draft.body }}">
+                        <button type="submit" class="rounded-xl border border-emerald-500/30 bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-500">Contactada</button>
+                      </form>
+                    {% endif %}
+                  </div>
+                </div>
+                <textarea id="outreach-draft-{{ draft.id }}" readonly class="mt-4 min-h-44 w-full rounded-2xl border border-slate-800 bg-slate-900/80 p-4 text-sm leading-6 text-slate-200 outline-none">{{ draft.body }}</textarea>
+                {% if draft.quality_warnings %}
+                  <div class="mt-3 flex flex-wrap gap-2">
+                    {% for warning in draft.quality_warnings %}
+                      <span class="rounded-full border border-amber-500/30 bg-amber-500/15 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-amber-200">{{ warning }}</span>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+                {% if draft.evidence_used %}
+                  <div class="mt-4 rounded-2xl border border-slate-800 bg-slate-900/70 p-3">
+                    <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Evidencia usada</p>
+                    <ul class="mt-2 list-disc space-y-1 pl-4 text-xs leading-5 text-slate-400">
+                      {% for evidence in draft.evidence_used %}
+                        <li>{{ evidence }}</li>
+                      {% endfor %}
+                    </ul>
+                  </div>
+                {% endif %}
+              </article>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="mt-5 rounded-2xl border border-dashed border-slate-700 bg-slate-950/50 p-5 text-sm leading-6 text-slate-500">
+            Todavia no hay drafts activos para esta oportunidad. Genera mensajes cuando quieras preparar contacto manual.
+          </div>
+        {% endif %}
       </section>
 
       <section class="grid gap-4 lg:grid-cols-2">
@@ -153,6 +286,151 @@
     </article>
 
     <aside class="space-y-4">
+      <section class="rounded-[28px] border border-cyan-500/20 bg-slate-900/95 p-6 shadow-xl shadow-black/20">
+        <p class="text-xs font-bold uppercase tracking-[0.24em] text-cyan-300/80">Panel comercial</p>
+        <h3 class="mt-2 text-2xl font-black text-white">{{ opportunity.commercial_status_label }}</h3>
+        <div class="mt-5 grid gap-3 text-sm">
+          <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+            <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Siguiente accion</p>
+            <p class="mt-2 text-slate-200">{{ opportunity.next_best_action or opportunity.action_summary }}</p>
+          </div>
+          <div class="grid gap-3 sm:grid-cols-2">
+            <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+              <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Proximo seguimiento</p>
+              <p class="mt-2 font-semibold text-white">{{ opportunity.next_followup_display }}</p>
+            </div>
+            <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+              <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Ultimo contacto</p>
+              <p class="mt-2 font-semibold text-white">{{ opportunity.last_contacted_display }}</p>
+            </div>
+            <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+              <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Follow-ups</p>
+              <p class="mt-2 font-semibold text-white">{{ opportunity.followup_count or 0 }}</p>
+            </div>
+            <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+              <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Canal</p>
+              <p class="mt-2 font-semibold text-white">{{ opportunity.contact_channel or "Pendiente" }}</p>
+            </div>
+            <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+              <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Propuesta</p>
+              <p class="mt-2 font-semibold text-white">{{ opportunity.proposal_value_display }}</p>
+            </div>
+            <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+              <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Ganado</p>
+              <p class="mt-2 font-semibold text-white">{{ opportunity.won_value_display }}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-5 grid gap-2">
+          <form action="{{ url_for('main.commercial_contacted', opportunity_id=opportunity.id) }}" method="post" class="grid gap-3 rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="next" value="{{ request.path }}">
+            <div class="grid gap-2 sm:grid-cols-2">
+              <input type="text" name="contact_channel" placeholder="email | portal | LinkedIn" value="{{ opportunity.contact_channel }}" class="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white outline-none focus:border-cyan-500">
+              <input type="text" name="contact_value" placeholder="contacto@empresa.com" value="{{ opportunity.contact_value }}" class="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white outline-none focus:border-cyan-500">
+            </div>
+            <button type="submit" class="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-emerald-500/30 bg-emerald-600 px-4 py-3 text-sm font-bold text-white hover:bg-emerald-500">
+              <i class="fa-solid fa-paper-plane"></i>
+              Marcar contactada
+            </button>
+          </form>
+
+          <div class="grid gap-2 sm:grid-cols-2">
+            <form action="{{ url_for('main.commercial_followup_completed', opportunity_id=opportunity.id) }}" method="post">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="next" value="{{ request.path }}">
+              <button type="submit" class="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-amber-500/30 bg-amber-500/15 px-4 py-3 text-sm font-bold text-amber-200 hover:bg-amber-500/20">
+                <i class="fa-solid fa-comments"></i>
+                Follow-up hecho
+              </button>
+            </form>
+            <form action="{{ url_for('main.commercial_replied', opportunity_id=opportunity.id) }}" method="post">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="next" value="{{ request.path }}">
+              <button type="submit" class="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-teal-500/30 bg-teal-500/15 px-4 py-3 text-sm font-bold text-teal-200 hover:bg-teal-500/20">
+                <i class="fa-solid fa-reply"></i>
+                Respondio
+              </button>
+            </form>
+            <form action="{{ url_for('main.commercial_status_update', opportunity_id=opportunity.id) }}" method="post">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="next" value="{{ request.path }}">
+              <input type="hidden" name="commercial_status" value="discovery">
+              <button type="submit" class="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-blue-500/30 bg-blue-500/15 px-4 py-3 text-sm font-bold text-blue-200 hover:bg-blue-500/20">
+                <i class="fa-solid fa-magnifying-glass-chart"></i>
+                En discovery
+              </button>
+            </form>
+            <form action="{{ url_for('main.commercial_proposal', opportunity_id=opportunity.id) }}" method="post" class="grid gap-2">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="next" value="{{ request.path }}">
+              <input type="number" name="proposal_value" min="0" step="100" placeholder="valor propuesta" class="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white outline-none focus:border-fuchsia-500">
+              <button type="submit" class="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-fuchsia-500/30 bg-fuchsia-500/15 px-4 py-3 text-sm font-bold text-fuchsia-200 hover:bg-fuchsia-500/20">
+                <i class="fa-solid fa-file-signature"></i>
+                Propuesta enviada
+              </button>
+            </form>
+            <form action="{{ url_for('main.commercial_won', opportunity_id=opportunity.id) }}" method="post" class="grid gap-2">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="next" value="{{ request.path }}">
+              <input type="number" name="won_value" min="0" step="100" placeholder="valor ganado" class="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white outline-none focus:border-emerald-500">
+              <button type="submit" class="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-emerald-500/30 bg-emerald-600 px-4 py-3 text-sm font-bold text-white hover:bg-emerald-500">
+                <i class="fa-solid fa-handshake"></i>
+                Ganada
+              </button>
+            </form>
+            <form action="{{ url_for('main.commercial_lost', opportunity_id=opportunity.id) }}" method="post" class="grid gap-2">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="next" value="{{ request.path }}">
+              <select name="lost_reason" class="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white outline-none focus:border-rose-500">
+                {% for reason in lost_reasons %}
+                  <option value="{{ reason }}">{{ reason }}</option>
+                {% endfor %}
+              </select>
+              <button type="submit" class="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-rose-500/30 bg-rose-500/15 px-4 py-3 text-sm font-bold text-rose-200 hover:bg-rose-500/20">
+                <i class="fa-solid fa-folder-minus"></i>
+                Perdida
+              </button>
+            </form>
+          </div>
+
+          <form action="{{ url_for('main.commercial_ignored', opportunity_id=opportunity.id) }}" method="post" class="grid gap-2">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="next" value="{{ request.path }}">
+            <select name="ignored_reason" class="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white outline-none focus:border-rose-500">
+              {% for reason in ignored_reasons %}
+                <option value="{{ reason }}">{{ reason }}</option>
+              {% endfor %}
+            </select>
+            <button type="submit" class="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm font-bold text-slate-200 hover:border-rose-500/40">
+              <i class="fa-solid fa-ban"></i>
+              Ignorar
+            </button>
+          </form>
+
+          <form action="{{ url_for('main.commercial_snooze', opportunity_id=opportunity.id) }}" method="post" class="grid gap-2">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="next" value="{{ request.path }}">
+            <input type="date" name="snoozed_until" class="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white outline-none focus:border-cyan-500">
+            <button type="submit" class="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm font-bold text-slate-200 hover:border-cyan-500/40">
+              <i class="fa-solid fa-clock"></i>
+              Snooze
+            </button>
+          </form>
+
+          <form action="{{ url_for('main.commercial_note', opportunity_id=opportunity.id) }}" method="post" class="grid gap-2">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="next" value="{{ request.path }}">
+            <textarea name="notes" rows="3" placeholder="Nota comercial..." class="rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-cyan-500"></textarea>
+            <button type="submit" class="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-blue-500/30 bg-blue-500/15 px-4 py-3 text-sm font-bold text-blue-200 hover:bg-blue-500/20">
+              <i class="fa-solid fa-note-sticky"></i>
+              Agregar nota
+            </button>
+          </form>
+        </div>
+      </section>
+
       <section class="rounded-[28px] border border-slate-800 bg-slate-900/95 p-6 shadow-xl shadow-black/20 xl:sticky xl:top-28">
         <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Actualizar estado</p>
         <div class="mt-5 grid gap-2">
@@ -187,6 +465,38 @@
             Guardar movimiento
           </button>
         </form>
+      </section>
+
+      <section class="rounded-[28px] border border-slate-800 bg-slate-900/90 p-6 shadow-xl shadow-black/20">
+        <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Historial comercial</p>
+        <h3 class="mt-2 text-2xl font-black text-white">Timeline de venta</h3>
+        <div class="mt-5 space-y-3">
+          {% for activity in commercial_activities %}
+            <article class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+              <div class="flex items-start justify-between gap-3">
+                <strong class="text-sm text-white">{{ activity.activity_type }}</strong>
+                <span class="text-xs text-slate-500">{{ activity.created_at }}</span>
+              </div>
+              <p class="mt-2 text-xs uppercase tracking-[0.16em] text-slate-500">
+                {{ activity.actor_email or "Sistema" }}
+                {% if activity.from_status or activity.to_status %}
+                  / {{ activity.from_status or "-" }} -> {{ activity.to_status or "-" }}
+                {% endif %}
+                {% if activity.channel %}
+                  / {{ activity.channel }}
+                {% endif %}
+              </p>
+              {% if activity.notes %}
+                <p class="mt-3 text-sm leading-6 text-slate-300">{{ activity.notes }}</p>
+              {% endif %}
+              {% if activity.message_snapshot %}
+                <p class="mt-3 rounded-2xl border border-slate-800 bg-slate-900/70 p-3 text-xs leading-5 text-slate-400">{{ activity.message_snapshot }}</p>
+              {% endif %}
+            </article>
+          {% else %}
+            <div class="rounded-2xl border border-dashed border-slate-700 bg-slate-950/40 p-4 text-sm text-slate-500">Sin actividad comercial registrada.</div>
+          {% endfor %}
+        </div>
       </section>
 
       <section class="rounded-[28px] border border-slate-800 bg-slate-900/90 p-6 shadow-xl shadow-black/20">

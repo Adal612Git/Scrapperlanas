@@ -6,7 +6,9 @@ from datetime import UTC, datetime, timedelta
 from flask import current_app
 
 from .ai import LocalAiAssistant
+from .buyer_intelligence import assign_buyer_account
 from .ingestion import NormalizedOpportunity, connector_registry
+from .scoring import score_commercial_opportunity
 
 
 PIPELINE_STATES = (
@@ -31,6 +33,10 @@ KEYWORD_WEIGHTS = {
     "rust": 12,
     "backend": 10,
     "api": 10,
+    "integration": 10,
+    "software development": 12,
+    "database": 8,
+    "data pipeline": 10,
     "dashboard": 8,
     "postgresql": 10,
     "flask": 8,
@@ -46,6 +52,13 @@ POSITIVE_SIGNAL_WEIGHTS = {
     "consultant": 8,
     "hourly": 7,
     "fixed price": 8,
+    "bounty": 9,
+    "paid": 6,
+    "quote": 5,
+    "solicitation": 8,
+    "combined synopsis": 8,
+    "sources sought": 5,
+    "set-aside": 4,
     "immediate": 4,
     "urgent": 4,
     "yc": 3,
@@ -374,6 +387,7 @@ def import_opportunities(
         enrichments_remaining=max(0, int(current_app.config["AI_MAX_ENRICHMENTS_PER_RUN"])),
         min_score_for_remote_enrichment=min_score_for_remote_enrichment,
         now=None,
+        apply_age_window=False,
         existing_stats={
             "source_key": policy["source_key"],
             "display_name": policy["display_name"],
@@ -476,6 +490,7 @@ def ingest_policy_opportunities(
     enrichments_remaining: int,
     min_score_for_remote_enrichment: int,
     now: datetime | None = None,
+    apply_age_window: bool = True,
     existing_stats: dict | None = None,
 ) -> tuple[dict, int]:
     policy = dict(policy_row)
@@ -519,7 +534,11 @@ def ingest_policy_opportunities(
         if min_score and base_score < min_score:
             policy_stats["skipped"] += 1
             continue
-        if not _within_age_window(opportunity.posted_at, max_age_days=max_age_days, now=runtime_now):
+        if apply_age_window and not _within_age_window(
+            opportunity.posted_at,
+            max_age_days=max_age_days,
+            now=runtime_now,
+        ):
             policy_stats["skipped"] += 1
             continue
 
@@ -549,6 +568,9 @@ def ingest_policy_opportunities(
             opportunity=opportunity,
             enrichment=enrichment,
             base_score=base_score,
+            preferred_keywords=preferred_keywords,
+            min_budget=min_budget,
+            now=runtime_now,
         )
         policy_stats["created"] += created
         policy_stats["updated"] += updated
@@ -618,12 +640,26 @@ def _store_enriched_opportunity(
     opportunity: NormalizedOpportunity,
     enrichment: dict,
     base_score: int,
+    preferred_keywords: tuple[str, ...] = (),
+    min_budget: int = 0,
+    now: datetime | None = None,
 ) -> tuple[int, int]:
-    opportunity.score = max(0, min(99, base_score + enrichment.get("score_delta", 0)))
+    commercial_score = score_commercial_opportunity(
+        opportunity,
+        base_score=base_score,
+        enrichment=enrichment,
+        preferred_keywords=preferred_keywords,
+        min_budget=min_budget,
+        now=now,
+    )
+    opportunity.score = commercial_score["score_total"]
     opportunity.ai_summary = enrichment["summary"]
     opportunity.suggested_reply = enrichment["suggested_reply"]
     opportunity.sector = enrichment["sector"] or opportunity.sector
     opportunity.stack = enrichment["stack"] or opportunity.stack
+    opportunity.required_skills = opportunity.required_skills or opportunity.stack
+    opportunity.estimated_value = commercial_score.get("estimated_value") or opportunity.estimated_value
+    opportunity.deadline_at = commercial_score.get("deadline_at") or opportunity.deadline_at
     analysis_json = json.dumps(
         {
             "fit_label": enrichment.get("fit_label"),
@@ -635,14 +671,17 @@ def _store_enriched_opportunity(
             "semantic_score": enrichment.get("semantic_score"),
             "missing_info": enrichment.get("missing_info"),
             "model_used": enrichment.get("model_used"),
+            "commercial_score": commercial_score,
         },
         ensure_ascii=False,
     )
 
     existing = db.execute(
-        "SELECT id FROM opportunities WHERE url = ?",
+        "SELECT id, commercial_status, next_best_action FROM opportunities WHERE url = ?",
         (opportunity.url,),
     ).fetchone()
+
+    next_best_action = _next_best_action_for_ingestion(existing, commercial_score)
 
     if existing:
         db.execute(
@@ -650,19 +689,39 @@ def _store_enriched_opportunity(
             UPDATE opportunities
             SET external_id = ?,
                 source_key = ?,
+                source_type = ?,
                 source_label = ?,
                 title = ?,
                 company = ?,
+                buyer_name = ?,
+                buyer_domain = ?,
+                country = ?,
+                apply_url = ?,
                 budget_min = ?,
                 budget_max = ?,
+                estimated_value = ?,
                 budget_text = ?,
                 currency = ?,
                 sector = ?,
                 stack = ?,
+                required_skills = ?,
+                pain_signals = ?,
+                contact_signals = ?,
+                evidence_snippets = ?,
                 posted_at = ?,
+                deadline_at = ?,
                 risk_level = ?,
                 risk_reasons = ?,
                 score = ?,
+                score_total = ?,
+                score_money = ?,
+                score_fit = ?,
+                score_urgency = ?,
+                score_contactability = ?,
+                score_confidence = ?,
+                score_tier = ?,
+                score_reasons = ?,
+                next_best_action = ?,
                 ai_summary = ?,
                 suggested_reply = ?,
                 analysis_json = ?,
@@ -674,19 +733,39 @@ def _store_enriched_opportunity(
             (
                 opportunity.external_id,
                 opportunity.source_key,
+                opportunity.source_type,
                 opportunity.source_label,
                 opportunity.title,
                 opportunity.company,
+                opportunity.buyer_name,
+                opportunity.buyer_domain,
+                opportunity.country,
+                opportunity.apply_url,
                 opportunity.budget_min,
                 opportunity.budget_max,
+                opportunity.estimated_value,
                 opportunity.budget_text,
                 opportunity.currency,
                 opportunity.sector,
                 json.dumps(opportunity.stack, ensure_ascii=False),
+                json.dumps(opportunity.required_skills, ensure_ascii=False),
+                json.dumps(opportunity.pain_signals, ensure_ascii=False),
+                json.dumps(opportunity.contact_signals, ensure_ascii=False),
+                json.dumps(opportunity.evidence_snippets, ensure_ascii=False),
                 opportunity.posted_at,
+                opportunity.deadline_at,
                 opportunity.risk_level,
                 json.dumps(opportunity.risk_reasons, ensure_ascii=False),
                 opportunity.score,
+                commercial_score["score_total"],
+                commercial_score["score_money"],
+                commercial_score["score_fit"],
+                commercial_score["score_urgency"],
+                commercial_score["score_contactability"],
+                commercial_score["score_confidence"],
+                commercial_score["score_tier"],
+                json.dumps(commercial_score["score_reasons"], ensure_ascii=False),
+                next_best_action,
                 opportunity.ai_summary,
                 opportunity.suggested_reply,
                 analysis_json,
@@ -695,6 +774,13 @@ def _store_enriched_opportunity(
                 existing["id"],
             ),
         )
+        assign_buyer_account(db, int(existing["id"]))
+        _maybe_generate_outreach_drafts(
+            db,
+            opportunity_id=int(existing["id"]),
+            source_key=opportunity.source_key,
+            score_tier=commercial_score["score_tier"],
+        )
         return 0, 1
 
     initial_state = "SOSPECHOSO" if opportunity.is_suspicious else "NUEVO"
@@ -702,27 +788,47 @@ def _store_enriched_opportunity(
     INSERT INTO opportunities (
         external_id,
         source_key,
+        source_type,
         source_label,
         title,
         company,
+        buyer_name,
+        buyer_domain,
+        country,
         url,
+        apply_url,
         budget_min,
         budget_max,
+        estimated_value,
         budget_text,
         currency,
         sector,
         stack,
+        required_skills,
+        pain_signals,
+        contact_signals,
+        evidence_snippets,
         posted_at,
+        deadline_at,
         risk_level,
         risk_reasons,
         score,
+        score_total,
+        score_money,
+        score_fit,
+        score_urgency,
+        score_contactability,
+        score_confidence,
+        score_tier,
+        score_reasons,
+        next_best_action,
         ai_summary,
         suggested_reply,
         analysis_json,
         state,
         is_suspicious,
         raw_text
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """
     if db.engine == "postgres":
         insert_query += " RETURNING id"
@@ -732,20 +838,40 @@ def _store_enriched_opportunity(
         (
             opportunity.external_id,
             opportunity.source_key,
+            opportunity.source_type,
             opportunity.source_label,
             opportunity.title,
             opportunity.company,
+            opportunity.buyer_name,
+            opportunity.buyer_domain,
+            opportunity.country,
             opportunity.url,
+            opportunity.apply_url,
             opportunity.budget_min,
             opportunity.budget_max,
+            opportunity.estimated_value,
             opportunity.budget_text,
             opportunity.currency,
             opportunity.sector,
             json.dumps(opportunity.stack, ensure_ascii=False),
+            json.dumps(opportunity.required_skills, ensure_ascii=False),
+            json.dumps(opportunity.pain_signals, ensure_ascii=False),
+            json.dumps(opportunity.contact_signals, ensure_ascii=False),
+            json.dumps(opportunity.evidence_snippets, ensure_ascii=False),
             opportunity.posted_at,
+            opportunity.deadline_at,
             opportunity.risk_level,
             json.dumps(opportunity.risk_reasons, ensure_ascii=False),
             opportunity.score,
+            commercial_score["score_total"],
+            commercial_score["score_money"],
+            commercial_score["score_fit"],
+            commercial_score["score_urgency"],
+            commercial_score["score_contactability"],
+            commercial_score["score_confidence"],
+            commercial_score["score_tier"],
+            json.dumps(commercial_score["score_reasons"], ensure_ascii=False),
+            next_best_action,
             opportunity.ai_summary,
             opportunity.suggested_reply,
             analysis_json,
@@ -763,7 +889,54 @@ def _store_enriched_opportunity(
         new_state=initial_state,
         note=f"Ingestado desde {opportunity.source_label} con score {opportunity.score}.",
     )
+    assign_buyer_account(db, int(opportunity_id))
+    _maybe_generate_outreach_drafts(
+        db,
+        opportunity_id=int(opportunity_id),
+        source_key=opportunity.source_key,
+        score_tier=commercial_score["score_tier"],
+    )
     return 1, 0
+
+
+def _maybe_generate_outreach_drafts(db, *, opportunity_id: int, source_key: str, score_tier: str) -> None:
+    if source_key not in {
+        "hn_algolia",
+        "greenhouse_jobs",
+        "lever_postings",
+        "ashby_jobs",
+        "workable_jobs",
+        "ted_eu",
+        "uk_find_tender",
+        "uk_contracts_finder",
+        "worldbank_procurement",
+    }:
+        return
+    if str(score_tier or "").upper() not in {"A1", "A2"}:
+        return
+    try:
+        from .outreach import persist_outreach_drafts
+
+        persist_outreach_drafts(db, opportunity_id=opportunity_id, regenerate=False)
+    except Exception:
+        return
+
+
+def _next_best_action_for_ingestion(existing, commercial_score: dict) -> str:
+    tier = str(commercial_score.get("score_tier") or "").strip().upper()
+    initial_action = commercial_score.get("next_best_action") or ""
+    if tier == "A1":
+        initial_action = "Contactar hoy"
+    elif tier == "A2":
+        initial_action = "Revisar esta semana"
+
+    if not existing:
+        return initial_action
+
+    commercial_status = str(existing["commercial_status"] or "new").strip().lower()
+    if commercial_status in {"contacted", "followup_due", "replied", "discovery", "proposal", "won", "lost", "ignored", "snoozed"}:
+        return str(existing["next_best_action"] or "").strip() or initial_action
+    return initial_action
 
 
 def _normalized_opportunity_from_payload(item: dict, policy: dict) -> NormalizedOpportunity | None:
@@ -794,13 +967,24 @@ def _normalized_opportunity_from_payload(item: dict, policy: dict) -> Normalized
         company=company,
         url=url,
         raw_text=raw_text or title,
+        source_type=str(item.get("source_type", "") or _source_type_for_policy(policy["source_key"])).strip(),
+        buyer_name=str(item.get("buyer_name", "") or company).strip(),
+        buyer_domain=str(item.get("buyer_domain", "") or _domain_from_url(url)).strip(),
+        country=str(item.get("country", "") or "").strip(),
+        apply_url=str(item.get("apply_url", "") or url).strip(),
         budget_min=_safe_int_or_none(item.get("budget_min")),
         budget_max=_safe_int_or_none(item.get("budget_max")),
+        estimated_value=_safe_int_or_none(item.get("estimated_value")),
         budget_text=str(item.get("budget_text", "") or "").strip(),
         currency=str(item.get("currency", "") or "USD").strip() or "USD",
         sector=str(item.get("sector", "") or "").strip(),
         stack=stack,
+        required_skills=_coerce_list(item.get("required_skills")) or stack,
+        pain_signals=_coerce_list(item.get("pain_signals")),
+        contact_signals=_coerce_list(item.get("contact_signals")),
+        evidence_snippets=_coerce_list(item.get("evidence_snippets")),
         posted_at=str(item.get("posted_at", "") or "").strip() or None,
+        deadline_at=str(item.get("deadline_at", "") or "").strip() or None,
         risk_level=risk_level,
         risk_reasons=risk_reasons,
         is_suspicious=bool(item.get("is_suspicious")),
@@ -829,6 +1013,38 @@ def _safe_int_or_none(value) -> int | None:
         return int(value)
     except (TypeError, ValueError):
         return None
+
+
+def _domain_from_url(value: str) -> str:
+    from urllib.parse import urlparse
+
+    return urlparse(str(value or "")).netloc.lower().replace("www.", "").strip()
+
+
+def _source_type_for_policy(source_key: str) -> str:
+    mapping = {
+        "sample_feed": "direct_rfp",
+        "reddit": "community",
+        "workana_projects": "direct_rfp",
+        "greenhouse": "hiring_signal",
+        "lever": "hiring_signal",
+        "weworkremotely": "hiring_signal",
+        "hackernews_jobs": "hiring_signal",
+        "hn_algolia": "community_signal",
+        "greenhouse_jobs": "hiring_signal",
+        "lever_postings": "hiring_signal",
+        "ashby_jobs": "hiring_signal",
+        "workable_jobs": "hiring_signal",
+        "ted_eu": "procurement",
+        "uk_find_tender": "procurement",
+        "uk_contracts_finder": "procurement",
+        "worldbank_procurement": "procurement",
+        "github_issues": "github_issue",
+        "sam_gov": "procurement",
+        "public_pages": "direct_rfp",
+        "email_alerts": "direct_rfp",
+    }
+    return mapping.get(source_key, "direct_rfp")
 
 
 def _record_automation_run(

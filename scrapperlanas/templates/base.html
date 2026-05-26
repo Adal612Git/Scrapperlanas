@@ -47,6 +47,14 @@
                       <i class="fa-solid fa-table-columns sidebar-icon"></i>
                       <span class="sidebar-text">Pipeline</span>
                     </a>
+                    <a href="{{ url_for('main.accounts') }}" class="sidebar-nav-link {% if request.endpoint in ['main.accounts', 'main.account_detail', 'main.account_duplicates'] %}is-nav-active{% endif %} flex items-center gap-3 rounded-2xl border border-transparent px-4 py-3 text-sm font-semibold text-slate-400 hover:border-slate-700 hover:bg-slate-800 hover:text-white">
+                      <i class="fa-solid fa-building-user sidebar-icon"></i>
+                      <span class="sidebar-text">Cuentas</span>
+                    </a>
+                    <a href="{{ url_for('main.targets') }}" class="sidebar-nav-link {% if request.endpoint in ['main.targets', 'main.target_new', 'main.target_detail'] %}is-nav-active{% endif %} flex items-center gap-3 rounded-2xl border border-transparent px-4 py-3 text-sm font-semibold text-slate-400 hover:border-slate-700 hover:bg-slate-800 hover:text-white">
+                      <i class="fa-solid fa-crosshairs sidebar-icon"></i>
+                      <span class="sidebar-text">Targets</span>
+                    </a>
                   </div>
 
                   <div class="space-y-2">

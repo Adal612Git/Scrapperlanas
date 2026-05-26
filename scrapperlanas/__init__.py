@@ -15,6 +15,15 @@ def create_app(test_config: dict | None = None) -> Flask:
     config = Config().as_dict()
     if test_config:
         config.update(test_config)
+        if (
+            test_config.get("OLLAMA_ENABLED")
+            and "AI_PROVIDER" not in test_config
+            and "AI_PROVIDER_EXPLICIT" not in test_config
+        ):
+            config["AI_PROVIDER"] = "ollama"
+            config["AI_PROVIDER_EXPLICIT"] = False
+            if "AI_EMBED_PROVIDER" not in test_config:
+                config["AI_EMBED_PROVIDER"] = "ollama"
 
     instance_path = config.get("INSTANCE_PATH")
     app = Flask(__name__, instance_relative_config=True, instance_path=instance_path)
@@ -51,8 +60,32 @@ def _validate_runtime_config(app: Flask) -> None:
         return
 
     secret_key = str(app.config.get("SECRET_KEY", "")).strip()
-    if not secret_key or secret_key in {DEFAULT_DEV_SECRET, "change-me", "change-me-before-production"}:
+    if _is_weak_secret(secret_key):
         raise RuntimeError("Set a strong SECRET_KEY before running Scrapperlanas in production.")
+
+    cron_secret = str(app.config.get("CRON_SECRET", "") or "").strip()
+    if _is_weak_secret(cron_secret):
+        raise RuntimeError("Set a strong CRON_SECRET before running Scrapperlanas in production.")
 
     if app.config.get("DEBUG"):
         raise RuntimeError("Disable DEBUG before running Scrapperlanas in production.")
+
+    if not app.config.get("SESSION_COOKIE_SECURE") and not app.config.get("ALLOW_INSECURE_PRODUCTION_COOKIES"):
+        raise RuntimeError("SESSION_COOKIE_SECURE must be enabled in production.")
+
+    if not app.config.get("DATABASE_URL") and not app.config.get("ALLOW_SQLITE_IN_PRODUCTION"):
+        raise RuntimeError("DATABASE_URL must be configured in production.")
+
+
+def _is_weak_secret(value: str) -> bool:
+    normalized = value.strip().lower()
+    if len(value.strip()) < 32:
+        return True
+    return normalized in {
+        DEFAULT_DEV_SECRET,
+        "change-me",
+        "change-me-before-production",
+        "change-me-cron-secret",
+        "change-me-n8n",
+        "change-me-n8n-encryption-key",
+    }

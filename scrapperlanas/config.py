@@ -112,10 +112,38 @@ class Config:
             "https://api.deepseek.com",
         ).strip()
         self.REQUEST_TIMEOUT_SECONDS = _as_int(os.getenv("REQUEST_TIMEOUT_SECONDS"), default=12)
+        self.CONNECTOR_TIMEOUT_SECONDS = max(
+            1,
+            _as_int(os.getenv("CONNECTOR_TIMEOUT_SECONDS"), default=self.REQUEST_TIMEOUT_SECONDS),
+        )
+        self.CONNECTOR_MAX_RESULTS_PER_SOURCE = max(
+            1,
+            _as_int(os.getenv("CONNECTOR_MAX_RESULTS_PER_SOURCE"), default=50),
+        )
+        self.HN_ALGOLIA_ENABLED = _as_bool(os.getenv("HN_ALGOLIA_ENABLED"), default=False)
+        self.GREENHOUSE_ENABLED = _as_bool(os.getenv("GREENHOUSE_ENABLED"), default=False)
+        self.LEVER_ENABLED = _as_bool(os.getenv("LEVER_ENABLED"), default=False)
+        self.ASHBY_ENABLED = _as_bool(os.getenv("ASHBY_ENABLED"), default=False)
+        self.WORKABLE_ENABLED = _as_bool(os.getenv("WORKABLE_ENABLED"), default=False)
+        self.WORKABLE_API_TOKEN = os.getenv("WORKABLE_API_TOKEN", "").strip() or None
+        self.TED_EU_ENABLED = _as_bool(os.getenv("TED_EU_ENABLED"), default=False)
+        self.UK_FIND_TENDER_ENABLED = _as_bool(os.getenv("UK_FIND_TENDER_ENABLED"), default=False)
+        self.UK_CONTRACTS_FINDER_ENABLED = _as_bool(os.getenv("UK_CONTRACTS_FINDER_ENABLED"), default=False)
+        self.WORLD_BANK_PROCUREMENT_ENABLED = _as_bool(
+            os.getenv("WORLD_BANK_PROCUREMENT_ENABLED"),
+            default=False,
+        )
         self.INGEST_USER_AGENT = os.getenv(
             "INGEST_USER_AGENT",
             f"Scrapperlanas/0.1 (+{default_app_origin})",
         )
+        self.GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "").strip() or None
+        self.GITHUB_API_URL = os.getenv("GITHUB_API_URL", "https://api.github.com").strip().rstrip("/")
+        self.SAM_API_KEY = os.getenv("SAM_API_KEY", "").strip() or None
+        self.SAM_OPPORTUNITIES_URL = os.getenv(
+            "SAM_OPPORTUNITIES_URL",
+            "https://api.sam.gov/opportunities/v2/search",
+        ).strip()
         self.CRON_SECRET = os.getenv("CRON_SECRET", "").strip() or None
         self.AUTOMATION_MODE = os.getenv("AUTOMATION_MODE", "manual").strip().lower() or "manual"
         self.AUTOMATION_POLL_SECONDS = max(
@@ -159,6 +187,35 @@ class Config:
             "https" if environment == "production" or is_vercel else "http",
         )
         self.TRUST_PROXY = _as_bool(os.getenv("TRUST_PROXY"), default=is_vercel)
+        self.ALLOW_INSECURE_PRODUCTION_COOKIES = _as_bool(
+            os.getenv("ALLOW_INSECURE_PRODUCTION_COOKIES"),
+            default=False,
+        )
+        self.ALLOW_SQLITE_IN_PRODUCTION = _as_bool(
+            os.getenv("ALLOW_SQLITE_IN_PRODUCTION"),
+            default=False,
+        )
+        self.HSTS_ENABLED = _as_bool(
+            os.getenv("HSTS_ENABLED"),
+            default=environment == "production" or is_vercel,
+        )
+        self.HSTS_MAX_AGE_SECONDS = max(
+            0,
+            _as_int(os.getenv("HSTS_MAX_AGE_SECONDS"), default=31_536_000),
+        )
+        self.HSTS_INCLUDE_SUBDOMAINS = _as_bool(
+            os.getenv("HSTS_INCLUDE_SUBDOMAINS"),
+            default=True,
+        )
+        self.HSTS_PRELOAD = _as_bool(os.getenv("HSTS_PRELOAD"), default=False)
+        self.AUTH_RATE_LIMIT_MAX_ATTEMPTS = max(
+            0,
+            _as_int(os.getenv("AUTH_RATE_LIMIT_MAX_ATTEMPTS"), default=8),
+        )
+        self.AUTH_RATE_LIMIT_WINDOW_SECONDS = max(
+            1,
+            _as_int(os.getenv("AUTH_RATE_LIMIT_WINDOW_SECONDS"), default=900),
+        )
         self.PREFERRED_KEYWORDS = (
             "python",
             "scraping",

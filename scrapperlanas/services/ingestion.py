@@ -4,7 +4,7 @@ import json
 import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from email.utils import parsedate_to_datetime
 from html import unescape
 from urllib.parse import parse_qsl, quote, urlencode, urljoin, urlparse, urlunparse
@@ -12,6 +12,10 @@ from urllib.parse import parse_qsl, quote, urlencode, urljoin, urlparse, urlunpa
 import requests
 from bs4 import BeautifulSoup
 from flask import current_app
+
+from ..db import get_db
+from .connectors.base import ERROR_STATUSES
+from .connectors.registry import connector_for_provider
 
 
 DEFAULT_REDDIT_URLS = (
@@ -86,13 +90,24 @@ class NormalizedOpportunity:
     company: str
     url: str
     raw_text: str
+    source_type: str = ""
+    buyer_name: str = ""
+    buyer_domain: str = ""
+    country: str = ""
+    apply_url: str = ""
     budget_min: int | None = None
     budget_max: int | None = None
+    estimated_value: int | None = None
     budget_text: str = ""
     currency: str = "USD"
     sector: str = ""
     stack: list[str] = field(default_factory=list)
+    required_skills: list[str] = field(default_factory=list)
+    pain_signals: list[str] = field(default_factory=list)
+    contact_signals: list[str] = field(default_factory=list)
+    evidence_snippets: list[str] = field(default_factory=list)
     posted_at: str | None = None
+    deadline_at: str | None = None
     risk_level: str = "low"
     risk_reasons: list[str] = field(default_factory=list)
     score: int = 0
@@ -136,6 +151,19 @@ class BaseConnector:
         budget_min, budget_max, budget_text, currency = extract_budget(raw_text)
         sector = detect_sector(raw_text)
         stack = detect_stack(raw_text)
+        source_type = str(raw.get("source_type") or _source_type_for_policy(policy_row["source_key"])).strip()
+        buyer_name = str(raw.get("buyer_name") or raw.get("company") or "").strip()
+        apply_url = str(raw.get("apply_url") or raw.get("url") or "").strip()
+        deadline_at = raw.get("deadline_at") or extract_deadline(raw_text)
+        estimated_value = _safe_int_or_none(raw.get("estimated_value")) or budget_max or budget_min
+        required_skills = _coerce_list(raw.get("required_skills")) or stack
+        contact_signals = _coerce_list(raw.get("contact_signals")) or extract_contact_signals(raw_text)
+        pain_signals = _coerce_list(raw.get("pain_signals")) or detect_pain_signals(raw_text)
+        evidence_snippets = _coerce_list(raw.get("evidence_snippets")) or build_evidence_snippets(
+            raw_text,
+            required_skills=required_skills,
+            pain_signals=pain_signals,
+        )
         risk_level, risk_reasons, suspicious = assess_risk(
             raw_text,
             policy_row["risk_level"],
@@ -151,13 +179,24 @@ class BaseConnector:
             company=raw.get("company", "").strip(),
             url=raw.get("url", "").strip(),
             raw_text=raw_text,
+            source_type=source_type,
+            buyer_name=buyer_name,
+            buyer_domain=str(raw.get("buyer_domain") or _domain_from_url(raw.get("url", ""))).strip(),
+            country=str(raw.get("country", "") or "").strip(),
+            apply_url=apply_url,
             budget_min=budget_min,
             budget_max=budget_max,
+            estimated_value=estimated_value,
             budget_text=budget_text,
             currency=currency,
             sector=sector,
             stack=stack,
+            required_skills=required_skills,
+            pain_signals=pain_signals,
+            contact_signals=contact_signals,
+            evidence_snippets=evidence_snippets,
             posted_at=raw.get("posted_at"),
+            deadline_at=deadline_at,
             risk_level=risk_level,
             risk_reasons=risk_reasons,
             is_suspicious=suspicious,
@@ -356,8 +395,6 @@ class RedditConnector(BaseConnector):
 
         normalized = self._dedupe_by_url(normalized)
         filtered = self._apply_policy_filters(policy_row, normalized)
-        if not filtered:
-            raise RuntimeError("Reddit responded, but no posts matched the current filters.")
         return filtered
 
 
@@ -405,8 +442,6 @@ class WorkanaConnector(BaseConnector):
 
         normalized = self._dedupe_by_url(normalized)
         filtered = self._apply_policy_filters(policy_row, normalized)
-        if not filtered:
-            raise RuntimeError("Workana responded, but no projects matched the current filters.")
         return filtered
 
     def _fetch_job_detail(self, job_url: str) -> dict | None:
@@ -573,8 +608,6 @@ class WeWorkRemotelyConnector(BaseConnector):
 
         normalized = self._dedupe_by_url(normalized)
         filtered = self._apply_policy_filters(policy_row, normalized)
-        if not filtered:
-            raise RuntimeError("We Work Remotely RSS returned no matches for the current filters.")
         return filtered
 
 
@@ -635,8 +668,214 @@ class HackerNewsJobsConnector(BaseConnector):
 
         normalized = self._dedupe_by_url(normalized)
         filtered = self._apply_policy_filters(policy_row, normalized)
-        if not filtered:
-            raise RuntimeError("Hacker News jobs API returned no matches for the current filters.")
+        return filtered
+
+
+class GitHubIssuesConnector(BaseConnector):
+    def fetch(self, policy_row) -> list[NormalizedOpportunity]:
+        config = self._policy_config(policy_row)
+        queries = [
+            str(query).strip()
+            for query in config.get("queries", [])
+            if str(query).strip()
+        ]
+        if not queries:
+            return []
+
+        api_url = str(current_app.config.get("GITHUB_API_URL", "https://api.github.com")).rstrip("/")
+        per_page = max(1, min(100, _safe_int(config.get("per_page"), default=20)))
+        max_items = max(1, _safe_int(config.get("max_items"), default=25))
+        sort = str(config.get("sort") or "updated").strip()
+        order = str(config.get("order") or "desc").strip()
+        commercial_terms = tuple(
+            str(term).strip().lower()
+            for term in config.get("commercial_signal_terms", [])
+            if str(term).strip()
+        )
+        require_commercial_signal = bool(config.get("require_commercial_signal", True))
+
+        normalized: list[NormalizedOpportunity] = []
+        seen_urls: set[str] = set()
+        successful_responses = 0
+
+        for query in queries:
+            try:
+                response = requests.get(
+                    f"{api_url}/search/issues",
+                    headers=self._github_headers(),
+                    params={
+                        "q": query[:256],
+                        "sort": sort,
+                        "order": order,
+                        "per_page": per_page,
+                    },
+                    timeout=self._timeout(),
+                )
+                response.raise_for_status()
+                payload = response.json()
+            except Exception:
+                continue
+
+            successful_responses += 1
+            for issue in payload.get("items", []) or []:
+                if issue.get("pull_request"):
+                    continue
+
+                issue_url = str(issue.get("html_url", "") or "").strip()
+                if not issue_url or issue_url in seen_urls:
+                    continue
+
+                labels = [
+                    str(label.get("name", "")).strip()
+                    for label in issue.get("labels", []) or []
+                    if isinstance(label, dict) and str(label.get("name", "")).strip()
+                ]
+                repository = _github_repository_name(issue)
+                body = html_to_text(str(issue.get("body", "") or ""))
+                raw_text = "\n".join(
+                    part
+                    for part in (
+                        issue.get("title", ""),
+                        repository,
+                        " ".join(labels),
+                        body,
+                    )
+                    if part
+                )
+                if require_commercial_signal and not _has_commercial_signal(
+                    raw_text,
+                    labels=labels,
+                    terms=commercial_terms,
+                ):
+                    continue
+
+                seen_urls.add(issue_url)
+                raw_row = {
+                    "external_id": str(issue.get("id", "") or issue_url),
+                    "source_type": "github_issue",
+                    "title": str(issue.get("title", "") or "").strip(),
+                    "company": repository,
+                    "buyer_name": repository,
+                    "buyer_domain": "github.com",
+                    "url": issue_url,
+                    "apply_url": issue_url,
+                    "body": raw_text,
+                    "posted_at": _to_iso_datetime(issue.get("updated_at") or issue.get("created_at")),
+                    "required_skills": labels,
+                }
+                normalized.append(
+                    self._normalize(
+                        policy_row=policy_row,
+                        source_label=policy_row["display_name"],
+                        raw=raw_row,
+                    )
+                )
+                if len(normalized) >= max_items:
+                    break
+
+            if len(normalized) >= max_items:
+                break
+
+        if successful_responses == 0:
+            raise RuntimeError("GitHub Search API unreachable or rate limited.")
+
+        filtered = self._apply_policy_filters(policy_row, self._dedupe_by_url(normalized))
+        return filtered
+
+    def _github_headers(self) -> dict[str, str]:
+        headers = {
+            "Accept": "application/vnd.github+json",
+            "User-Agent": current_app.config["INGEST_USER_AGENT"],
+        }
+        token = str(current_app.config.get("GITHUB_TOKEN", "") or "").strip()
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+        return headers
+
+
+class SamGovConnector(BaseConnector):
+    def fetch(self, policy_row) -> list[NormalizedOpportunity]:
+        config = self._policy_config(policy_row)
+        api_key = str(config.get("api_key") or current_app.config.get("SAM_API_KEY") or "").strip()
+        if not api_key:
+            raise RuntimeError("SAM_API_KEY is required for SAM.gov Contract Opportunities.")
+
+        endpoint = str(
+            config.get("endpoint")
+            or current_app.config.get("SAM_OPPORTUNITIES_URL")
+            or "https://api.sam.gov/opportunities/v2/search"
+        ).strip()
+        posted_from, posted_to = _sam_date_window(config)
+        limit_per_query = max(1, min(1000, _safe_int(config.get("limit_per_query"), default=25)))
+        max_items = max(1, _safe_int(config.get("max_items"), default=30))
+
+        normalized: list[NormalizedOpportunity] = []
+        seen_urls: set[str] = set()
+        successful_responses = 0
+
+        for params in _sam_request_plan(config):
+            request_params = {
+                "api_key": api_key,
+                "postedFrom": posted_from,
+                "postedTo": posted_to,
+                "limit": limit_per_query,
+                "offset": 0,
+                **params,
+            }
+            try:
+                response = requests.get(
+                    endpoint,
+                    headers=self._headers(),
+                    params=request_params,
+                    timeout=max(self._timeout(), 30),
+                )
+                response.raise_for_status()
+                payload = response.json()
+            except Exception:
+                continue
+
+            successful_responses += 1
+            for record in payload.get("opportunitiesData", []) or []:
+                if not isinstance(record, dict):
+                    continue
+
+                opportunity_url = _sam_record_url(record)
+                if not opportunity_url or opportunity_url in seen_urls:
+                    continue
+
+                seen_urls.add(opportunity_url)
+                body = _sam_record_text(record)
+                raw_row = {
+                    "external_id": str(record.get("noticeId", "") or opportunity_url),
+                    "source_type": "procurement",
+                    "title": str(record.get("title", "") or "").strip(),
+                    "company": _sam_organization_name(record),
+                    "buyer_name": _sam_organization_name(record),
+                    "country": "US",
+                    "url": opportunity_url,
+                    "apply_url": opportunity_url,
+                    "body": body,
+                    "posted_at": _to_iso_datetime(record.get("postedDate")),
+                    "deadline_at": _to_iso_datetime(_sam_deadline_value(record)),
+                    "contact_signals": _sam_contact_signals(record),
+                }
+                normalized.append(
+                    self._normalize(
+                        policy_row=policy_row,
+                        source_label=policy_row["display_name"],
+                        raw=raw_row,
+                    )
+                )
+                if len(normalized) >= max_items:
+                    break
+
+            if len(normalized) >= max_items:
+                break
+
+        if successful_responses == 0:
+            raise RuntimeError("SAM.gov API unreachable or returned no successful responses.")
+
+        filtered = self._apply_policy_filters(policy_row, self._dedupe_by_url(normalized))
         return filtered
 
 
@@ -689,6 +928,168 @@ class EmailAlertsConnector(BaseConnector):
         return []
 
 
+class HackerNewsAlgoliaSignalsConnector(BaseConnector):
+    def fetch(self, policy_row) -> list[NormalizedOpportunity]:
+        config = self._policy_config(policy_row)
+        connector = connector_for_provider("hn_algolia")
+        result = connector.fetch(self._runtime_config(config)) if connector else None
+        if result is None:
+            return []
+        if result.status in ERROR_STATUSES:
+            raise RuntimeError(result.error_message or result.status)
+
+        normalized = [
+            self._normalize(policy_row=policy_row, source_label=policy_row["display_name"], raw=raw)
+            for raw in result.opportunities
+            if raw.get("url")
+        ]
+        return self._apply_policy_filters(policy_row, self._dedupe_by_url(normalized))
+
+    def _runtime_config(self, config: dict) -> dict:
+        return {
+            **config,
+            "timeout_seconds": current_app.config.get("CONNECTOR_TIMEOUT_SECONDS", self._timeout()),
+            "max_results": current_app.config.get("CONNECTOR_MAX_RESULTS_PER_SOURCE", 50),
+            "user_agent": current_app.config.get("INGEST_USER_AGENT"),
+        }
+
+
+class TargetCompanySignalsConnector(BaseConnector):
+    provider = ""
+
+    def fetch(self, policy_row) -> list[NormalizedOpportunity]:
+        config = self._policy_config(policy_row)
+        provider = str(config.get("provider") or self.provider).strip().lower()
+        connector = connector_for_provider(provider)
+        if connector is None:
+            raise RuntimeError(f"Sin conector ATS para {provider}.")
+
+        targets = get_db().execute(
+            """
+            SELECT *
+            FROM target_companies
+            WHERE enabled = 1
+              AND ats_provider = ?
+              AND ats_slug <> ''
+            ORDER BY
+                CASE priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END,
+                COALESCE(last_checked_at, '') ASC,
+                name ASC
+            LIMIT ?
+            """,
+            (
+                provider,
+                max(1, _safe_int(config.get("target_limit"), default=25)),
+            ),
+        ).fetchall()
+        if not targets:
+            return []
+
+        normalized: list[NormalizedOpportunity] = []
+        errors: list[str] = []
+        db = get_db()
+        for target in targets:
+            runtime_config = {
+                **config,
+                "target_company": dict(target),
+                "timeout_seconds": current_app.config.get("CONNECTOR_TIMEOUT_SECONDS", self._timeout()),
+                "max_results": current_app.config.get("CONNECTOR_MAX_RESULTS_PER_SOURCE", 50),
+                "user_agent": current_app.config.get("INGEST_USER_AGENT"),
+            }
+            if provider == "workable":
+                runtime_config["api_token"] = current_app.config.get("WORKABLE_API_TOKEN") or config.get("api_token")
+                runtime_config["enabled"] = bool(config.get("enabled", True))
+
+            result = connector.fetch(runtime_config)
+            db.execute(
+                "UPDATE target_companies SET last_checked_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (target["id"],),
+            )
+            if result.status in ERROR_STATUSES:
+                errors.append(f"{target['name']}: {result.error_message or result.status}")
+                continue
+            if result.normalized_count:
+                db.execute(
+                    "UPDATE target_companies SET last_signal_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                    (target["id"],),
+                )
+
+            for raw in result.opportunities:
+                if not raw.get("url"):
+                    continue
+                normalized.append(
+                    self._normalize(
+                        policy_row=policy_row,
+                        source_label=policy_row["display_name"],
+                        raw=raw,
+                    )
+                )
+
+        filtered = self._apply_policy_filters(policy_row, self._dedupe_by_url(normalized))
+        if errors and not filtered:
+            raise RuntimeError("; ".join(errors[:3]))
+        return filtered
+
+
+class GreenhouseTargetSignalsConnector(TargetCompanySignalsConnector):
+    provider = "greenhouse"
+
+
+class LeverTargetSignalsConnector(TargetCompanySignalsConnector):
+    provider = "lever"
+
+
+class AshbyTargetSignalsConnector(TargetCompanySignalsConnector):
+    provider = "ashby"
+
+
+class WorkableTargetSignalsConnector(TargetCompanySignalsConnector):
+    provider = "workable"
+
+
+class ProcurementLiteSignalsConnector(BaseConnector):
+    provider = ""
+
+    def fetch(self, policy_row) -> list[NormalizedOpportunity]:
+        config = self._policy_config(policy_row)
+        provider = self.provider or policy_row["source_key"]
+        connector = connector_for_provider(provider)
+        if connector is None:
+            raise RuntimeError(f"Sin conector procurement para {provider}.")
+        runtime_config = {
+            **config,
+            "timeout_seconds": current_app.config.get("CONNECTOR_TIMEOUT_SECONDS", self._timeout()),
+            "max_results": current_app.config.get("CONNECTOR_MAX_RESULTS_PER_SOURCE", 50),
+            "user_agent": current_app.config.get("INGEST_USER_AGENT"),
+            "source_label": policy_row["display_name"],
+        }
+        result = connector.fetch(runtime_config)
+        if result.status in ERROR_STATUSES:
+            raise RuntimeError(result.error_message or result.status)
+        normalized = [
+            self._normalize(policy_row=policy_row, source_label=policy_row["display_name"], raw=raw)
+            for raw in result.opportunities
+            if raw.get("url")
+        ]
+        return self._apply_policy_filters(policy_row, self._dedupe_by_url(normalized))
+
+
+class TEDEUProcurementConnector(ProcurementLiteSignalsConnector):
+    provider = "ted_eu"
+
+
+class UKFindTenderProcurementConnector(ProcurementLiteSignalsConnector):
+    provider = "uk_find_tender"
+
+
+class UKContractsFinderProcurementConnector(ProcurementLiteSignalsConnector):
+    provider = "uk_contracts_finder"
+
+
+class WorldBankProcurementLiteConnector(ProcurementLiteSignalsConnector):
+    provider = "worldbank_procurement"
+
+
 def connector_registry() -> dict[str, BaseConnector]:
     return {
         "sample_feed": SampleFeedConnector(),
@@ -698,6 +1099,17 @@ def connector_registry() -> dict[str, BaseConnector]:
         "lever": LeverConnector(),
         "weworkremotely": WeWorkRemotelyConnector(),
         "hackernews_jobs": HackerNewsJobsConnector(),
+        "hn_algolia": HackerNewsAlgoliaSignalsConnector(),
+        "greenhouse_jobs": GreenhouseTargetSignalsConnector(),
+        "lever_postings": LeverTargetSignalsConnector(),
+        "ashby_jobs": AshbyTargetSignalsConnector(),
+        "workable_jobs": WorkableTargetSignalsConnector(),
+        "ted_eu": TEDEUProcurementConnector(),
+        "uk_find_tender": UKFindTenderProcurementConnector(),
+        "uk_contracts_finder": UKContractsFinderProcurementConnector(),
+        "worldbank_procurement": WorldBankProcurementLiteConnector(),
+        "github_issues": GitHubIssuesConnector(),
+        "sam_gov": SamGovConnector(),
         "public_pages": PublicPagesConnector(),
         "email_alerts": EmailAlertsConnector(),
     }
@@ -726,6 +1138,91 @@ def detect_sector(raw_text: str) -> str:
         if any(term in lowered for term in terms):
             return sector
     return "General Tech"
+
+
+def detect_pain_signals(raw_text: str) -> list[str]:
+    lowered = raw_text.lower()
+    signals = []
+    patterns = (
+        ("automation", "Necesita automatizacion operativa"),
+        ("scraping", "Necesita extraccion o normalizacion de datos"),
+        ("scraper", "Necesita extraccion o normalizacion de datos"),
+        ("api", "Necesita integracion API"),
+        ("integration", "Necesita integracion de sistemas"),
+        ("integracion", "Necesita integracion de sistemas"),
+        ("dashboard", "Necesita dashboard o visibilidad operativa"),
+        ("data pipeline", "Necesita pipeline de datos"),
+        ("etl", "Necesita pipeline ETL"),
+        ("urgent", "Menciona urgencia"),
+        ("asap", "Menciona urgencia"),
+        ("deadline", "Tiene fecha limite explicita"),
+        ("response deadline", "Tiene fecha limite explicita"),
+        ("migration", "Necesita migracion tecnica"),
+        ("bug", "Tiene problema tecnico abierto"),
+    )
+    for token, label in patterns:
+        if token in lowered and label not in signals:
+            signals.append(label)
+    return signals[:6]
+
+
+def extract_contact_signals(raw_text: str) -> list[str]:
+    signals = []
+    for email in re.findall(r"[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}", raw_text or ""):
+        signals.append(f"email:{email}")
+    phone_match = re.search(r"(?i)(?:phone|tel|telefono|teléfono)[:\s]+([+\d][\d\s().-]{6,})", raw_text or "")
+    if phone_match:
+        signals.append(f"phone:{phone_match.group(1).strip()}")
+    if "contact form" in (raw_text or "").lower():
+        signals.append("contact_form")
+    return signals[:6]
+
+
+def build_evidence_snippets(
+    raw_text: str,
+    *,
+    required_skills: list[str],
+    pain_signals: list[str],
+) -> list[str]:
+    text = " ".join((raw_text or "").split())
+    if not text:
+        return []
+
+    lowered = text.lower()
+    needles = [
+        *[skill.lower() for skill in required_skills[:5]],
+        "budget",
+        "usd",
+        "$",
+        "deadline",
+        "urgent",
+        "asap",
+        "automation",
+        "dashboard",
+        "api",
+    ]
+    snippets = []
+    sentences = re.split(r"(?<=[.!?])\s+", text)
+    for sentence in sentences:
+        sentence_lower = sentence.lower()
+        if any(needle and needle in sentence_lower for needle in needles):
+            snippets.append(sentence[:260].strip())
+        if len(snippets) >= 3:
+            break
+    if not snippets and pain_signals:
+        snippets.append(text[:260].strip())
+    return snippets
+
+
+def extract_deadline(raw_text: str) -> str | None:
+    text = " ".join((raw_text or "").split())
+    match = re.search(
+        r"(?i)(?:response deadline|deadline|due|fecha limite|fecha límite)[:\s]+([A-Za-z]{3,9}\s+\d{1,2},?\s+\d{4}|\d{4}-\d{2}-\d{2}|\d{1,2}/\d{1,2}/\d{4})",
+        text,
+    )
+    if not match:
+        return None
+    return _to_iso_datetime(match.group(1))
 
 
 def assess_risk(
@@ -795,6 +1292,54 @@ def _safe_int(value, default: int = 0) -> int:
         return int(value)
     except (TypeError, ValueError):
         return default
+
+
+def _safe_int_or_none(value) -> int | None:
+    try:
+        if value is None or str(value).strip() == "":
+            return None
+        return int(float(str(value).replace(",", "").strip()))
+    except (TypeError, ValueError):
+        return None
+
+
+def _coerce_list(value) -> list[str]:
+    if isinstance(value, str):
+        return [item.strip() for item in value.split(",") if item.strip()]
+    if isinstance(value, (list, tuple, set)):
+        return [str(item).strip() for item in value if str(item).strip()]
+    return []
+
+
+def _domain_from_url(value: str) -> str:
+    host = urlparse(str(value or "")).netloc.lower().replace("www.", "").strip()
+    return host
+
+
+def _source_type_for_policy(source_key: str) -> str:
+    mapping = {
+        "sample_feed": "direct_rfp",
+        "reddit": "community",
+        "workana_projects": "direct_rfp",
+        "greenhouse": "hiring_signal",
+        "lever": "hiring_signal",
+        "weworkremotely": "hiring_signal",
+        "hackernews_jobs": "hiring_signal",
+        "hn_algolia": "community_signal",
+        "greenhouse_jobs": "hiring_signal",
+        "lever_postings": "hiring_signal",
+        "ashby_jobs": "hiring_signal",
+        "workable_jobs": "hiring_signal",
+        "ted_eu": "procurement",
+        "uk_find_tender": "procurement",
+        "uk_contracts_finder": "procurement",
+        "worldbank_procurement": "procurement",
+        "github_issues": "github_issue",
+        "sam_gov": "procurement",
+        "public_pages": "direct_rfp",
+        "email_alerts": "direct_rfp",
+    }
+    return mapping.get(source_key, "direct_rfp")
 
 
 def _looks_remote(text: str) -> bool:
@@ -984,6 +1529,176 @@ def _extract_company_from_hn_title(title: str) -> str:
     return company
 
 
+def _github_repository_name(issue: dict) -> str:
+    repository = issue.get("repository") or {}
+    if isinstance(repository, dict) and repository.get("full_name"):
+        return str(repository["full_name"]).strip()
+
+    repository_url = str(issue.get("repository_url", "") or "").strip()
+    if repository_url:
+        return repository_url.rstrip("/").rsplit("/", 2)[-2] + "/" + repository_url.rstrip("/").rsplit("/", 1)[-1]
+    return ""
+
+
+def _has_commercial_signal(raw_text: str, *, labels: list[str], terms: tuple[str, ...]) -> bool:
+    haystack = " ".join([raw_text, " ".join(labels)]).lower()
+    if terms and any(term in haystack for term in terms):
+        return True
+    return bool(re.search(r"(?i)(?:usd|\$)\s*\d", haystack))
+
+
+def _sam_date_window(config: dict) -> tuple[str, str]:
+    days = max(1, min(365, _safe_int(config.get("posted_from_days"), default=21)))
+    today = datetime.now(UTC).date()
+    start = today - timedelta(days=days)
+    return start.strftime("%m/%d/%Y"), today.strftime("%m/%d/%Y")
+
+
+def _sam_request_plan(config: dict) -> list[dict]:
+    query_terms = [
+        str(term).strip()
+        for term in config.get("query_terms", [])
+        if str(term).strip()
+    ]
+    naics_codes = [
+        str(code).strip()
+        for code in config.get("naics_codes", [])
+        if str(code).strip()
+    ]
+    notice_types = [
+        str(value).strip().lower()
+        for value in config.get("notice_types", [])
+        if str(value).strip()
+    ]
+    if not notice_types:
+        notice_types = [""]
+
+    plan: list[dict] = []
+    for term in query_terms:
+        for notice_type in notice_types[:4]:
+            params = {"title": term}
+            if notice_type:
+                params["ptype"] = notice_type
+            plan.append(params)
+
+    for naics_code in naics_codes[:4]:
+        params = {"ncode": naics_code}
+        if notice_types[0]:
+            params["ptype"] = notice_types[0]
+        plan.append(params)
+
+    unique: list[dict] = []
+    seen: set[tuple[tuple[str, str], ...]] = set()
+    for params in plan:
+        signature = tuple(sorted((key, str(value)) for key, value in params.items()))
+        if signature in seen:
+            continue
+        seen.add(signature)
+        unique.append(params)
+    return unique[:24] or [{}]
+
+
+def _sam_record_url(record: dict) -> str:
+    for key in ("uiLink", "additionalInfoLink", "description"):
+        value = str(record.get(key, "") or "").strip()
+        if value and value.lower() != "null" and value.startswith("http"):
+            return value
+
+    notice_id = str(record.get("noticeId", "") or "").strip()
+    if notice_id:
+        return f"https://sam.gov/opp/{notice_id}/view"
+    return ""
+
+
+def _sam_organization_name(record: dict) -> str:
+    for key in ("fullParentPathName", "department", "subTier", "office"):
+        value = str(record.get(key, "") or "").strip()
+        if value and value.lower() != "null":
+            return value
+    return "SAM.gov"
+
+
+def _sam_record_text(record: dict) -> str:
+    parts = [
+        record.get("title", ""),
+        _sam_organization_name(record),
+        record.get("type", ""),
+        record.get("baseType", ""),
+        record.get("typeOfSetAsideDescription", ""),
+        record.get("naicsCode", ""),
+        record.get("classificationCode", ""),
+        _sam_deadline_text(record),
+        _sam_award_text(record),
+        _sam_contacts_text(record),
+    ]
+    return "\n".join(str(part).strip() for part in parts if str(part or "").strip())
+
+
+def _sam_deadline_text(record: dict) -> str:
+    deadline = _sam_deadline_value(record)
+    if not deadline:
+        return ""
+    return f"Response deadline: {deadline}"
+
+
+def _sam_deadline_value(record: dict) -> str:
+    return str(
+        record.get("responseDeadLine")
+        or record.get("responseDeadline")
+        or record.get("reponseDeadLine")
+        or ""
+    ).strip()
+
+
+def _sam_award_text(record: dict) -> str:
+    award = record.get("award") or {}
+    if not isinstance(award, dict):
+        return ""
+    amount = str(award.get("amount", "") or "").strip()
+    awardee = award.get("awardee") or {}
+    awardee_name = ""
+    if isinstance(awardee, dict):
+        awardee_name = str(awardee.get("name", "") or "").strip()
+    fragments = []
+    if amount:
+        fragments.append(f"Award amount USD {amount}")
+    if awardee_name:
+        fragments.append(f"Awardee {awardee_name}")
+    return ". ".join(fragments)
+
+
+def _sam_contacts_text(record: dict) -> str:
+    contacts = record.get("pointOfContact") or []
+    fragments = []
+    if isinstance(contacts, dict):
+        contacts = [contacts]
+    for contact in contacts:
+        if not isinstance(contact, dict):
+            continue
+        name = str(contact.get("fullName") or contact.get("fullname") or "").strip()
+        email = str(contact.get("email", "") or "").strip()
+        phone = str(contact.get("phone", "") or "").strip()
+        fragments.append(" ".join(part for part in (name, email, phone) if part))
+    return "\n".join(fragment for fragment in fragments if fragment)
+
+
+def _sam_contact_signals(record: dict) -> list[str]:
+    contacts = record.get("pointOfContact") or []
+    if isinstance(contacts, dict):
+        contacts = [contacts]
+    signals = []
+    for contact in contacts:
+        if not isinstance(contact, dict):
+            continue
+        email = str(contact.get("email", "") or "").strip()
+        phone = str(contact.get("phone", "") or "").strip()
+        if email:
+            signals.append(f"email:{email}")
+        if phone:
+            signals.append(f"phone:{phone}")
+    return signals[:6]
+
+
 def _to_iso_datetime(value) -> str | None:
     if isinstance(value, (int, float)):
         timestamp = float(value)
@@ -1004,6 +1719,11 @@ def _to_iso_datetime(value) -> str | None:
                     microsecond=0
                 ).isoformat()
             except ValueError:
+                for date_format in ("%m/%d/%Y", "%d/%m/%Y"):
+                    try:
+                        return datetime.strptime(raw_value, date_format).replace(tzinfo=UTC).isoformat()
+                    except ValueError:
+                        continue
                 return None
 
     return None

@@ -8,3 +8,9 @@ instance
 *.pyo
 *.pyd
 .env
+.env.*
+!.env.example
+geminiapikey.txt
+runtime
+tmp
+tmp*

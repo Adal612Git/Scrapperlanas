@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Duplicados | Scrapperlanas{% endblock %}
+{% block page_kicker %}Buyer intelligence{% endblock %}
+{% block page_title %}Posibles duplicados{% endblock %}
+{% block page_description %}Candidatos conservadores para fusion manual. Nada se fusiona automaticamente cuando la confianza no es perfecta.{% endblock %}
+{% block page_status %}
+  <span class="rounded-full border border-amber-500/30 bg-amber-500/15 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-amber-200">{{ candidates|length }} abiertos</span>
+{% endblock %}
+{% block page_actions %}
+  <a href="{{ url_for('main.accounts') }}" class="inline-flex items-center gap-2 rounded-2xl border border-slate-700 bg-slate-900 px-4 py-2.5 text-sm font-bold text-slate-200 hover:border-slate-600 hover:bg-slate-800">
+    <i class="fa-solid fa-arrow-left"></i>
+    Cuentas
+  </a>
+{% endblock %}
+{% block content %}
+  <section class="grid gap-4">
+    {% for candidate in candidates %}
+      <article class="rounded-[28px] border border-slate-800 bg-slate-900/90 p-6 shadow-xl shadow-black/20">
+        <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_260px]">
+          <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+            <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Cuenta A</p>
+            <a href="{{ url_for('main.account_detail', account_id=candidate.account_a_id) }}" class="mt-2 block text-lg font-black text-white hover:text-blue-300">{{ candidate.account_a_name }}</a>
+            <p class="mt-1 text-sm text-slate-500">{{ candidate.account_a_domain or "sin dominio" }}</p>
+            <p class="mt-3 text-sm text-slate-300">Score {{ candidate.account_a_score }}</p>
+          </div>
+          <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+            <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Cuenta B</p>
+            <a href="{{ url_for('main.account_detail', account_id=candidate.account_b_id) }}" class="mt-2 block text-lg font-black text-white hover:text-blue-300">{{ candidate.account_b_name }}</a>
+            <p class="mt-1 text-sm text-slate-500">{{ candidate.account_b_domain or "sin dominio" }}</p>
+            <p class="mt-3 text-sm text-slate-300">Score {{ candidate.account_b_score }}</p>
+          </div>
+          <div class="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4">
+            <p class="text-xs font-bold uppercase tracking-[0.18em] text-amber-200">Confidence</p>
+            <p class="mt-2 text-3xl font-black text-white">{{ candidate.confidence }}</p>
+            <p class="mt-3 text-sm leading-6 text-slate-300">{{ candidate.reason }}</p>
+            <div class="mt-4 grid gap-2">
+              <form action="{{ url_for('main.account_merge', account_id=candidate.account_a_id) }}" method="post">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="source_account_id" value="{{ candidate.account_b_id }}">
+                <button type="submit" class="w-full rounded-2xl border border-emerald-500/30 bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-500">Fusionar en A</button>
+              </form>
+              <form action="{{ url_for('main.account_merge', account_id=candidate.account_b_id) }}" method="post">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="source_account_id" value="{{ candidate.account_a_id }}">
+                <button type="submit" class="w-full rounded-2xl border border-blue-500/30 bg-blue-500/15 px-4 py-2.5 text-sm font-bold text-blue-200 hover:bg-blue-500/20">Fusionar en B</button>
+              </form>
+              <form action="{{ url_for('main.account_duplicate_ignore', candidate_id=candidate.id) }}" method="post">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm font-bold text-slate-200 hover:border-slate-600">Ignorar</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </article>
+    {% else %}
+      <div class="rounded-[28px] border border-dashed border-slate-700 bg-slate-900/70 p-8 text-sm text-slate-500">No hay posibles duplicados abiertos.</div>
+    {% endfor %}
+  </section>
+{% endblock %}

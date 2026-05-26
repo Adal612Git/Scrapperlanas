@@ -3,12 +3,55 @@ document.addEventListener("DOMContentLoaded", () => {
   const toggle = document.querySelector("[data-sidebar-toggle]");
   const sectionLinks = Array.from(document.querySelectorAll("[data-section-target]"));
   const sections = Array.from(document.querySelectorAll(".app-section"));
+  const copyButtons = Array.from(document.querySelectorAll("[data-copy-target]"));
 
   if (toggle && shell) {
     toggle.addEventListener("click", () => {
       shell.classList.toggle("sidebar-collapsed");
     });
   }
+
+  copyButtons.forEach((button) => {
+    button.addEventListener("click", async () => {
+      const target = document.getElementById(button.dataset.copyTarget);
+      if (!target) {
+        return;
+      }
+
+      const text = target.value || target.textContent || "";
+      if (!text.trim()) {
+        return;
+      }
+
+      const originalLabel = button.dataset.originalLabel || button.textContent;
+      button.dataset.originalLabel = originalLabel;
+
+      try {
+        await navigator.clipboard.writeText(text);
+        button.textContent = "Copiado";
+        const csrfInput = document.querySelector('input[name="csrf_token"]');
+        const logUrl = button.dataset.copyLogUrl;
+        if (logUrl && csrfInput) {
+          fetch(logUrl, {
+            method: "POST",
+            headers: {
+              "X-CSRFToken": csrfInput.value,
+              "X-Requested-With": "fetch",
+              "Accept": "application/json",
+            },
+          }).catch(() => {});
+        }
+        window.setTimeout(() => {
+          button.textContent = originalLabel;
+        }, 1600);
+      } catch (_error) {
+        button.textContent = "No copiado";
+        window.setTimeout(() => {
+          button.textContent = originalLabel;
+        }, 1600);
+      }
+    });
+  });
 
   if (!sectionLinks.length || !sections.length) {
     return;

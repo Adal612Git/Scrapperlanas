@@ -1,0 +1,1 @@
+"""Lightweight commercial signal connectors."""

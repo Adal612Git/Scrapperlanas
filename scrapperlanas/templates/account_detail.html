@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+{% block title %}Cuenta | Scrapperlanas{% endblock %}
+{% block page_kicker %}Buyer intelligence{% endblock %}
+{% block page_title %}{{ account.name }}{% endblock %}
+{% block page_description %}Resumen consolidado de comprador, oportunidades relacionadas, actividad comercial y senales acumuladas.{% endblock %}
+{% block page_status %}
+  <span class="rounded-full px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] {{ account.tier_badge_class }}">{{ account.account_tier }} / {{ account.account_score }}</span>
+  <span class="rounded-full border border-slate-700 bg-slate-900 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-slate-300">{{ account.opportunity_count }} senales</span>
+{% endblock %}
+{% block page_actions %}
+  <a href="{{ url_for('main.account_duplicates') }}" class="inline-flex items-center gap-2 rounded-2xl border border-slate-700 bg-slate-900 px-4 py-2.5 text-sm font-bold text-slate-200 hover:border-slate-600 hover:bg-slate-800">
+    <i class="fa-solid fa-code-compare text-amber-300"></i>
+    Duplicados
+  </a>
+  <a href="{{ url_for('main.accounts') }}" class="inline-flex items-center gap-2 rounded-2xl border border-slate-700 bg-slate-900 px-4 py-2.5 text-sm font-bold text-slate-200 hover:border-slate-600 hover:bg-slate-800">
+    <i class="fa-solid fa-arrow-left"></i>
+    Cuentas
+  </a>
+{% endblock %}
+{% block content %}
+  <section class="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_420px]">
+    <article class="space-y-4">
+      <section class="rounded-[28px] border border-emerald-500/20 bg-slate-900/90 p-6 shadow-xl shadow-black/20">
+        <div class="flex flex-col gap-4 border-b border-slate-800 pb-5 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p class="text-xs font-bold uppercase tracking-[0.24em] text-emerald-300/80">Resumen de cuenta</p>
+            <h2 class="mt-2 text-3xl font-black text-white">{{ account.name }}</h2>
+            <p class="mt-2 text-sm text-slate-400">{{ account.domain or "Sin dominio" }}{% if account.country %} / {{ account.country }}{% endif %}</p>
+          </div>
+          <span class="w-fit rounded-full px-4 py-2 text-xs font-black uppercase tracking-[0.18em] {{ account.tier_badge_class }}">{{ account.account_tier }} {{ account.account_score }}</span>
+        </div>
+
+        <div class="mt-5 grid gap-4 md:grid-cols-4">
+          <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+            <p class="text-xs uppercase tracking-[0.18em] text-slate-500">Oportunidades</p>
+            <p class="mt-2 text-2xl font-black text-white">{{ account.opportunity_count }}</p>
+          </div>
+          <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+            <p class="text-xs uppercase tracking-[0.18em] text-slate-500">A1/A2</p>
+            <p class="mt-2 text-2xl font-black text-white">{{ account.a1_count }}/{{ account.a2_count }}</p>
+          </div>
+          <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+            <p class="text-xs uppercase tracking-[0.18em] text-slate-500">Propuestas</p>
+            <p class="mt-2 text-2xl font-black text-white">{{ account.proposal_count }}</p>
+          </div>
+          <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+            <p class="text-xs uppercase tracking-[0.18em] text-slate-500">Ganadas</p>
+            <p class="mt-2 text-2xl font-black text-white">{{ account.won_count }}</p>
+          </div>
+        </div>
+
+        <div class="mt-5 grid gap-4 md:grid-cols-3">
+          <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+            <p class="text-xs uppercase tracking-[0.18em] text-slate-500">Valor estimado</p>
+            <p class="mt-2 text-lg font-black text-white">{{ account.estimated_value_display }}</p>
+          </div>
+          <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+            <p class="text-xs uppercase tracking-[0.18em] text-slate-500">Propuesta</p>
+            <p class="mt-2 text-lg font-black text-white">{{ account.proposal_value_display }}</p>
+          </div>
+          <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+            <p class="text-xs uppercase tracking-[0.18em] text-slate-500">Ganado</p>
+            <p class="mt-2 text-lg font-black text-white">{{ account.won_value_display }}</p>
+          </div>
+        </div>
+
+        <div class="mt-5 rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+          <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Siguiente accion</p>
+          <p class="mt-2 text-sm leading-6 text-slate-200">{{ account.next_best_action }}</p>
+        </div>
+      </section>
+
+      <section class="rounded-[28px] border border-slate-800 bg-slate-900/90 p-6 shadow-xl shadow-black/20">
+        <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Senales detectadas</p>
+        <h2 class="mt-2 text-2xl font-black text-white">Oportunidades relacionadas</h2>
+        <div class="mt-5 space-y-3">
+          {% for item in opportunities %}
+            <article class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+              <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <a href="{{ url_for('main.opportunity_detail', opportunity_id=item.id) }}" class="text-sm font-black text-white transition hover:text-blue-300">{{ item.title }}</a>
+                  <p class="mt-1 text-xs text-slate-500">{{ item.source_label }} / {{ item.source_type or item.application_host }}</p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                  <span class="rounded-full px-2.5 py-1 text-xs font-black {{ item.priority_badge_class }}">{{ item.priority_tier }} {{ item.priority_score }}</span>
+                  <span class="rounded-full border border-slate-700 bg-slate-900 px-2.5 py-1 text-xs text-slate-300">{{ item.commercial_status_label }}</span>
+                </div>
+              </div>
+              <div class="mt-3 grid gap-2 text-xs text-slate-400 md:grid-cols-3">
+                <span>{{ item.estimated_value_display }}</span>
+                <span>Deadline {{ item.deadline_display }}</span>
+                <span>Follow-up {{ item.next_followup_display }}</span>
+              </div>
+              {% if item.outreach_initial %}
+                <div class="mt-3 flex flex-wrap gap-2">
+                  <textarea id="account-outreach-{{ item.id }}" class="hidden">{{ item.outreach_initial.body }}</textarea>
+                  <button type="button" data-copy-target="account-outreach-{{ item.id }}" data-copy-log-url="{{ url_for('main.outreach_copy_log', opportunity_id=item.id, draft_id=item.outreach_initial.id) }}" class="rounded-xl border border-cyan-500/30 bg-cyan-500/15 px-3 py-2 text-xs font-bold text-cyan-200 hover:bg-cyan-500/20">Copiar mensaje</button>
+                  <a href="{{ url_for('main.opportunity_detail', opportunity_id=item.id) }}#outreach" class="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-bold text-slate-200 hover:border-slate-600">Ver drafts</a>
+                </div>
+              {% endif %}
+            </article>
+          {% else %}
+            <div class="rounded-2xl border border-dashed border-slate-700 bg-slate-950/40 p-5 text-sm text-slate-500">Sin oportunidades relacionadas.</div>
+          {% endfor %}
+        </div>
+      </section>
+    </article>
+
+    <aside class="space-y-4">
+      <section class="rounded-[28px] border border-slate-800 bg-slate-900/95 p-6 shadow-xl shadow-black/20">
+        <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Dolores y capacidades</p>
+        <div class="mt-4 space-y-4">
+          <div>
+            <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Dolores</p>
+            <div class="mt-2 flex flex-wrap gap-2">
+              {% for pain in account.primary_pain_signals %}
+                <span class="rounded-full border border-emerald-500/30 bg-emerald-500/15 px-3 py-1.5 text-xs text-emerald-100">{{ pain }}</span>
+              {% else %}
+                <span class="text-sm text-slate-500">Sin dolor consolidado.</span>
+              {% endfor %}
+            </div>
+          </div>
+          <div>
+            <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Skills</p>
+            <div class="mt-2 flex flex-wrap gap-2">
+              {% for skill in account.required_skills %}
+                <span class="rounded-full border border-blue-500/30 bg-blue-500/15 px-3 py-1.5 text-xs text-blue-100">{{ skill }}</span>
+              {% else %}
+                <span class="text-sm text-slate-500">Sin skills consolidados.</span>
+              {% endfor %}
+            </div>
+          </div>
+          <div>
+            <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Contacto</p>
+            <p class="mt-2 text-sm text-slate-300">Ultimo: {{ account.last_contacted_display }}</p>
+            <p class="mt-1 text-sm text-slate-300">Proximo: {{ account.next_followup_display }}</p>
+          </div>
+        </div>
+      </section>
+
+      {% if ats_signals %}
+        <section class="rounded-[28px] border border-cyan-500/20 bg-slate-900/95 p-6 shadow-xl shadow-black/20">
+          <p class="text-xs font-bold uppercase tracking-[0.24em] text-cyan-300/80">Senales ATS</p>
+          <div class="mt-4 space-y-3">
+            {% for item in ats_signals[:4] %}
+              <article class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                <a href="{{ url_for('main.opportunity_detail', opportunity_id=item.id) }}" class="text-sm font-black text-white hover:text-cyan-200">{{ item.title }}</a>
+                <p class="mt-2 text-xs text-slate-500">{{ item.source_label }} / {{ item.posted_display }}</p>
+                {% if item.required_skills %}
+                  <p class="mt-3 text-xs text-slate-300">{{ item.required_skills[:5]|join(", ") }}</p>
+                {% endif %}
+              </article>
+            {% endfor %}
+          </div>
+        </section>
+      {% endif %}
+
+      {% if duplicate_candidates %}
+        <section class="rounded-[28px] border border-amber-500/20 bg-slate-900/95 p-6 shadow-xl shadow-black/20">
+          <p class="text-xs font-bold uppercase tracking-[0.24em] text-amber-300/80">Posibles duplicados</p>
+          <div class="mt-4 space-y-3">
+            {% for candidate in duplicate_candidates %}
+              {% set other_id = candidate.account_b_id if candidate.account_a_id == account.id else candidate.account_a_id %}
+              {% set other_name = candidate.account_b_name if candidate.account_a_id == account.id else candidate.account_a_name %}
+              <article class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                <p class="text-sm font-bold text-white">{{ other_name }}</p>
+                <p class="mt-1 text-xs text-slate-500">Confidence {{ candidate.confidence }} / {{ candidate.reason }}</p>
+                <form action="{{ url_for('main.account_merge', account_id=account.id) }}" method="post" class="mt-3">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <input type="hidden" name="source_account_id" value="{{ other_id }}">
+                  <button type="submit" class="w-full rounded-2xl border border-amber-500/30 bg-amber-500/15 px-4 py-2.5 text-sm font-bold text-amber-200 hover:bg-amber-500/20">Fusionar aqui</button>
+                </form>
+              </article>
+            {% endfor %}
+          </div>
+        </section>
+      {% endif %}
+
+      <section class="rounded-[28px] border border-slate-800 bg-slate-900/95 p-6 shadow-xl shadow-black/20">
+        <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Historial consolidado</p>
+        <div class="mt-5 space-y-3">
+          {% for activity in account_activities %}
+            <article class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+              <div class="flex items-start justify-between gap-3">
+                <strong class="text-sm text-white">{{ activity.activity_type }}</strong>
+                <span class="text-xs text-slate-500">{{ activity.created_at }}</span>
+              </div>
+              {% if activity.notes %}
+                <p class="mt-3 text-sm leading-6 text-slate-300">{{ activity.notes }}</p>
+              {% endif %}
+            </article>
+          {% endfor %}
+          {% for activity in commercial_activities %}
+            <article class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+              <div class="flex items-start justify-between gap-3">
+                <strong class="text-sm text-white">{{ activity.activity_type }}</strong>
+                <span class="text-xs text-slate-500">{{ activity.created_at }}</span>
+              </div>
+              <p class="mt-2 text-xs uppercase tracking-[0.16em] text-slate-500">{{ activity.opportunity_title }}</p>
+              {% if activity.notes %}
+                <p class="mt-3 text-sm leading-6 text-slate-300">{{ activity.notes }}</p>
+              {% endif %}
+            </article>
+          {% else %}
+            {% if not account_activities %}
+              <div class="rounded-2xl border border-dashed border-slate-700 bg-slate-950/40 p-4 text-sm text-slate-500">Sin historial consolidado.</div>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </section>
+    </aside>
+  </section>
+{% endblock %}

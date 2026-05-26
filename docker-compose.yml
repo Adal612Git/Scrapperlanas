@@ -7,21 +7,19 @@ services:
     env_file:
       - .env
     environment:
-      APP_ENV: production
-      AUTOMATION_MODE: n8n
-      DATABASE_URL: postgresql://scrapperlanas:scrapperlanas@db:5432/scrapperlanas
-      SESSION_COOKIE_SECURE: "false"
-      TRUST_PROXY: "true"
+      APP_ENV: ${APP_ENV:-development}
+      AUTOMATION_MODE: ${AUTOMATION_MODE:-n8n}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-scrapperlanas}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-scrapperlanas}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
+      TRUST_PROXY: ${TRUST_PROXY:-true}
     ports:
       - "5000:8000"
 
   n8n:
-    image: n8nio/n8n:latest
+    image: ${N8N_IMAGE:-n8nio/n8n:2.22.3}
     depends_on:
       web:
         condition: service_started
-    env_file:
-      - .env
     environment:
       GENERIC_TIMEZONE: America/Mexico_City
       TZ: America/Mexico_City
@@ -31,17 +29,17 @@ services:
       N8N_PROTOCOL: ${N8N_PROTOCOL:-http}
       N8N_EDITOR_BASE_URL: ${N8N_PUBLIC_URL:-http://localhost:5678}
       WEBHOOK_URL: ${N8N_PUBLIC_URL:-http://localhost:5678}/
-      N8N_SECURE_COOKIE: "false"
-      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+      N8N_SECURE_COOKIE: ${N8N_SECURE_COOKIE:-false}
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "true"
       N8N_BASIC_AUTH_ACTIVE: "true"
       N8N_BASIC_AUTH_USER: ${N8N_BASIC_AUTH_USER:-admin}
-      N8N_BASIC_AUTH_PASSWORD: ${N8N_BASIC_AUTH_PASSWORD:-change-me-n8n}
-      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:-change-me-n8n-encryption-key}
+      N8N_BASIC_AUTH_PASSWORD: ${N8N_BASIC_AUTH_PASSWORD:?Set N8N_BASIC_AUTH_PASSWORD in .env}
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:?Set N8N_ENCRYPTION_KEY in .env}
       SCRAPPERLANAS_BASE_URL: ${SCRAPPERLANAS_BASE_URL:-http://web:8000}
       N8N_IMPORT_WEBHOOK_PATH: ${N8N_IMPORT_WEBHOOK_PATH:-scrapperlanas/import}
       N8N_SCHEDULER_INTERVAL_MINUTES: ${N8N_SCHEDULER_INTERVAL_MINUTES:-15}
       N8N_BOOTSTRAP_FORCE: ${N8N_BOOTSTRAP_FORCE:-false}
-      CRON_SECRET: ${CRON_SECRET:-change-me-cron-secret}
+      CRON_SECRET: ${CRON_SECRET:?Set CRON_SECRET in .env}
     entrypoint:
       - /bin/sh
       - /files/entrypoint.sh
@@ -52,13 +50,13 @@ services:
       - ./automation/n8n:/files:ro
 
   db:
-    image: postgres:16-alpine
+    image: postgres:16.14-alpine
     environment:
-      POSTGRES_DB: scrapperlanas
-      POSTGRES_USER: scrapperlanas
-      POSTGRES_PASSWORD: scrapperlanas
+      POSTGRES_DB: ${POSTGRES_DB:-scrapperlanas}
+      POSTGRES_USER: ${POSTGRES_USER:-scrapperlanas}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U scrapperlanas -d scrapperlanas"]
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
       interval: 10s
       timeout: 5s
       retries: 5

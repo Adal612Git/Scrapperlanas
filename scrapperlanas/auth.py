@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+import threading
+from collections import deque
 from functools import wraps
+from time import monotonic
 
 import bcrypt
 from flask import (
     Blueprint,
+    abort,
+    current_app,
     flash,
     g,
     redirect,
@@ -18,6 +23,8 @@ from .db import get_db
 
 
 bp = Blueprint("auth", __name__, url_prefix="/auth")
+_AUTH_ATTEMPTS: dict[str, deque[float]] = {}
+_AUTH_ATTEMPTS_LOCK = threading.Lock()
 
 
 def login_required(view):
@@ -56,6 +63,9 @@ def register():
         confirm_password = request.form.get("confirm_password", "")
         db = get_db()
         error = None
+
+        if _auth_rate_limited("register", email, record=True):
+            abort(429, description="Demasiados intentos. Espera unos minutos y vuelve a intentar.")
 
         if "@" not in email:
             error = "El email debe tener un formato valido."
@@ -96,6 +106,10 @@ def login():
         email = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "")
         db = get_db()
+
+        if _auth_rate_limited("login", email, record=False):
+            abort(429, description="Demasiados intentos. Espera unos minutos y vuelve a intentar.")
+
         user = db.execute(
             "SELECT * FROM users WHERE email = ?",
             (email,),
@@ -105,8 +119,10 @@ def login():
             password.encode("utf-8"),
             user["password_hash"].encode("utf-8"),
         ):
+            _record_auth_attempt("login", email)
             flash("Credenciales invalidas.", "error")
         else:
+            _clear_auth_attempts("login", email)
             session.clear()
             session.permanent = True
             session["user_id"] = user["id"]
@@ -116,8 +132,56 @@ def login():
     return render_template("auth/login.html")
 
 
-@bp.route("/logout", methods=("GET", "POST"))
+@bp.route("/logout", methods=("POST",))
 def logout():
     session.clear()
     flash("Sesion cerrada.", "success")
     return redirect(url_for("auth.login"))
+
+
+def _auth_rate_limited(action: str, email: str, *, record: bool) -> bool:
+    max_attempts = int(current_app.config.get("AUTH_RATE_LIMIT_MAX_ATTEMPTS", 8) or 0)
+    if max_attempts <= 0:
+        return False
+
+    window_seconds = int(current_app.config.get("AUTH_RATE_LIMIT_WINDOW_SECONDS", 900) or 900)
+    keys = _rate_limit_keys(action, email)
+    now = monotonic()
+
+    with _AUTH_ATTEMPTS_LOCK:
+        for key in keys:
+            attempts = _AUTH_ATTEMPTS.setdefault(key, deque())
+            _prune_attempts(attempts, now=now, window_seconds=window_seconds)
+            if len(attempts) >= max_attempts:
+                return True
+
+        if record:
+            for key in keys:
+                _AUTH_ATTEMPTS[key].append(now)
+
+    return False
+
+
+def _record_auth_attempt(action: str, email: str) -> None:
+    _auth_rate_limited(action, email, record=True)
+
+
+def _clear_auth_attempts(action: str, email: str) -> None:
+    with _AUTH_ATTEMPTS_LOCK:
+        for key in _rate_limit_keys(action, email):
+            _AUTH_ATTEMPTS.pop(key, None)
+
+
+def _rate_limit_keys(action: str, email: str) -> tuple[str, str]:
+    remote_addr = request.remote_addr or "unknown"
+    account = email or "unknown"
+    return (
+        f"{action}:ip:{remote_addr}",
+        f"{action}:account:{account}:ip:{remote_addr}",
+    )
+
+
+def _prune_attempts(attempts: deque[float], *, now: float, window_seconds: int) -> None:
+    cutoff = now - window_seconds
+    while attempts and attempts[0] < cutoff:
+        attempts.popleft()

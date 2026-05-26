@@ -50,6 +50,10 @@ def init_app(app) -> None:
             response.headers.setdefault("Cache-Control", "no-store")
             response.headers.setdefault("Pragma", "no-cache")
 
+        hsts_header = _build_hsts_header()
+        if hsts_header:
+            response.headers.setdefault("Strict-Transport-Security", hsts_header)
+
         return response
 
 
@@ -89,3 +93,18 @@ def _build_csp() -> str:
         "object-src": "'none'",
     }
     return "; ".join(f"{name} {value}" for name, value in directives.items())
+
+
+def _build_hsts_header() -> str:
+    if not current_app.config.get("HSTS_ENABLED", False):
+        return ""
+    if not request.is_secure and current_app.config.get("ENVIRONMENT") != "production":
+        return ""
+
+    max_age = max(0, int(current_app.config.get("HSTS_MAX_AGE_SECONDS", 31_536_000) or 0))
+    parts = [f"max-age={max_age}"]
+    if current_app.config.get("HSTS_INCLUDE_SUBDOMAINS", True):
+        parts.append("includeSubDomains")
+    if current_app.config.get("HSTS_PRELOAD", False):
+        parts.append("preload")
+    return "; ".join(parts)

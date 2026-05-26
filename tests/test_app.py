@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from scrapperlanas import auth as auth_module
 from scrapperlanas import create_app
 from scrapperlanas.db import get_db
 
@@ -94,6 +95,11 @@ def test_register_login_logout(client):
     assert b"Dashboard (Inbox)" in response.data
 
 
+def test_logout_requires_post(client):
+    response = client.get("/auth/logout")
+    assert response.status_code == 405
+
+
 def test_ingestion_creates_demo_opportunities(app, client):
     register(client)
     response = client.post(
@@ -166,6 +172,277 @@ def test_state_change_creates_audit_event(app, client):
         assert event["note"] == "Propuesta enviada al cliente."
 
 
+def test_commercial_contact_and_followup_flow(app, client):
+    register(client)
+    client.post(
+        "/ingest/run",
+        data={"csrf_token": get_csrf_token(client, "/dashboard")},
+        follow_redirects=True,
+    )
+
+    with app.app_context():
+        db = get_db()
+        opportunity_id = db.execute(
+            "SELECT id FROM opportunities ORDER BY score_total DESC, score DESC LIMIT 1"
+        ).fetchone()["id"]
+
+    response = client.post(
+        f"/opportunities/{opportunity_id}/contacted",
+        data={
+            "contact_channel": "email",
+            "contact_value": "buyer@example.com",
+            "notes": "Mensaje inicial enviado.",
+            "csrf_token": get_csrf_token(client, f"/opportunities/{opportunity_id}"),
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert b"Movimiento comercial guardado" in response.data
+
+    with app.app_context():
+        db = get_db()
+        row = db.execute(
+            """
+            SELECT commercial_status, followup_count, last_contacted_at, next_followup_at,
+                   contact_channel, contact_value, next_best_action
+            FROM opportunities
+            WHERE id = ?
+            """,
+            (opportunity_id,),
+        ).fetchone()
+        activity = db.execute(
+            """
+            SELECT activity_type, from_status, to_status, channel, notes
+            FROM commercial_activities
+            WHERE opportunity_id = ?
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (opportunity_id,),
+        ).fetchone()
+
+        assert row["commercial_status"] == "contacted"
+        assert row["followup_count"] == 0
+        assert row["last_contacted_at"]
+        assert row["next_followup_at"]
+        assert row["contact_channel"] == "email"
+        assert row["contact_value"] == "buyer@example.com"
+        assert row["next_best_action"] == "Dar seguimiento en 3 dias habiles"
+        assert activity["activity_type"] == "contacted"
+        assert activity["from_status"] == "new"
+        assert activity["to_status"] == "contacted"
+        assert activity["channel"] == "email"
+        assert activity["notes"] == "Mensaje inicial enviado."
+
+    response = client.post(
+        f"/opportunities/{opportunity_id}/followup-completed",
+        data={
+            "notes": "Follow-up 1 enviado.",
+            "csrf_token": get_csrf_token(client, f"/opportunities/{opportunity_id}"),
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+
+    with app.app_context():
+        db = get_db()
+        row = db.execute(
+            "SELECT commercial_status, followup_count, next_followup_at, next_best_action FROM opportunities WHERE id = ?",
+            (opportunity_id,),
+        ).fetchone()
+        assert row["commercial_status"] == "contacted"
+        assert row["followup_count"] == 1
+        assert row["next_followup_at"]
+        assert row["next_best_action"] == "Enviar follow-up 2"
+
+
+def test_commercial_proposal_won_and_source_metrics(app, client):
+    register(client)
+    client.post(
+        "/ingest/run",
+        data={"csrf_token": get_csrf_token(client, "/dashboard")},
+        follow_redirects=True,
+    )
+
+    with app.app_context():
+        db = get_db()
+        opportunity_id = db.execute(
+            "SELECT id FROM opportunities ORDER BY score_total DESC, score DESC LIMIT 1"
+        ).fetchone()["id"]
+
+    client.post(
+        f"/opportunities/{opportunity_id}/contacted",
+        data={"csrf_token": get_csrf_token(client, f"/opportunities/{opportunity_id}")},
+        follow_redirects=True,
+    )
+    client.post(
+        f"/opportunities/{opportunity_id}/replied",
+        data={"notes": "Pidio propuesta.", "csrf_token": get_csrf_token(client, f"/opportunities/{opportunity_id}")},
+        follow_redirects=True,
+    )
+    client.post(
+        f"/opportunities/{opportunity_id}/proposal",
+        data={
+            "proposal_value": "7500",
+            "csrf_token": get_csrf_token(client, f"/opportunities/{opportunity_id}"),
+        },
+        follow_redirects=True,
+    )
+    response = client.post(
+        f"/opportunities/{opportunity_id}/won",
+        data={
+            "won_value": "6500",
+            "notes": "Cierre ganado.",
+            "csrf_token": get_csrf_token(client, f"/opportunities/{opportunity_id}"),
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert b"Ganada" in response.data
+
+    with app.app_context():
+        db = get_db()
+        row = db.execute(
+            "SELECT commercial_status, proposal_value, won_value, next_followup_at FROM opportunities WHERE id = ?",
+            (opportunity_id,),
+        ).fetchone()
+        activities = db.execute(
+            "SELECT activity_type FROM commercial_activities WHERE opportunity_id = ? ORDER BY id",
+            (opportunity_id,),
+        ).fetchall()
+
+        assert row["commercial_status"] == "won"
+        assert row["proposal_value"] == 7500
+        assert row["won_value"] == 6500
+        assert row["next_followup_at"] is None
+        assert [activity["activity_type"] for activity in activities][-4:] == [
+            "contacted",
+            "replied",
+            "proposal_sent",
+            "won",
+        ]
+
+    dashboard = client.get("/dashboard")
+    assert dashboard.status_code == 200
+    assert b"Ganadas recientes" in dashboard.data
+    assert b"Calidad por fuente" in dashboard.data
+
+
+def test_outreach_generate_regenerate_and_copy_log(app, client):
+    register(client)
+    client.post(
+        "/ingest/run",
+        data={"csrf_token": get_csrf_token(client, "/dashboard")},
+        follow_redirects=True,
+    )
+
+    with app.app_context():
+        db = get_db()
+        opportunity_id = db.execute(
+            "SELECT id FROM opportunities ORDER BY score_total DESC, score DESC LIMIT 1"
+        ).fetchone()["id"]
+
+    response = client.post(
+        f"/opportunities/{opportunity_id}/outreach/generate",
+        data={"csrf_token": get_csrf_token(client, f"/opportunities/{opportunity_id}")},
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert b"Mensajes comerciales listos" in response.data
+    assert b"Mensajes listos" in response.data
+    assert b"Copiar" in response.data
+
+    with app.app_context():
+        db = get_db()
+        draft = db.execute(
+            """
+            SELECT id, body
+            FROM outreach_drafts
+            WHERE opportunity_id = ? AND draft_type = 'initial' AND is_active = 1
+            LIMIT 1
+            """,
+            (opportunity_id,),
+        ).fetchone()
+        active_before = db.execute(
+            "SELECT COUNT(*) AS total FROM outreach_drafts WHERE opportunity_id = ? AND is_active = 1",
+            (opportunity_id,),
+        ).fetchone()["total"]
+        assert draft is not None
+        assert draft["body"]
+
+    response = client.post(
+        f"/opportunities/{opportunity_id}/outreach/{draft['id']}/copy-log",
+        data={"csrf_token": get_csrf_token(client, f"/opportunities/{opportunity_id}")},
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+
+    response = client.post(
+        f"/opportunities/{opportunity_id}/outreach/regenerate",
+        data={"csrf_token": get_csrf_token(client, f"/opportunities/{opportunity_id}")},
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert b"Mensajes regenerados" in response.data
+
+    with app.app_context():
+        db = get_db()
+        activity = db.execute(
+            """
+            SELECT activity_type, message_snapshot
+            FROM commercial_activities
+            WHERE opportunity_id = ? AND activity_type = 'message_copied'
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (opportunity_id,),
+        ).fetchone()
+        active_after = db.execute(
+            "SELECT COUNT(*) AS total FROM outreach_drafts WHERE opportunity_id = ? AND is_active = 1",
+            (opportunity_id,),
+        ).fetchone()["total"]
+        inactive_after = db.execute(
+            "SELECT COUNT(*) AS total FROM outreach_drafts WHERE opportunity_id = ? AND is_active = 0",
+            (opportunity_id,),
+        ).fetchone()["total"]
+
+        assert activity["activity_type"] == "message_copied"
+        assert activity["message_snapshot"]
+        assert active_after == active_before
+        assert inactive_after == active_before
+
+
+def test_accounts_pages_render_after_ingestion(app, client):
+    register(client)
+    client.post(
+        "/ingest/run",
+        data={"csrf_token": get_csrf_token(client, "/dashboard")},
+        follow_redirects=True,
+    )
+
+    accounts_response = client.get("/accounts")
+    assert accounts_response.status_code == 200
+    assert b"Cuentas calientes" in accounts_response.data
+
+    with app.app_context():
+        db = get_db()
+        account_id = db.execute(
+            "SELECT id FROM buyer_accounts ORDER BY account_score DESC, id ASC LIMIT 1"
+        ).fetchone()["id"]
+
+    detail_response = client.get(f"/accounts/{account_id}")
+    assert detail_response.status_code == 200
+    assert b"Resumen de cuenta" in detail_response.data
+    assert b"Oportunidades relacionadas" in detail_response.data
+
+    duplicates_response = client.get("/accounts/duplicates")
+    assert duplicates_response.status_code == 200
+    assert b"Posibles duplicados" in duplicates_response.data
+
+
 def test_missing_csrf_rejected(client):
     response = client.post(
         "/auth/login",
@@ -176,8 +453,37 @@ def test_missing_csrf_rejected(client):
     assert response.status_code == 400
 
 
-def test_security_headers_present(client):
-    response = client.get("/auth/login")
+def test_login_rate_limit_blocks_repeated_failures(app, client):
+    auth_module._AUTH_ATTEMPTS.clear()
+    app.config["AUTH_RATE_LIMIT_MAX_ATTEMPTS"] = 2
+    app.config["AUTH_RATE_LIMIT_WINDOW_SECONDS"] = 3600
+    csrf_token = get_csrf_token(client, "/auth/login")
+
+    for _index in range(2):
+        response = client.post(
+            "/auth/login",
+            data={
+                "email": "unknown@example.com",
+                "password": "bad-password",
+                "csrf_token": csrf_token,
+            },
+        )
+        assert response.status_code == 200
+
+    blocked = client.post(
+        "/auth/login",
+        data={
+            "email": "unknown@example.com",
+            "password": "bad-password",
+            "csrf_token": csrf_token,
+        },
+    )
+    assert blocked.status_code == 429
+
+
+def test_security_headers_present(app, client):
+    app.config["HSTS_ENABLED"] = True
+    response = client.get("/auth/login", base_url="https://localhost")
 
     assert response.status_code == 200
     assert response.headers["X-Frame-Options"] == "DENY"
@@ -185,6 +491,21 @@ def test_security_headers_present(client):
     assert response.headers["Referrer-Policy"] == "same-origin"
     assert "Content-Security-Policy" in response.headers
     assert response.headers["Cache-Control"] == "no-store"
+    assert response.headers["Strict-Transport-Security"].startswith("max-age=")
+
+
+def test_production_rejects_weak_runtime_config(tmp_path: Path):
+    with pytest.raises(RuntimeError, match="SECRET_KEY"):
+        create_app(
+            {
+                "ENVIRONMENT": "production",
+                "DEBUG": False,
+                "SECRET_KEY": "short",
+                "CRON_SECRET": "also-short",
+                "DATABASE": str(tmp_path / "prod.sqlite3"),
+                "SESSION_COOKIE_SECURE": True,
+            }
+        )
 
 
 def test_internal_cron_requires_secret(client):
@@ -307,7 +628,11 @@ def test_internal_import_endpoint_creates_opportunity(app, client):
     with app.app_context():
         db = get_db()
         row = db.execute(
-            "SELECT source_key, source_label, title FROM opportunities WHERE url = ?",
+            """
+            SELECT source_key, source_label, source_type, title, buyer_name, score_total, score_tier, next_best_action
+            FROM opportunities
+            WHERE url = ?
+            """,
             ("https://example.com/jobs/python-automation-contract",),
         ).fetchone()
         run_row = db.execute(
@@ -320,7 +645,12 @@ def test_internal_import_endpoint_creates_opportunity(app, client):
         ).fetchone()
         assert row["source_key"] == "email_alerts"
         assert row["source_label"] == "Alertas por Correo"
+        assert row["source_type"] == "direct_rfp"
+        assert row["buyer_name"] == "Inbox Leads"
         assert row["title"] == "Python automation contract"
+        assert row["score_total"] > 0
+        assert row["score_tier"] in {"A1", "A2", "B", "C", "D"}
+        assert row["next_best_action"]
         assert run_row["trigger_kind"] == "internal_import"
         assert run_row["source_key"] == "email_alerts"
         assert run_row["status"] == "ok"

@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Target | Scrapperlanas{% endblock %}
+{% block page_kicker %}Senales ATS{% endblock %}
+{% block page_title %}{{ "Nuevo target" if mode == "new" else target.name }}{% endblock %}
+{% block page_description %}Configura una empresa objetivo para escanear vacantes tecnicas publicas sin abrir fuentes masivas.{% endblock %}
+{% block page_actions %}
+  <a href="{{ url_for('main.targets') }}" class="inline-flex items-center gap-2 rounded-2xl border border-slate-700 bg-slate-900 px-4 py-2.5 text-sm font-bold text-slate-200 hover:border-slate-600">
+    <i class="fa-solid fa-arrow-left"></i>
+    Targets
+  </a>
+{% endblock %}
+{% block content %}
+  <section class="rounded-[28px] border border-slate-800 bg-slate-900/90 p-6 shadow-xl shadow-black/20">
+    <form method="post" class="grid gap-5 lg:grid-cols-2">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label class="block">
+        <span class="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Empresa</span>
+        <input name="name" value="{{ target.name }}" required class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-blue-500">
+      </label>
+      <label class="block">
+        <span class="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Dominio</span>
+        <input name="domain" value="{{ target.domain }}" placeholder="example.com" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-blue-500">
+      </label>
+      <label class="block">
+        <span class="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Pais</span>
+        <input name="country" value="{{ target.country }}" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-blue-500">
+      </label>
+      <label class="block">
+        <span class="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Provider ATS</span>
+        <select name="ats_provider" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-blue-500">
+          {% for provider in providers %}
+            <option value="{{ provider }}" {% if target.ats_provider == provider %}selected{% endif %}>{{ provider }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="block">
+        <span class="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Slug/subdominio ATS</span>
+        <input name="ats_slug" value="{{ target.ats_slug }}" placeholder="stripe, vercel, ashby..." class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-blue-500">
+      </label>
+      <label class="block">
+        <span class="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Careers URL</span>
+        <input name="careers_url" value="{{ target.careers_url }}" placeholder="https://example.com/careers" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-blue-500">
+      </label>
+      <label class="block">
+        <span class="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Prioridad</span>
+        <select name="priority" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-blue-500">
+          {% for priority in priorities %}
+            <option value="{{ priority }}" {% if target.priority == priority %}selected{% endif %}>{{ priority }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="flex items-center gap-3 self-end rounded-2xl border border-slate-800 bg-slate-950/70 px-4 py-3 text-sm font-bold text-slate-200">
+        <input type="checkbox" name="enabled" value="1" {% if target.enabled %}checked{% endif %} class="h-4 w-4 rounded border-slate-600 bg-slate-900">
+        Activa
+      </label>
+      <label class="block lg:col-span-2">
+        <span class="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Notas</span>
+        <textarea name="notes" rows="4" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-blue-500">{{ target.notes }}</textarea>
+      </label>
+      <div class="lg:col-span-2">
+        <button type="submit" class="inline-flex items-center gap-2 rounded-2xl border border-blue-500/30 bg-blue-600 px-5 py-3 text-sm font-bold text-white hover:bg-blue-500">
+          <i class="fa-solid fa-floppy-disk"></i>
+          Guardar target
+        </button>
+      </div>
+    </form>
+  </section>
+{% endblock %}
