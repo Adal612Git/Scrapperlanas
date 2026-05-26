@@ -135,7 +135,8 @@ def persist_outreach_drafts(db, *, opportunity_id: int, regenerate: bool = False
         )
 
     generated_at = datetime.now(UTC).replace(microsecond=0).isoformat() if regenerate else None
-    for draft in generate_outreach_drafts(dict(opportunity)):
+    drafts_to_store = _safe_outreach_drafts(dict(opportunity))
+    for draft in drafts_to_store:
         db.execute(
             """
             UPDATE outreach_drafts
@@ -179,6 +180,38 @@ def persist_outreach_drafts(db, *, opportunity_id: int, regenerate: bool = False
         )
     db.commit()
     return list_active_outreach_drafts(db, opportunity_id=opportunity_id)
+
+
+def _safe_outreach_drafts(opportunity: Mapping[str, Any]) -> list[OutreachDraftData]:
+    from .intelligence.outreach import outreach_blockers
+
+    blockers = outreach_blockers(opportunity)
+    if not blockers:
+        return generate_outreach_drafts(opportunity)
+
+    body = (
+        "No recomiendo redactar outreach todavia.\n\n"
+        "Falta validar:\n"
+        + "\n".join(f"- {blocker}" for blocker in blockers[:6])
+        + "\n\nChecklist de investigacion:\n"
+        "- Buscar comprador real.\n"
+        "- Validar dominio o portal oficial.\n"
+        "- Confirmar presupuesto y deadline.\n"
+        "- Revisar si es agregador, SEO, discusion o scam.\n"
+        "- Guardar evidencia antes de contactar."
+    )
+    return [
+        OutreachDraftData(
+            draft_type="discovery_questions",
+            channel="unknown",
+            subject="No redactar todavia: falta validacion",
+            body=body,
+            evidence_used=[],
+            tone="research_guardrail",
+            language="es",
+            quality_warnings=blockers,
+        )
+    ]
 
 
 def list_active_outreach_drafts(db, *, opportunity_id: int) -> list[dict]:

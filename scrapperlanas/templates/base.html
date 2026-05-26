@@ -59,6 +59,10 @@
               <i class="fa-solid fa-bell sidebar-icon"></i>
               <span class="sidebar-text">Alertas</span>
             </a>
+            <a href="{{ url_for('main.quality_command_center') }}" class="loto-nav-link {% if request.endpoint in ['main.quality_command_center', 'main.quality_rules_update'] %}is-nav-active{% endif %}">
+              <i class="fa-solid fa-shield-halved sidebar-icon"></i>
+              <span class="sidebar-text">Control de calidad</span>
+            </a>
             <a href="{{ url_for('main.export_csv') }}" class="loto-nav-link">
               <i class="fa-solid fa-file-export sidebar-icon"></i>
               <span class="sidebar-text">Exportar CSV</span>

@@ -382,6 +382,31 @@ summary:focus-visible {
   resize: vertical;
 }
 
+.loto-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.loto-table th,
+.loto-table td {
+  border-bottom: 1px solid var(--loto-border);
+  padding: 10px 12px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.loto-table th {
+  color: var(--loto-text-muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.loto-table td {
+  color: var(--loto-text);
+}
+
 .loto-search {
   position: relative;
 }

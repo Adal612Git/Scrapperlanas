@@ -46,6 +46,78 @@
           <p class="mt-3 text-sm leading-7 text-slate-200">{{ opportunity.ai_summary }}</p>
         </div>
 
+        <div class="mt-5 rounded-[24px] border border-cyan-500/20 bg-cyan-500/10 p-5">
+          <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <p class="text-xs font-bold uppercase tracking-[0.24em] text-cyan-200">Lead Explainer</p>
+              <h3 class="mt-2 text-xl font-black text-white">{{ opportunity.explanation.headline }}</h3>
+              <p class="mt-2 text-sm text-slate-300">Veredicto: {{ opportunity.explanation.verdict }} · Confianza {{ opportunity.explanation.confidence }}%</p>
+            </div>
+            <span class="rounded-full border border-cyan-500/30 bg-cyan-500/15 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-cyan-100">{{ opportunity.quality.quality_stage }}</span>
+          </div>
+          <div class="mt-4 grid gap-4 md:grid-cols-3">
+            <div>
+              <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">A favor</p>
+              <ul class="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-200">
+                {% for reason in opportunity.explanation.positive_reasons %}
+                  <li>{{ reason }}</li>
+                {% else %}
+                  <li>Sin razones positivas fuertes.</li>
+                {% endfor %}
+              </ul>
+            </div>
+            <div>
+              <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">En contra</p>
+              <ul class="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-200">
+                {% for reason in opportunity.explanation.negative_reasons %}
+                  <li>{{ reason }}</li>
+                {% else %}
+                  <li>Sin bloqueos fuertes.</li>
+                {% endfor %}
+              </ul>
+            </div>
+            <div>
+              <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Evidencia faltante</p>
+              <ul class="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-200">
+                {% for evidence in opportunity.explanation.missing_evidence %}
+                  <li>{{ evidence }}</li>
+                {% else %}
+                  <li>Nada critico pendiente.</li>
+                {% endfor %}
+              </ul>
+            </div>
+          </div>
+          <p class="mt-4 text-sm leading-6 text-slate-200">Siguiente paso: {{ opportunity.explanation.next_best_action }}</p>
+          <div class="mt-4 border-t border-cyan-500/20 pt-4">
+            <p class="text-xs font-bold uppercase tracking-[0.18em] text-cyan-200">Feedback manual</p>
+            <div class="mt-3 flex flex-wrap gap-2">
+              {% for decision, label in [
+                ("GOOD_LEAD", "Buen lead"),
+                ("BAD_LEAD", "Basura"),
+                ("SCAM", "Scam"),
+                ("DUPLICATE", "Duplicado"),
+                ("WRONG_BUDGET", "Presupuesto mal leido"),
+                ("WRONG_BUYER", "Comprador incorrecto"),
+                ("NEEDS_REVIEW", "Necesita revision")
+              ] %}
+                <form action="{{ url_for('main.opportunity_quality_feedback', opportunity_id=opportunity.id) }}" method="post">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <input type="hidden" name="next" value="{{ request.path }}">
+                  <input type="hidden" name="decision" value="{{ decision }}">
+                  <button type="submit" class="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-bold text-slate-200 hover:border-cyan-500/40">{{ label }}</button>
+                </form>
+              {% endfor %}
+            </div>
+            {% if feedback_history %}
+              <ul class="mt-3 space-y-1 text-xs text-slate-400">
+                {% for feedback in feedback_history[:4] %}
+                  <li>{{ feedback.created_at }} · {{ feedback.decision }}{% if feedback.reason %}: {{ feedback.reason }}{% endif %}</li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+          </div>
+        </div>
+
         <div class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <article class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
             <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Prioridad real</p>

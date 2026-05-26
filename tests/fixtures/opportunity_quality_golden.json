@@ -1,0 +1,202 @@
+[
+  {
+    "name": "nosleep fiction warehouse basement",
+    "input": {"source_key": "reddit", "source_label": "Reddit Public JSON", "source_type": "community", "title": "The Warehouse I Work At Has a Basement That Doesn't Exist...", "company": "nosleep", "buyer_name": "nosleep", "buyer_domain": "reddit.com", "url": "https://reddit.com/r/nosleep/comments/warehouse", "raw_text": "Story fiction with no buyer.", "risk_level": "medium"},
+    "expected": {"expected_quality_stage": "REJECTED_NOISE", "expected_commercial_intent_label": "FICTION", "expected_contactable": false, "expected_budget_valid": false, "expected_grade_max": "REJECTED"}
+  },
+  {
+    "name": "conspiracy directed energy weapon",
+    "input": {"source_key": "reddit", "source_label": "Reddit Public JSON", "source_type": "community", "title": "Alisa Valdes-Rodriguez says Epstein used directed-energy weapon", "company": "conspiracy", "buyer_name": "conspiracy", "buyer_domain": "reddit.com", "url": "https://reddit.com/r/conspiracy/comments/epstein", "raw_text": "conspiracy discussion USD 151839 API automation", "risk_level": "medium"},
+    "expected": {"expected_quality_stage": "REJECTED_NOISE", "expected_commercial_intent_label": "CONSPIRACY", "expected_contactable": false, "expected_budget_valid": true, "expected_grade_max": "REJECTED"}
+  },
+  {
+    "name": "how to choose enterprise AI consultant",
+    "input": {"source_key": "reddit", "source_label": "Reddit Public JSON", "source_type": "community", "title": "How to Choose an Enterprise AI Consultant", "company": "SaaS", "buyer_name": "u/glossfirre", "buyer_domain": "reddit.com", "url": "https://reddit.com/r/SaaS/comments/seo1", "raw_text": "Guide and case study for enterprise AI consultant.", "risk_level": "low"},
+    "expected": {"expected_quality_stage": "LOW_VALUE", "expected_commercial_intent_label": "SEO_CONTENT", "expected_contactable": false, "expected_budget_valid": false, "expected_grade_max": "C"}
+  },
+  {
+    "name": "how to choose Magento agency",
+    "input": {"source_key": "reddit", "source_label": "Reddit Public JSON", "source_type": "community", "title": "How to Choose a Magento Agency", "company": "SaaS", "buyer_name": "u/glossfirre", "buyer_domain": "reddit.com", "url": "https://reddit.com/r/SaaS/comments/seo2", "raw_text": "Magento guide and tutorial.", "risk_level": "low"},
+    "expected": {"expected_quality_stage": "LOW_VALUE", "expected_commercial_intent_label": "SEO_CONTENT", "expected_contactable": false, "expected_budget_valid": false, "expected_grade_max": "C"}
+  },
+  {
+    "name": "how to choose Hyva agency",
+    "input": {"source_key": "reddit", "source_label": "Reddit Public JSON", "source_type": "community", "title": "How to Choose a Hyva Agency", "company": "SaaS", "buyer_name": "u/glossfirre", "buyer_domain": "reddit.com", "url": "https://reddit.com/r/SaaS/comments/seo3", "raw_text": "Hyva case study and guide.", "risk_level": "low"},
+    "expected": {"expected_quality_stage": "LOW_VALUE", "expected_commercial_intent_label": "SEO_CONTENT", "expected_contactable": false, "expected_budget_valid": false, "expected_grade_max": "C"}
+  },
+  {
+    "name": "review my proposal",
+    "input": {"source_key": "reddit", "source_label": "Reddit Public JSON", "source_type": "community", "title": "Review my proposal", "company": "Upwork", "buyer_name": "Upwork", "buyer_domain": "reddit.com", "url": "https://reddit.com/r/Upwork/comments/review", "raw_text": "Please review my proposal and tell me what you think.", "risk_level": "low"},
+    "expected": {"expected_quality_stage": "LOW_VALUE", "expected_commercial_intent_label": "DISCUSSION", "expected_contactable": false, "expected_budget_valid": false, "expected_grade_max": "C"}
+  },
+  {
+    "name": "rate my proposal",
+    "input": {"source_key": "reddit", "source_label": "Reddit Public JSON", "source_type": "community", "title": "Could you please rate my proposal?", "company": "Upwork", "buyer_name": "Upwork", "buyer_domain": "reddit.com", "url": "https://reddit.com/r/Upwork/comments/rate", "raw_text": "Could you please rate my proposal?", "risk_level": "low"},
+    "expected": {"expected_quality_stage": "LOW_VALUE", "expected_commercial_intent_label": "DISCUSSION", "expected_contactable": false, "expected_budget_valid": false, "expected_grade_max": "C"}
+  },
+  {
+    "name": "30 plus developer jobs",
+    "input": {"source_key": "reddit", "source_label": "Reddit Public JSON", "source_type": "community", "title": "[US] 30+ Developer jobs that opened this week", "company": "DeveloperJobs", "buyer_name": "DeveloperJobs", "buyer_domain": "reddit.com", "url": "https://reddit.com/r/DeveloperJobs/comments/jobs", "raw_text": "Python React data jobs list.", "risk_level": "low"},
+    "expected": {"expected_quality_stage": "WATCHLIST", "expected_commercial_intent_label": "JOB_AGGREGATOR", "expected_contactable": false, "expected_budget_valid": false, "expected_grade_max": "B"}
+  },
+  {
+    "name": "3-6 months self promo",
+    "input": {"source_key": "reddit", "source_label": "Reddit Public JSON", "source_type": "community", "title": "Generate native Salesforce packages from natural language saves 3-6 months", "company": "SaaS", "buyer_name": "SaaS", "buyer_domain": "reddit.com", "url": "https://reddit.com/r/SaaS/comments/salesforce", "raw_text": "Launching my app, saves 3-6 months.", "risk_level": "low"},
+    "expected": {"expected_quality_stage": "LOW_VALUE", "expected_commercial_intent_label": "SELF_PROMO", "expected_contactable": false, "expected_budget_valid": false, "expected_grade_max": "C"}
+  },
+  {
+    "name": "10-15 commission",
+    "input": {"source_key": "reddit", "source_label": "Reddit Public JSON", "source_type": "community", "title": "[hiring] networking online, serious side income, 10-15% rate", "company": "forhire", "buyer_name": "forhire", "buyer_domain": "reddit.com", "url": "https://reddit.com/r/forhire/comments/commission", "raw_text": "No experience required. DM me for details. Weekly bonus.", "risk_level": "medium"},
+    "expected": {"expected_quality_stage": "SUSPECT", "expected_commercial_intent_label": "DIRECT_HIRING", "expected_contactable": false, "expected_budget_valid": false, "expected_grade_max": "C"}
+  },
+  {
+    "name": "serious side income",
+    "input": {"source_key": "reddit", "source_label": "Reddit Public JSON", "source_type": "community", "title": "Serious side income no experience required", "company": "forhire", "buyer_name": "forhire", "buyer_domain": "reddit.com", "url": "https://reddit.com/r/forhire/comments/sideincome", "raw_text": "DM me for details, serious side income.", "risk_level": "medium"},
+    "expected": {"expected_quality_stage": "SUSPECT", "expected_commercial_intent_label": "UNKNOWN", "expected_contactable": false, "expected_budget_valid": false, "expected_grade_max": "C"}
+  },
+  {
+    "name": "weekly bonus",
+    "input": {"source_key": "reddit", "source_label": "Reddit Public JSON", "source_type": "community", "title": "Weekly bonus easy task", "company": "forhire", "buyer_name": "forhire", "buyer_domain": "reddit.com", "url": "https://reddit.com/r/forhire/comments/bonus", "raw_text": "No experience required, weekly bonus, DM me.", "risk_level": "medium"},
+    "expected": {"expected_quality_stage": "SUSPECT", "expected_commercial_intent_label": "UNKNOWN", "expected_contactable": false, "expected_budget_valid": false, "expected_grade_max": "C"}
+  },
+  {
+    "name": "DM me for details",
+    "input": {"source_key": "reddit", "source_label": "Reddit Public JSON", "source_type": "community", "title": "[Hiring] simple online task", "company": "forhire", "buyer_name": "forhire", "buyer_domain": "reddit.com", "url": "https://reddit.com/r/forhire/comments/dm", "raw_text": "DM me for details, no contract.", "risk_level": "medium"},
+    "expected": {"expected_quality_stage": "SUSPECT", "expected_commercial_intent_label": "DIRECT_HIRING", "expected_contactable": false, "expected_budget_valid": false, "expected_grade_max": "C"}
+  },
+  {
+    "name": "AI automation assistant no buyer",
+    "input": {"source_key": "reddit", "source_label": "Reddit Public JSON", "source_type": "community", "title": "AI automation assistant needed", "company": "automation", "buyer_name": "automation", "buyer_domain": "reddit.com", "url": "https://reddit.com/r/automation/comments/assistant", "raw_text": "Need help with AI automation but no company or budget.", "risk_level": "low"},
+    "expected": {"expected_quality_stage": "WATCHLIST", "expected_commercial_intent_label": "BUYER_PAIN", "expected_contactable": false, "expected_budget_valid": false, "expected_grade_max": "C"}
+  },
+  {
+    "name": "Lovable app testing low value",
+    "input": {"source_key": "reddit", "source_label": "Reddit Public JSON", "source_type": "community", "title": "Lovable app testing $15 for 20 minutes", "company": "forhire", "buyer_name": "forhire", "buyer_domain": "reddit.com", "url": "https://reddit.com/r/forhire/comments/lovable", "raw_text": "Need quick testing $15 for 20 minutes.", "risk_level": "low"},
+    "expected": {"expected_quality_stage": "LOW_VALUE", "expected_commercial_intent_label": "UNKNOWN", "expected_contactable": false, "expected_budget_valid": true, "expected_grade_max": "C"}
+  },
+  {
+    "name": "manual vector tracing low value",
+    "input": {"source_key": "reddit", "source_label": "Reddit Public JSON", "source_type": "community", "title": "manual vector tracing $30", "company": "forhire", "buyer_name": "forhire", "buyer_domain": "reddit.com", "url": "https://reddit.com/r/forhire/comments/vector", "raw_text": "Need manual vector tracing fixed budget $30.", "risk_level": "low"},
+    "expected": {"expected_quality_stage": "LOW_VALUE", "expected_commercial_intent_label": "SERVICE_REQUEST", "expected_contactable": false, "expected_budget_valid": true, "expected_grade_max": "C"}
+  },
+  {
+    "name": "logos to SVG low value",
+    "input": {"source_key": "reddit", "source_label": "Reddit Public JSON", "source_type": "community", "title": "logos to SVG $20", "company": "forhire", "buyer_name": "forhire", "buyer_domain": "reddit.com", "url": "https://reddit.com/r/forhire/comments/svg", "raw_text": "Convert logos to SVG for $20 fixed.", "risk_level": "low"},
+    "expected": {"expected_quality_stage": "LOW_VALUE", "expected_commercial_intent_label": "UNKNOWN", "expected_contactable": false, "expected_budget_valid": true, "expected_grade_max": "C"}
+  },
+  {
+    "name": "remote event work 200 for 3 hours",
+    "input": {"source_key": "reddit", "source_label": "Reddit Public JSON", "source_type": "community", "title": "[Hiring] Part-Time Event-Based Work. $200 for 3 hour events", "company": "forhire", "buyer_name": "forhire", "buyer_domain": "reddit.com", "url": "https://reddit.com/r/forhire/comments/event", "raw_text": "Hiring event support. $200 for 3 hour events.", "risk_level": "low"},
+    "expected": {"expected_quality_stage": "WATCHLIST", "expected_commercial_intent_label": "DIRECT_HIRING", "expected_contactable": false, "expected_budget_valid": true, "expected_grade_max": "C"}
+  },
+  {
+    "name": "good n8n CRM invoices",
+    "input": {"source_key": "email_alerts", "source_label": "Direct lead", "source_type": "direct_rfp", "title": "Company needs n8n automation for CRM and invoices", "company": "Northwind Ops", "buyer_name": "Northwind Ops", "buyer_domain": "northwind.example", "url": "https://northwind.example/projects/n8n", "raw_text": "Company needs n8n automation for CRM and invoices. Budget USD 800 fixed. Deadline Friday.", "risk_level": "low", "pain_signals": ["CRM and invoice automation"], "evidence_snippets": ["Budget USD 800 fixed"], "contact_signals": ["email:ops@northwind.example"]},
+    "expected": {"expected_quality_stage": "READY_TO_CONTACT", "expected_commercial_intent_label": "SERVICE_REQUEST", "expected_contactable": true, "expected_budget_valid": true, "expected_grade_max": "A2"}
+  },
+  {
+    "name": "good ISP WhatsApp billing MXN",
+    "input": {"source_key": "email_alerts", "source_label": "Direct lead", "source_type": "direct_rfp", "title": "Small ISP needs WhatsApp bot for billing support", "company": "ISP Norte", "buyer_name": "ISP Norte", "buyer_domain": "ispnorte.example.mx", "url": "https://ispnorte.example.mx/rfp", "raw_text": "Small ISP needs WhatsApp bot for billing support. Budget MXN 25,000 project.", "risk_level": "low", "pain_signals": ["Billing support automation"], "evidence_snippets": ["Budget MXN 25,000 project"], "contact_signals": ["email:admin@ispnorte.example.mx"]},
+    "expected": {"expected_quality_stage": "READY_TO_CONTACT", "expected_commercial_intent_label": "SERVICE_REQUEST", "expected_contactable": true, "expected_budget_valid": true, "expected_grade_max": "A2"}
+  },
+  {
+    "name": "good law firm intake automation",
+    "input": {"source_key": "email_alerts", "source_label": "Direct lead", "source_type": "direct_rfp", "title": "Law firm needs document intake automation", "company": "Legal Rivera", "buyer_name": "Legal Rivera", "buyer_domain": "legalrivera.example", "url": "https://legalrivera.example/intake", "raw_text": "Law firm needs document intake automation. Budget USD 2,500 project.", "risk_level": "low", "pain_signals": ["Document intake automation"], "evidence_snippets": ["Budget USD 2,500 project"], "contact_signals": ["email:ops@legalrivera.example"]},
+    "expected": {"expected_quality_stage": "READY_TO_CONTACT", "expected_commercial_intent_label": "SERVICE_REQUEST", "expected_contactable": true, "expected_budget_valid": true, "expected_grade_max": "A2"}
+  },
+  {
+    "name": "good clinic reminders",
+    "input": {"source_key": "email_alerts", "source_label": "Direct lead", "source_type": "direct_rfp", "title": "Clinic needs appointment reminder workflow", "company": "Clinic Sur", "buyer_name": "Clinic Sur", "buyer_domain": "clinicsur.example", "url": "https://clinicsur.example/reminders", "raw_text": "Clinic needs appointment reminder workflow. Budget USD 900 project.", "risk_level": "low", "pain_signals": ["Appointment reminder workflow"], "evidence_snippets": ["Budget USD 900 project"], "contact_signals": ["email:frontdesk@clinicsur.example"]},
+    "expected": {"expected_quality_stage": "READY_TO_CONTACT", "expected_commercial_intent_label": "SERVICE_REQUEST", "expected_contactable": true, "expected_budget_valid": true, "expected_grade_max": "A2"}
+  },
+  {
+    "name": "good ecommerce inventory integration",
+    "input": {"source_key": "email_alerts", "source_label": "Direct lead", "source_type": "direct_rfp", "title": "Ecommerce store needs Shopify and inventory integration", "company": "Tienda Clara", "buyer_name": "Tienda Clara", "buyer_domain": "tiendaclara.example", "url": "https://tiendaclara.example/inventory", "raw_text": "Ecommerce store needs Shopify + inventory integration. Budget USD 1,500 project.", "risk_level": "low", "pain_signals": ["Inventory integration"], "evidence_snippets": ["Budget USD 1,500 project"], "contact_signals": ["email:ops@tiendaclara.example"]},
+    "expected": {"expected_quality_stage": "READY_TO_CONTACT", "expected_commercial_intent_label": "SERVICE_REQUEST", "expected_contactable": true, "expected_budget_valid": true, "expected_grade_max": "A2"}
+  },
+  {
+    "name": "good government RFP",
+    "input": {"source_key": "sam_gov", "source_label": "SAM.gov", "source_type": "procurement", "title": "Government RFP for software maintenance", "company": "City IT Office", "buyer_name": "City IT Office", "buyer_domain": "city.example.gov", "url": "https://sam.gov/opp/gov-rfp", "raw_text": "Request for proposal for software maintenance. Proposal deadline Friday. Budget USD 20000 project.", "risk_level": "low", "pain_signals": ["Software maintenance"], "evidence_snippets": ["Proposal deadline Friday"], "contact_signals": ["portal:sam.gov"]},
+    "expected": {"expected_quality_stage": "READY_TO_CONTACT", "expected_commercial_intent_label": "PROCUREMENT", "expected_contactable": true, "expected_budget_valid": true, "expected_grade_max": "A1"}
+  },
+  {
+    "name": "ambiguous founder reports no budget",
+    "input": {"source_key": "reddit", "source_label": "Reddit Public JSON", "source_type": "community", "title": "Founder asks how to automate reports", "company": "startups", "buyer_name": "startups", "buyer_domain": "reddit.com", "url": "https://reddit.com/r/startups/comments/reports", "raw_text": "Founder asks how to automate reports, no budget.", "risk_level": "low"},
+    "expected": {"expected_quality_stage": "WATCHLIST", "expected_commercial_intent_label": "BUYER_PAIN", "expected_contactable": false, "expected_budget_valid": false, "expected_grade_max": "C"}
+  },
+  {
+    "name": "ambiguous upwork proposal",
+    "input": {"source_key": "reddit", "source_label": "Reddit Public JSON", "source_type": "community", "title": "Developer asks if Upwork proposal is good", "company": "Upwork", "buyer_name": "Upwork", "buyer_domain": "reddit.com", "url": "https://reddit.com/r/Upwork/comments/proposalgood", "raw_text": "Review my proposal please.", "risk_level": "low"},
+    "expected": {"expected_quality_stage": "LOW_VALUE", "expected_commercial_intent_label": "DISCUSSION", "expected_contactable": false, "expected_budget_valid": false, "expected_grade_max": "C"}
+  },
+  {
+    "name": "ambiguous tool recommendations",
+    "input": {"source_key": "reddit", "source_label": "Reddit Public JSON", "source_type": "community", "title": "Small business asks for tool recommendations", "company": "smallbusiness", "buyer_name": "smallbusiness", "buyer_domain": "reddit.com", "url": "https://reddit.com/r/smallbusiness/comments/tools", "raw_text": "What tool should I use to automate invoices?", "risk_level": "low"},
+    "expected": {"expected_quality_stage": "LOW_VALUE", "expected_commercial_intent_label": "MARKET_RESEARCH", "expected_contactable": false, "expected_budget_valid": false, "expected_grade_max": "C"}
+  },
+  {
+    "name": "ambiguous messy CRM",
+    "input": {"source_key": "reddit", "source_label": "Reddit Public JSON", "source_type": "community", "title": "Startup founder says current CRM is messy", "company": "startups", "buyer_name": "startups", "buyer_domain": "reddit.com", "url": "https://reddit.com/r/startups/comments/crm", "raw_text": "Our CRM is messy and I wonder how to automate followups.", "risk_level": "low"},
+    "expected": {"expected_quality_stage": "WATCHLIST", "expected_commercial_intent_label": "BUYER_PAIN", "expected_contactable": false, "expected_budget_valid": false, "expected_grade_max": "C"}
+  },
+  {
+    "name": "ambiguous job aggregator many listings",
+    "input": {"source_key": "reddit", "source_label": "Reddit Public JSON", "source_type": "community", "title": "[Remote] 40 remote jobs weekly jobs list", "company": "remotepython", "buyer_name": "remotepython", "buyer_domain": "reddit.com", "url": "https://reddit.com/r/remotepython/comments/list", "raw_text": "Remote jobs weekly jobs list.", "risk_level": "low"},
+    "expected": {"expected_quality_stage": "WATCHLIST", "expected_commercial_intent_label": "JOB_AGGREGATOR", "expected_contactable": false, "expected_budget_valid": false, "expected_grade_max": "B"}
+  },
+  {
+    "name": "reddit junior developer hourly no buyer",
+    "input": {"source_key": "reddit", "source_label": "Reddit Public JSON", "source_type": "community", "title": "[Hiring] Junior Developer(C2 English) $50/hour", "company": "forhire", "buyer_name": "forhire", "buyer_domain": "reddit.com", "url": "https://reddit.com/r/forhire/comments/junior", "raw_text": "Need a developer $50/hour. DM me.", "risk_level": "low"},
+    "expected": {"expected_quality_stage": "WATCHLIST", "expected_commercial_intent_label": "DIRECT_HIRING", "expected_contactable": false, "expected_budget_valid": true, "expected_grade_max": "C"}
+  },
+  {
+    "name": "reddit automation specialist hourly no buyer",
+    "input": {"source_key": "reddit", "source_label": "Reddit Public JSON", "source_type": "community", "title": "[Hiring] automation specialist $50/hour", "company": "forhire", "buyer_name": "forhire", "buyer_domain": "reddit.com", "url": "https://reddit.com/r/forhire/comments/automation", "raw_text": "Need a developer for n8n automation. $50/hour. DM me.", "risk_level": "low"},
+    "expected": {"expected_quality_stage": "WATCHLIST", "expected_commercial_intent_label": "DIRECT_HIRING", "expected_contactable": false, "expected_budget_valid": true, "expected_grade_max": "C"}
+  },
+  {
+    "name": "remotepython jobs aggregator",
+    "input": {"source_key": "reddit", "source_label": "Reddit Public JSON", "source_type": "community", "title": "[Hiring] [FullRemote] [US] Python jobs", "company": "remotepython", "buyer_name": "remotepython", "buyer_domain": "reddit.com", "url": "https://reddit.com/r/remotepython/comments/jobs", "raw_text": "Python remote jobs from several companies.", "risk_level": "low"},
+    "expected": {"expected_quality_stage": "WATCHLIST", "expected_commercial_intent_label": "JOB_AGGREGATOR", "expected_contactable": false, "expected_budget_valid": false, "expected_grade_max": "B"}
+  },
+  {
+    "name": "crypto wallet upfront fee",
+    "input": {"source_key": "reddit", "source_label": "Reddit Public JSON", "source_type": "community", "title": "Easy task crypto wallet setup", "company": "forhire", "buyer_name": "forhire", "buyer_domain": "reddit.com", "url": "https://reddit.com/r/forhire/comments/crypto", "raw_text": "Send upfront fee by gift card and telegram only.", "risk_level": "high"},
+    "expected": {"expected_quality_stage": "SUSPECT", "expected_commercial_intent_label": "UNKNOWN", "expected_contactable": false, "expected_budget_valid": false, "expected_grade_max": "C"}
+  },
+  {
+    "name": "adult fake reviews",
+    "input": {"source_key": "reddit", "source_label": "Reddit Public JSON", "source_type": "community", "title": "Need fake reviews and account creation", "company": "forhire", "buyer_name": "forhire", "buyer_domain": "reddit.com", "url": "https://reddit.com/r/forhire/comments/reviews", "raw_text": "Need fake reviews, account creation, payment after.", "risk_level": "medium"},
+    "expected": {"expected_quality_stage": "SUSPECT", "expected_commercial_intent_label": "UNKNOWN", "expected_contactable": false, "expected_budget_valid": false, "expected_grade_max": "C"}
+  },
+  {
+    "name": "procurement no budget but official",
+    "input": {"source_key": "ted_eu", "source_label": "TED EU", "source_type": "procurement", "title": "Tender for API platform maintenance", "company": "Regional Agency", "buyer_name": "Regional Agency", "buyer_domain": "agency.example.eu", "url": "https://ted.europa.eu/notice/1", "raw_text": "Tender for API platform maintenance. Proposal deadline next month.", "risk_level": "low", "pain_signals": ["API platform maintenance"], "evidence_snippets": ["Tender notice with deadline"], "contact_signals": ["portal:ted.europa.eu"]},
+    "expected": {"expected_quality_stage": "READY_TO_CONTACT", "expected_commercial_intent_label": "PROCUREMENT", "expected_contactable": true, "expected_budget_valid": false, "expected_grade_max": "A2"}
+  },
+  {
+    "name": "github issue bounty",
+    "input": {"source_key": "github_issues", "source_label": "GitHub Issues", "source_type": "github_issue", "title": "Fix API integration bug bounty USD 500", "company": "Open Tools", "buyer_name": "Open Tools", "buyer_domain": "opentools.example", "url": "https://github.com/opentools/repo/issues/7", "raw_text": "Need help fixing API integration. Bounty USD 500 fixed.", "risk_level": "low", "pain_signals": ["API integration bug"], "evidence_snippets": ["Bounty USD 500"], "contact_signals": ["github_issue"]},
+    "expected": {"expected_quality_stage": "READY_TO_CONTACT", "expected_commercial_intent_label": "SERVICE_REQUEST", "expected_contactable": true, "expected_budget_valid": true, "expected_grade_max": "A2"}
+  },
+  {
+    "name": "workana marketplace project",
+    "input": {"source_key": "workana_projects", "source_label": "Workana", "source_type": "direct_rfp", "title": "Need Python scraping and dashboard", "company": "Retail Buyer", "buyer_name": "Retail Buyer", "buyer_domain": "retail.example", "url": "https://workana.com/job/1", "raw_text": "Need Python scraping and dashboard. Fixed budget USD 1200.", "risk_level": "low", "pain_signals": ["Scraping and dashboard"], "evidence_snippets": ["Fixed budget USD 1200"], "contact_signals": ["portal:workana"]},
+    "expected": {"expected_quality_stage": "READY_TO_CONTACT", "expected_commercial_intent_label": "SERVICE_REQUEST", "expected_contactable": true, "expected_budget_valid": true, "expected_grade_max": "A2"}
+  },
+  {
+    "name": "news AI will replace jobs",
+    "input": {"source_key": "reddit", "source_label": "Reddit Public JSON", "source_type": "community", "title": "News: AI will replace developer jobs", "company": "news", "buyer_name": "news", "buyer_domain": "reddit.com", "url": "https://reddit.com/r/news/comments/ai", "raw_text": "Breaking news discussion about jobs.", "risk_level": "low"},
+    "expected": {"expected_quality_stage": "REJECTED_NOISE", "expected_commercial_intent_label": "NEWS", "expected_contactable": false, "expected_budget_valid": false, "expected_grade_max": "REJECTED"}
+  },
+  {
+    "name": "writing prompts fiction",
+    "input": {"source_key": "reddit", "source_label": "Reddit Public JSON", "source_type": "community", "title": "A story about an agency that automates dreams", "company": "WritingPrompts", "buyer_name": "WritingPrompts", "buyer_domain": "reddit.com", "url": "https://reddit.com/r/WritingPrompts/comments/story", "raw_text": "fiction story prompt", "risk_level": "low"},
+    "expected": {"expected_quality_stage": "REJECTED_NOISE", "expected_commercial_intent_label": "FICTION", "expected_contactable": false, "expected_budget_valid": false, "expected_grade_max": "REJECTED"}
+  },
+  {
+    "name": "direct RFP no contact",
+    "input": {"source_key": "public_pages", "source_label": "Public page", "source_type": "direct_rfp", "title": "Need data pipeline modernization", "company": "Factory Ops", "buyer_name": "Factory Ops", "buyer_domain": "factory.example", "url": "https://factory.example/data", "raw_text": "Need data pipeline modernization. Budget USD 5000 project.", "risk_level": "low", "pain_signals": ["Data pipeline modernization"], "evidence_snippets": ["Budget USD 5000 project"], "contact_signals": []},
+    "expected": {"expected_quality_stage": "READY_TO_CONTACT", "expected_commercial_intent_label": "SERVICE_REQUEST", "expected_contactable": true, "expected_budget_valid": true, "expected_grade_max": "A2"}
+  }
+]

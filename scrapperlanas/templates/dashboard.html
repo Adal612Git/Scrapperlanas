@@ -181,6 +181,7 @@
               {% set score = item.intelligence.score %}
               {% set nba = item.intelligence.next_best_action %}
               {% set quality = item.quality %}
+              {% set explanation = item.explanation %}
               <article class="loto-inbox-row" id="opportunity-{{ item.id }}">
                 <input type="checkbox" name="opportunity_ids" value="{{ item.id }}" aria-label="Seleccionar {{ item.title }}">
                 <div class="min-w-0">
@@ -208,19 +209,43 @@
                     <span>{{ item.posted_display }}</span>
                   </div>
                   <p class="loto-row-action mt-2"><strong>Siguiente mejor accion:</strong> {{ nba.label }}. {{ nba.description }}</p>
+                  <p class="loto-row-action mt-1"><strong>Veredicto:</strong> {{ explanation.verdict }} - {{ explanation.headline }}</p>
                   <p class="loto-row-action mt-1"><strong>Por que es {{ score.grade }}:</strong> {{ score.reasons[0] if score.reasons else "Falta evidencia para explicar el score." }}</p>
-                  {% if not quality.is_contactable %}
-                    <details class="mt-3">
-                      <summary class="loto-chip w-fit cursor-pointer">Por que no contactar</summary>
-                      <ul class="loto-simple-list">
-                        {% for reason in quality.rejection_reasons %}
-                          <li>{{ reason }}</li>
-                        {% else %}
-                          <li>No hay comprador, presupuesto o accion comercial suficientemente verificable.</li>
-                        {% endfor %}
-                      </ul>
-                    </details>
-                  {% endif %}
+                  <details class="mt-3">
+                    <summary class="loto-chip w-fit cursor-pointer">Por que?</summary>
+                    <div class="mt-3 grid gap-3 md:grid-cols-3">
+                      <div>
+                        <strong class="text-sm">A favor</strong>
+                        <ul class="loto-simple-list">
+                          {% for reason in explanation.positive_reasons %}
+                            <li>{{ reason }}</li>
+                          {% else %}
+                            <li>Falta evidencia positiva fuerte.</li>
+                          {% endfor %}
+                        </ul>
+                      </div>
+                      <div>
+                        <strong class="text-sm">En contra</strong>
+                        <ul class="loto-simple-list">
+                          {% for reason in explanation.negative_reasons %}
+                            <li>{{ reason }}</li>
+                          {% else %}
+                            <li>Sin bloqueos fuertes detectados.</li>
+                          {% endfor %}
+                        </ul>
+                      </div>
+                      <div>
+                        <strong class="text-sm">Falta</strong>
+                        <ul class="loto-simple-list">
+                          {% for evidence in explanation.missing_evidence %}
+                            <li>{{ evidence }}</li>
+                          {% else %}
+                            <li>Nada critico pendiente.</li>
+                          {% endfor %}
+                        </ul>
+                      </div>
+                    </div>
+                  </details>
                   <div class="loto-skill-list">
                     {% for skill in item.required_skills[:6] %}
                       <span class="loto-skill">{{ skill }}</span>
@@ -255,6 +280,12 @@
                     <i class="fa-solid fa-arrow-up-right-from-square"></i>
                     Investigar
                   </a>
+                  <button type="submit" class="loto-secondary-button" formaction="{{ url_for('main.opportunity_quality_feedback', opportunity_id=item.id) }}" formmethod="post" name="decision" value="GOOD_LEAD">
+                    Buen lead
+                  </button>
+                  <button type="submit" class="loto-secondary-button" formaction="{{ url_for('main.opportunity_quality_feedback', opportunity_id=item.id) }}" formmethod="post" name="decision" value="BAD_LEAD">
+                    Basura
+                  </button>
                 </div>
               </article>
             {% else %}

@@ -292,6 +292,8 @@ def group_hiring_jobs_to_opportunity(
     ]
     if departments:
         evidence.append("Areas: " + ", ".join(departments[:4]))
+    if locations:
+        evidence.append("Ubicaciones: " + ", ".join(locations[:4]))
     if compensation_signals:
         evidence.append("Compensacion visible en vacantes: " + "; ".join(compensation_signals[:2]))
     pain_signals = [

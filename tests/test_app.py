@@ -27,6 +27,7 @@ def app(tmp_path: Path):
             "N8N_PUBLIC_URL": "http://localhost:5678",
             "N8N_IMPORT_WEBHOOK_PATH": "loto-signal/import",
             "N8N_SCHEDULER_INTERVAL_MINUTES": 15,
+            "AUTH_RATE_LIMIT_MAX_ATTEMPTS": 0,
         }
     )
 
@@ -344,6 +345,94 @@ def test_api_intelligence_summary_uses_quality_visibility(app, client):
     payload = response.get_json()
     assert payload["ok"] is True
     assert payload["summary"]["summary"]
+
+
+def test_quality_command_center_and_audit_export(app, client):
+    register(client)
+    client.post(
+        "/ingest/run",
+        data={"csrf_token": get_csrf_token(client, "/dashboard")},
+        follow_redirects=True,
+    )
+
+    response = client.get("/quality")
+    assert response.status_code == 200
+    assert b"Quality Command Center" in response.data
+    assert b"Calidad por fuente" in response.data
+
+    audit = client.get("/exports/quality-audit.csv")
+    assert audit.status_code == 200
+    text = audit.data.decode("utf-8")
+    assert "qualityStage" in text
+    assert "explanationHeadline" in text
+    assert "sourceTrustScore" in text
+
+
+def test_quality_feedback_route_recomputes_opportunity(app, client):
+    register(client)
+    client.post(
+        "/ingest/run",
+        data={"csrf_token": get_csrf_token(client, "/dashboard")},
+        follow_redirects=True,
+    )
+    with app.app_context():
+        db = get_db()
+        opportunity_id = db.execute(
+            "SELECT id FROM opportunities ORDER BY score_total DESC, score DESC LIMIT 1"
+        ).fetchone()["id"]
+
+    response = client.post(
+        f"/opportunities/{opportunity_id}/quality-feedback",
+        data={
+            "decision": "BAD_LEAD",
+            "reason": "Test false positive.",
+            "csrf_token": get_csrf_token(client, f"/opportunities/{opportunity_id}"),
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert b"Feedback guardado" in response.data
+    with app.app_context():
+        db = get_db()
+        feedback = db.execute(
+            "SELECT decision, reason FROM quality_feedback WHERE opportunity_id = ? ORDER BY id DESC LIMIT 1",
+            (opportunity_id,),
+        ).fetchone()
+        row = db.execute("SELECT analysis_json, state FROM opportunities WHERE id = ?", (opportunity_id,)).fetchone()
+
+    assert feedback["decision"] == "BAD_LEAD"
+    assert feedback["reason"] == "Test false positive."
+    assert "human_feedback_bad_lead" in row["analysis_json"]
+
+
+def test_recompute_quality_cli(app):
+    runner = app.test_cli_runner()
+    with app.app_context():
+        db = get_db()
+        db.execute(
+            """
+            INSERT INTO opportunities (source_key, source_label, source_type, title, company, buyer_name, buyer_domain, url, raw_text)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "reddit",
+                "Reddit Public JSON",
+                "community",
+                "Could you please rate my proposal?",
+                "Upwork",
+                "Upwork",
+                "reddit.com",
+                "https://reddit.com/r/Upwork/comments/cli",
+                "Review my proposal please.",
+            ),
+        )
+        db.commit()
+
+    result = runner.invoke(args=["recompute-quality", "--limit", "10"])
+
+    assert result.exit_code == 0
+    assert "Processed:" in result.output
 
 
 def test_outreach_generate_regenerate_and_copy_log(app, client):

@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+{% block title %}Control de calidad | Loto Signal{% endblock %}
+{% block page_kicker %}Buyer Intelligence V2.1{% endblock %}
+{% block page_title %}Quality Command Center{% endblock %}
+{% block page_description %}Audita fuentes, ajusta reglas anti-basura y revisa por que una oportunidad entra o se queda fuera.{% endblock %}
+{% block page_actions %}
+  <a href="{{ url_for('main.export_quality_audit_csv') }}" class="loto-secondary-button">
+    <i class="fa-solid fa-file-csv"></i>
+    Exportar auditoria
+  </a>
+  <form action="{{ url_for('main.quality_recompute') }}" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="limit" value="500">
+    <button type="submit" class="loto-primary-button">
+      <i class="fa-solid fa-arrows-rotate"></i>
+      Recalcular calidad
+    </button>
+  </form>
+{% endblock %}
+{% block content %}
+  {% set reddit_rules = reddit_config.reddit if reddit_config.reddit is mapping else reddit_config %}
+  {% set quality_rules = reddit_config.quality if reddit_config.quality is mapping else {} %}
+
+  <section class="grid gap-4 lg:grid-cols-4">
+    <article class="loto-kpi-card">
+      <p>Total ingestados</p>
+      <strong>{{ metrics.total_ingested }}</strong>
+      <span>Base completa auditada</span>
+    </article>
+    <article class="loto-kpi-card">
+      <p>Contactables reales</p>
+      <strong>{{ metrics.contactable }}</strong>
+      <span>Listos para outreach</span>
+    </article>
+    <article class="loto-kpi-card">
+      <p>Ruido rechazado</p>
+      <strong>{{ metrics.rejected_noise }}</strong>
+      <span>Fuera del inbox principal</span>
+    </article>
+    <article class="loto-kpi-card">
+      <p>Sospechosos</p>
+      <strong>{{ metrics.suspect }}</strong>
+      <span>Requieren validacion manual</span>
+    </article>
+  </section>
+
+  <section class="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_420px]">
+    <div class="space-y-4">
+      <article class="loto-panel">
+        <div class="loto-section-heading">
+          <div>
+            <p class="loto-card-eyebrow">Salud de ingesta</p>
+            <h2>Calidad operativa</h2>
+          </div>
+        </div>
+        <div class="grid gap-3 md:grid-cols-4">
+          <span class="loto-badge">Revision: {{ metrics.review_required }}</span>
+          <span class="loto-badge">Watchlist: {{ metrics.watchlist }}</span>
+          <span class="loto-badge">Duplicados ocultos: {{ metrics.duplicates }}</span>
+          <span class="loto-badge">Presupuesto dudoso: {{ metrics.budget_dubious }}</span>
+          <span class="loto-badge">Sin comprador: {{ metrics.no_buyer }}</span>
+          <span class="loto-badge">Subreddit bloqueado: {{ metrics.blocked_subreddit }}</span>
+          <span class="loto-badge">Low value: {{ metrics.low_value }}</span>
+          <span class="loto-badge">Golden dataset: {{ golden_status.total }} casos</span>
+        </div>
+      </article>
+
+      <article class="loto-panel">
+        <div class="loto-section-heading">
+          <div>
+            <p class="loto-card-eyebrow">Calidad por fuente</p>
+            <h2>Contactables vs basura</h2>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="loto-table">
+            <thead>
+              <tr>
+                <th>Fuente</th>
+                <th>Total</th>
+                <th>Contactables</th>
+                <th>Watchlist</th>
+                <th>Sospechosos</th>
+                <th>Rechazados</th>
+                <th>Duplicados</th>
+                <th>Tasa basura</th>
+                <th>Tasa contactable</th>
+                <th>Trust</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for source in source_performance %}
+                <tr>
+                  <td>{{ source.source_label }}</td>
+                  <td>{{ source.total }}</td>
+                  <td>{{ source.contactable_count }}</td>
+                  <td>{{ source.watchlist_count or 0 }}</td>
+                  <td>{{ source.suspect_count }}</td>
+                  <td>{{ source.rejected_noise_count }}</td>
+                  <td>{{ source.duplicate_count or 0 }}</td>
+                  <td>{{ source.trash_rate }}%</td>
+                  <td>{{ source.contactable_rate }}%</td>
+                  <td>{{ source.trust_score or source.health_score }}</td>
+                </tr>
+              {% else %}
+                <tr><td colspan="10">Aun no hay fuentes auditables.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="loto-panel">
+        <div class="loto-section-heading">
+          <div>
+            <p class="loto-card-eyebrow">Top razones de rechazo</p>
+            <h2>Que esta cortando el firewall</h2>
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          {% for reason in metrics.top_rejection_reasons %}
+            <span class="loto-badge">{{ reason.reason }}: {{ reason.total }}</span>
+          {% else %}
+            <span class="loto-badge">Sin rechazos todavia</span>
+          {% endfor %}
+        </div>
+      </article>
+
+      <article class="loto-panel">
+        <div class="loto-section-heading">
+          <div>
+            <p class="loto-card-eyebrow">Ultimos falsos positivos</p>
+            <h2>Feedback humano reciente</h2>
+          </div>
+        </div>
+        <div class="loto-inbox-list">
+          {% for feedback in feedback_stats.latest_false_positives %}
+            <article class="loto-inbox-row">
+              <div>
+                <span class="loto-badge">{{ feedback.decision }}</span>
+                <a class="loto-row-title mt-2 block" href="{{ url_for('main.opportunity_detail', opportunity_id=feedback.opportunity_id) }}">{{ feedback.title }}</a>
+                <p class="loto-row-meta">{{ feedback.source }} - {{ feedback.reason or "Sin motivo escrito" }}</p>
+              </div>
+            </article>
+          {% else %}
+            <p class="text-sm text-slate-500">Todavia no hay falsos positivos marcados por el equipo.</p>
+          {% endfor %}
+        </div>
+      </article>
+    </div>
+
+    <aside class="space-y-4">
+      <article class="loto-panel">
+        <p class="loto-card-eyebrow">Reglas configurables</p>
+        <h2>Reddit como fuente controlada</h2>
+        <form action="{{ url_for('main.quality_rules_update') }}" method="post" class="mt-4 space-y-4">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <label class="block">
+            <span class="text-sm font-semibold text-slate-700">Allowlist</span>
+            <textarea name="allowlist" class="loto-textarea mt-2 min-h-32">{{ (reddit_rules.allowlist or []) | join('\n') }}</textarea>
+          </label>
+          <label class="block">
+            <span class="text-sm font-semibold text-slate-700">Greylist</span>
+            <textarea name="greylist" class="loto-textarea mt-2 min-h-28">{{ (reddit_rules.greylist or []) | join('\n') }}</textarea>
+          </label>
+          <label class="block">
+            <span class="text-sm font-semibold text-slate-700">Blocklist</span>
+            <textarea name="blocklist" class="loto-textarea mt-2 min-h-32">{{ (reddit_rules.blocklist or []) | join('\n') }}</textarea>
+          </label>
+          <div class="grid gap-3 sm:grid-cols-2">
+            <label class="block">
+              <span class="text-sm font-semibold text-slate-700">Intent min.</span>
+              <input class="loto-input mt-2" type="number" name="minCommercialIntentScore" value="{{ reddit_rules.minCommercialIntentScore or 65 }}" min="0" max="100">
+            </label>
+            <label class="block">
+              <span class="text-sm font-semibold text-slate-700">Buyer min.</span>
+              <input class="loto-input mt-2" type="number" name="minBuyerConfidence" value="{{ quality_rules.minBuyerConfidence or 50 }}" min="0" max="100">
+            </label>
+          </div>
+          <label class="flex items-center gap-2 text-sm text-slate-700">
+            <input type="checkbox" name="hideRejectedByDefault" {% if reddit_rules.hideRejectedByDefault is not sameas false %}checked{% endif %}>
+            Ocultar rechazados por defecto
+          </label>
+          <label class="flex items-center gap-2 text-sm text-slate-700">
+            <input type="checkbox" name="hideDuplicates" {% if quality_rules.hideDuplicates is not sameas false %}checked{% endif %}>
+            Ocultar duplicados
+          </label>
+          <label class="flex items-center gap-2 text-sm text-slate-700">
+            <input type="checkbox" name="rejectCriticalRisk" {% if quality_rules.rejectCriticalRisk is not sameas false %}checked{% endif %}>
+            Rechazar riesgo critico
+          </label>
+          <button type="submit" class="loto-primary-button w-full">Guardar reglas</button>
+        </form>
+      </article>
+
+      <article class="loto-panel">
+        <p class="loto-card-eyebrow">Acciones rapidas</p>
+        <h2>Operaciones seguras</h2>
+        <div class="mt-4 grid gap-2">
+          <form action="{{ url_for('main.quality_recompute') }}" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="limit" value="100">
+            <button type="submit" class="loto-secondary-button w-full">Reprocesar ultimas 100</button>
+          </form>
+          <a href="{{ url_for('main.dashboard', quick='rejected_noise') }}" class="loto-secondary-button w-full">Ver ruido rechazado</a>
+          <a href="{{ url_for('main.dashboard', quick='duplicates') }}" class="loto-secondary-button w-full">Ver duplicados</a>
+          <a href="{{ url_for('main.export_quality_audit_csv') }}" class="loto-secondary-button w-full">Exportar auditoria CSV</a>
+          <span class="loto-badge">Golden dataset: {{ "ok" if golden_status.exists else "pendiente" }}</span>
+        </div>
+      </article>
+    </aside>
+  </section>
+{% endblock %}

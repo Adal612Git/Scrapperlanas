@@ -20,7 +20,8 @@ def score_v2(opportunity: Mapping[str, Any], *, now: datetime | None = None) -> 
     runtime_now = (now or datetime.now(UTC)).astimezone(UTC)
     text = combined_text(opportunity)
     risk = assess_risk(opportunity, now=runtime_now)
-    quality = assess_opportunity_quality(opportunity)
+    quality_payload = opportunity.get("quality") if isinstance(opportunity.get("quality"), dict) else None
+    quality = assess_opportunity_quality(opportunity) if quality_payload is None else _quality_object(quality_payload)
     evidence = collect_evidence(opportunity)
 
     money_score, money_reasons = _money_score(opportunity, text)
@@ -200,3 +201,14 @@ def _grade(total: int, *, risk_penalty: int, opportunity: Mapping[str, Any], qua
     if total >= 45:
         return "C"
     return "D"
+
+
+def _quality_object(payload: Mapping[str, Any]):
+    class _QualityProxy:
+        def __init__(self, raw: Mapping[str, Any]):
+            self.final_score_cap = int(raw.get("final_score_cap") or 100)
+            self.grade = str(raw.get("grade") or "C")
+            self.quality_stage = str(raw.get("quality_stage") or "REVIEW_REQUIRED")
+            self.commercial_intent_label = str(raw.get("commercial_intent_label") or "UNKNOWN")
+
+    return _QualityProxy(payload)

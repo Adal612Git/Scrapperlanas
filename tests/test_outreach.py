@@ -221,3 +221,54 @@ def test_regenerating_drafts_deactivates_previous_rows(tmp_path: Path):
         assert active_total == len(second)
         assert inactive_total == len(first)
         assert regenerated_total == len(second)
+
+
+def test_persist_outreach_blocks_rejected_noise(tmp_path: Path):
+    app = create_app(
+        {
+            "TESTING": True,
+            "DATABASE": str(tmp_path / "outreach-block.sqlite3"),
+            "SECRET_KEY": "test-secret",
+            "OLLAMA_ENABLED": False,
+            "CSRF_ENABLED": True,
+            "SESSION_COOKIE_SECURE": False,
+        }
+    )
+
+    with app.app_context():
+        db = get_db()
+        cursor = db.execute(
+            """
+            INSERT INTO opportunities (
+                source_key,
+                source_label,
+                source_type,
+                title,
+                company,
+                buyer_name,
+                buyer_domain,
+                url,
+                raw_text,
+                risk_level
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "reddit",
+                "Reddit Public JSON",
+                "community",
+                "The Warehouse I Work At Has a Basement That Doesn't Exist...",
+                "nosleep",
+                "nosleep",
+                "reddit.com",
+                "https://reddit.com/r/nosleep/comments/outreach-block",
+                "fiction story",
+                "medium",
+            ),
+        )
+        opportunity_id = cursor.lastrowid
+        drafts = persist_outreach_drafts(db, opportunity_id=opportunity_id, regenerate=False)
+
+    assert len(drafts) == 1
+    assert drafts[0]["draft_type"] == "discovery_questions"
+    assert "No recomiendo redactar" in drafts[0]["body"]
+    assert "falta validacion" in drafts[0]["subject"].lower()

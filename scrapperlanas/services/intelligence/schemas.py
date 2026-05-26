@@ -59,6 +59,20 @@ class OutreachDraftV2:
 
 
 @dataclass(frozen=True)
+class CopilotModeResult:
+    mode: str
+    verdict: str
+    reasons: list[str] = field(default_factory=list)
+    missing_evidence: list[str] = field(default_factory=list)
+    blocking_conditions: list[str] = field(default_factory=list)
+    draft: dict[str, Any] | None = None
+    checklist: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
 class DedupeAssessment:
     duplicate_confidence: float
     recommended_action: str

@@ -98,6 +98,19 @@ def test_budget_parser_rejects_counts_durations_and_commission():
     assert extract_budget("3-6 months of dev work")[:2] == (None, None)
 
 
+def test_budget_parser_accepts_hourly_and_mxn_project():
+    hourly = parse_commercial_budget("[Hiring] automation specialist $50/hour")
+    mxn = parse_commercial_budget("Small ISP needs WhatsApp bot. Budget MXN 25,000 project.")
+
+    assert hourly.is_valid_commercial_budget is True
+    assert hourly.amount_min == 50
+    assert hourly.unit == "hour"
+    assert mxn.is_valid_commercial_budget is True
+    assert mxn.amount_min == 25_000
+    assert mxn.currency == "MXN"
+    assert mxn.unit == "project"
+
+
 def test_budget_parser_accepts_real_low_value_event_budget():
     budget = parse_commercial_budget("[Hiring] Event-Based Work. $200 for 3 hour events")
 

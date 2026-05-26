@@ -5,11 +5,16 @@ from datetime import UTC, datetime, timedelta
 from scrapperlanas.services.intelligence import (
     compare_accounts,
     compose_outreach,
+    copilot_mode,
+    evaluate_opportunity,
+    outreach_blockers,
     recommend_next_best_action,
+    research_checklist,
     score_v2,
     transition_opportunity,
 )
 from scrapperlanas.services.intelligence.risk import assess_risk
+from scrapperlanas.services.quality import assess_opportunity_quality
 
 
 def _opportunity(**overrides):
@@ -159,3 +164,106 @@ def test_risk_engine_flags_scam_signals():
 
     assert risk.scam_risk >= 65
     assert risk.warnings
+
+
+def test_copilot_evaluate_rejected_noise():
+    opportunity = {
+        "source_key": "reddit",
+        "source_label": "Reddit Public JSON",
+        "source_type": "community",
+        "title": "The Warehouse I Work At Has a Basement That Doesn't Exist...",
+        "company": "nosleep",
+        "buyer_name": "nosleep",
+        "buyer_domain": "reddit.com",
+        "url": "https://reddit.com/r/nosleep/comments/1",
+        "raw_text": "fiction story",
+        "risk_level": "medium",
+    }
+    opportunity["quality"] = assess_opportunity_quality(opportunity).to_dict()
+
+    result = evaluate_opportunity(opportunity)
+
+    assert result.verdict == "REJECTED"
+    assert result.blocking_conditions
+
+
+def test_copilot_research_checklist_for_review_required():
+    opportunity = _opportunity(
+        quality={
+            "quality_stage": "REVIEW_REQUIRED",
+            "commercial_intent_label": "BUYER_PAIN",
+            "risk_level": "LOW",
+            "buyer_confidence": 45,
+            "budget": {"is_valid_commercial_budget": False},
+            "rejection_reasons": ["buyer_identity_weak"],
+            "risk_reasons": [],
+            "quality_score": 55,
+            "budget_confidence": 0,
+        }
+    )
+
+    result = research_checklist(opportunity)
+
+    assert result.mode == "investigar"
+    assert any("comprador" in item.lower() for item in result.checklist)
+
+
+def test_copilot_redact_blocks_suspect():
+    opportunity = _opportunity(
+        state="SOSPECHOSO",
+        quality={
+            "quality_stage": "SUSPECT",
+            "commercial_intent_label": "DIRECT_HIRING",
+            "risk_level": "HIGH",
+            "buyer_confidence": 80,
+            "budget": {"is_valid_commercial_budget": True},
+            "rejection_reasons": ["high_risk"],
+            "risk_reasons": ["commission_only"],
+            "quality_score": 44,
+            "budget_confidence": 80,
+        },
+    )
+
+    result = copilot_mode(opportunity, mode="redactar")
+    draft = compose_outreach(opportunity)
+
+    assert result.verdict == "BLOCKED"
+    assert "No recomiendo contactar" in draft.body
+
+
+def test_copilot_redact_blocks_low_buyer_confidence():
+    opportunity = _opportunity(
+        quality={
+            "quality_stage": "READY_TO_CONTACT",
+            "commercial_intent_label": "DIRECT_HIRING",
+            "risk_level": "LOW",
+            "buyer_confidence": 35,
+            "budget": {"is_valid_commercial_budget": True},
+            "rejection_reasons": [],
+            "risk_reasons": [],
+            "quality_score": 78,
+            "budget_confidence": 80,
+        }
+    )
+
+    assert any("Comprador" in blocker for blocker in outreach_blockers(opportunity))
+
+
+def test_copilot_redact_allows_ready_to_contact():
+    opportunity = _opportunity()
+    opportunity["quality"] = {
+        "quality_stage": "READY_TO_CONTACT",
+        "commercial_intent_label": "DIRECT_HIRING",
+        "risk_level": "LOW",
+        "buyer_confidence": 85,
+        "budget": {"is_valid_commercial_budget": True},
+        "rejection_reasons": [],
+        "risk_reasons": [],
+        "quality_score": 88,
+        "budget_confidence": 80,
+    }
+    result = copilot_mode(opportunity, mode="redactar")
+
+    assert result.verdict == "READY"
+    assert result.draft
+    assert "Acme Ops" in result.draft["body"]

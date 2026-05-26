@@ -14,6 +14,7 @@ from .quality import (
     build_duplicate_context,
     should_assign_buyer_account,
 )
+from .quality_memory import apply_feedback_overrides, get_feedback_stats, get_latest_feedback
 from .scoring import score_commercial_opportunity
 
 
@@ -523,24 +524,27 @@ def ingest_policy_opportunities(
         )
 
     duplicate_context = build_duplicate_context(opportunities)
+    feedback_stats = get_feedback_stats(db)
     prepared_opportunities = []
     for opportunity in opportunities:
-        quality = assess_opportunity_quality(
+        quality_auto = assess_opportunity_quality(
             opportunity,
             policy_config=policy_config,
             duplicate_hint=duplicate_context.get(id(opportunity), {}),
         )
+        feedback = _feedback_for_existing_url(db, opportunity.url)
+        quality = apply_feedback_overrides(opportunity, quality_auto, feedback, stats=feedback_stats)
         base_score = score_opportunity(
             opportunity,
             preferred_keywords=preferred_keywords,
             min_budget=min_budget,
         )
         base_score = min(base_score, quality.final_score_cap)
-        prepared_opportunities.append((base_score, quality, opportunity))
+        prepared_opportunities.append((base_score, quality, quality_auto, feedback, opportunity))
 
     prepared_opportunities.sort(key=lambda item: item[0], reverse=True)
 
-    for base_score, quality, opportunity in prepared_opportunities:
+    for base_score, quality, quality_auto, feedback, opportunity in prepared_opportunities:
         if not opportunity.url:
             policy_stats["skipped"] += 1
             continue
@@ -582,6 +586,8 @@ def ingest_policy_opportunities(
             enrichment=enrichment,
             base_score=base_score,
             quality=quality,
+            quality_auto=quality_auto,
+            quality_feedback=feedback,
             preferred_keywords=preferred_keywords,
             min_budget=min_budget,
             now=runtime_now,
@@ -648,6 +654,114 @@ def _within_age_window(posted_at, *, max_age_days: int, now: datetime) -> bool:
     return (now - published_at.astimezone(UTC)).days <= max_age_days
 
 
+def _feedback_for_existing_url(db, url: str):
+    if not url:
+        return None
+    row = db.execute("SELECT id FROM opportunities WHERE url = ?", (url,)).fetchone()
+    if row is None:
+        return None
+    return get_latest_feedback(db, int(row["id"]))
+
+
+def recompute_quality_for_opportunity(
+    db,
+    opportunity_id: int,
+    *,
+    profile=None,
+    feedback_stats: dict | None = None,
+) -> dict:
+    row = db.execute("SELECT * FROM opportunities WHERE id = ?", (opportunity_id,)).fetchone()
+    if row is None:
+        raise LookupError(f"Opportunity {opportunity_id} not found.")
+
+    row_dict = dict(row)
+    policy = get_policy_by_source_key(db, row_dict.get("source_key") or "") or {
+        "id": None,
+        "source_key": row_dict.get("source_key") or "",
+        "display_name": row_dict.get("source_label") or row_dict.get("source_key") or "Fuente",
+        "risk_level": row_dict.get("risk_level") or "low",
+        "config_json": "{}",
+    }
+    policy = dict(policy)
+    opportunity = _normalized_opportunity_from_payload(row_dict, policy)
+    if opportunity is None:
+        raise ValueError(f"Opportunity {opportunity_id} cannot be normalized.")
+
+    preferred_keywords, min_budget = _profile_context(profile)
+    policy_config = _load_policy_config(policy)
+    quality_auto = assess_opportunity_quality(opportunity, policy_config=policy_config)
+    feedback = get_latest_feedback(db, opportunity_id)
+    stats = feedback_stats if feedback_stats is not None else get_feedback_stats(db)
+    quality = apply_feedback_overrides(opportunity, quality_auto, feedback, stats=stats)
+    base_score = min(
+        score_opportunity(opportunity, preferred_keywords=preferred_keywords, min_budget=min_budget),
+        quality.final_score_cap,
+    )
+    assistant = LocalAiAssistant()
+    enrichment = assistant.enrich(
+        title=opportunity.title,
+        raw_text=opportunity.raw_text,
+        stack=opportunity.stack,
+        budget_text=opportunity.budget_text,
+        source_label=opportunity.source_label,
+        risk_level=opportunity.risk_level,
+        sector=opportunity.sector,
+        preferred_keywords=preferred_keywords,
+        min_budget=min_budget,
+        base_score=base_score,
+        force_heuristic=True,
+    )
+    _store_enriched_opportunity(
+        db,
+        opportunity=opportunity,
+        enrichment=enrichment,
+        base_score=base_score,
+        quality=quality,
+        quality_auto=quality_auto,
+        quality_feedback=feedback,
+        preferred_keywords=preferred_keywords,
+        min_budget=min_budget,
+        now=datetime.now(UTC),
+    )
+    db.commit()
+    return {
+        "opportunity_id": opportunity_id,
+        "quality_stage": quality.quality_stage,
+        "grade": quality.grade,
+        "is_contactable": quality.is_contactable,
+        "feedback_applied": feedback is not None,
+    }
+
+
+def recompute_quality(db, *, limit: int | None = None, profile=None) -> dict:
+    query = "SELECT id FROM opportunities ORDER BY updated_at DESC, id DESC"
+    params: list[int] = []
+    if limit is not None:
+        query += " LIMIT ?"
+        params.append(max(1, int(limit)))
+    rows = db.execute(query, tuple(params)).fetchall()
+    summary = {"processed": 0, "updated": 0, "rejected": 0, "duplicates_hidden": 0, "errors": 0}
+    feedback_stats = get_feedback_stats(db)
+    for row in rows:
+        summary["processed"] += 1
+        try:
+            result = recompute_quality_for_opportunity(
+                db,
+                int(row["id"]),
+                profile=profile,
+                feedback_stats=feedback_stats,
+            )
+        except Exception:
+            summary["errors"] += 1
+            continue
+        summary["updated"] += 1
+        if result["quality_stage"] in {"REJECTED_NOISE", "LOW_VALUE", "SUSPECT"}:
+            summary["rejected"] += 1
+        if result["quality_stage"] == "DUPLICATE":
+            summary["duplicates_hidden"] += 1
+    return summary
+
+
 def _store_enriched_opportunity(
     db,
     *,
@@ -655,6 +769,8 @@ def _store_enriched_opportunity(
     enrichment: dict,
     base_score: int,
     quality: QualityAssessment,
+    quality_auto: QualityAssessment | None = None,
+    quality_feedback=None,
     preferred_keywords: tuple[str, ...] = (),
     min_budget: int = 0,
     now: datetime | None = None,
@@ -695,31 +811,36 @@ def _store_enriched_opportunity(
     opportunity.required_skills = opportunity.required_skills or opportunity.stack
     opportunity.estimated_value = commercial_score.get("estimated_value") or opportunity.estimated_value
     opportunity.deadline_at = commercial_score.get("deadline_at") or opportunity.deadline_at
+    analysis_payload = {
+        "fit_label": enrichment.get("fit_label"),
+        "fit_reason": enrichment.get("fit_reason"),
+        "recommended_action": enrichment.get("recommended_action"),
+        "recommended_state": enrichment.get("recommended_state"),
+        "confidence": enrichment.get("confidence"),
+        "score_delta": enrichment.get("score_delta"),
+        "semantic_score": enrichment.get("semantic_score"),
+        "missing_info": enrichment.get("missing_info"),
+        "model_used": enrichment.get("model_used"),
+        "commercial_score": commercial_score,
+        "quality": quality.to_dict(),
+        "quality_auto": (quality_auto or quality).to_dict(),
+    }
+    if quality_feedback is not None:
+        analysis_payload["quality_feedback"] = quality_feedback.to_dict() if hasattr(quality_feedback, "to_dict") else dict(quality_feedback)
     analysis_json = json.dumps(
-        {
-            "fit_label": enrichment.get("fit_label"),
-            "fit_reason": enrichment.get("fit_reason"),
-            "recommended_action": enrichment.get("recommended_action"),
-            "recommended_state": enrichment.get("recommended_state"),
-            "confidence": enrichment.get("confidence"),
-            "score_delta": enrichment.get("score_delta"),
-            "semantic_score": enrichment.get("semantic_score"),
-            "missing_info": enrichment.get("missing_info"),
-            "model_used": enrichment.get("model_used"),
-            "commercial_score": commercial_score,
-            "quality": quality.to_dict(),
-        },
+        analysis_payload,
         ensure_ascii=False,
     )
 
     existing = db.execute(
-        "SELECT id, buyer_account_id, commercial_status, next_best_action FROM opportunities WHERE url = ?",
+        "SELECT id, buyer_account_id, commercial_status, next_best_action, state FROM opportunities WHERE url = ?",
         (opportunity.url,),
     ).fetchone()
 
     next_best_action = _next_best_action_for_ingestion(existing, commercial_score)
     commercial_status = _commercial_status_for_quality(existing, quality)
     ignored_reason = _ignored_reason_for_quality(quality)
+    state_for_update = _state_for_existing_quality(existing, quality, opportunity) if existing else None
 
     if existing:
         db.execute(
@@ -763,6 +884,7 @@ def _store_enriched_opportunity(
                 ai_summary = ?,
                 suggested_reply = ?,
                 analysis_json = ?,
+                state = ?,
                 commercial_status = ?,
                 ignored_reason = ?,
                 is_suspicious = ?,
@@ -809,6 +931,7 @@ def _store_enriched_opportunity(
                 opportunity.ai_summary,
                 opportunity.suggested_reply,
                 analysis_json,
+                state_for_update,
                 commercial_status,
                 ignored_reason,
                 int(opportunity.is_suspicious),
@@ -1014,6 +1137,21 @@ def _commercial_status_for_quality(existing, quality: QualityAssessment) -> str:
     if quality.quality_stage in {"WATCHLIST", "REVIEW_REQUIRED", "SUSPECT"}:
         return "reviewed"
     return "new"
+
+
+def _state_for_existing_quality(existing, quality: QualityAssessment, opportunity: NormalizedOpportunity) -> str:
+    current = str(existing["state"] or "NUEVO").strip().upper()
+    if current in {"GANADO", "PERDIDO"}:
+        return current
+    if quality.quality_stage in {"REJECTED_NOISE", "DUPLICATE", "LOW_VALUE"}:
+        return "DESCARTADO"
+    if quality.quality_stage == "SUSPECT" or opportunity.is_suspicious:
+        return "SOSPECHOSO"
+    if current in {"RESPONDIDO", "APLICADO", "FOLLOW_UP", "INTERESANTE"}:
+        return current
+    if quality.quality_stage in {"WATCHLIST", "REVIEW_REQUIRED"}:
+        return "VISTO"
+    return "NUEVO"
 
 
 def _ignored_reason_for_quality(quality: QualityAssessment) -> str:

@@ -5,6 +5,7 @@ import io
 import json
 import secrets
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from urllib.parse import urlencode, urlparse
 
 from flask import (
@@ -46,6 +47,7 @@ from .services.intelligence import (
     collect_evidence,
     compare_accounts,
     compose_outreach,
+    copilot_mode,
     recommend_next_best_action,
     score_v2,
     transition_opportunity,
@@ -53,6 +55,8 @@ from .services.intelligence import (
 from .services.intelligence.risk import assess_risk
 from .services.intelligence.state_machine import CANONICAL_TO_LEGACY, LEGACY_TO_CANONICAL
 from .services.quality import assess_opportunity_quality
+from .services.lead_explainer import explain_opportunity
+from .services.quality_memory import VALID_DECISIONS, get_feedback_for_opportunity, get_feedback_stats, record_feedback
 from .services.outreach import (
     activate_outreach_draft,
     list_active_outreach_drafts,
@@ -67,7 +71,8 @@ from .services.pipeline import (
     list_due_policies,
     list_enabled_policies,
     policy_runtime_status,
-    run_ingestion,
+    recompute_quality,
+    recompute_quality_for_opportunity,
     run_ingestion_for_policies,
     update_opportunity_state,
 )
@@ -355,6 +360,84 @@ def dashboard():
         copilot_summary=copilot_summary,
         automation_summary=automation_summary,
     )
+
+
+@bp.route("/quality")
+@login_required
+def quality_command_center():
+    db = get_db()
+    rows = _fetch_opportunities(db, _blank_filters(), limit=None)
+    all_items = _sort_items([_serialize_opportunity(row) for row in rows])
+    quality_metrics = _quality_metrics(all_items)
+    reddit_policy = get_policy_by_source_key(db, "reddit")
+    reddit_config = _policy_config(reddit_policy)
+    feedback_stats = get_feedback_stats(db)
+    return render_template(
+        "quality.html",
+        items=all_items,
+        metrics=quality_metrics,
+        source_performance=_source_performance(all_items),
+        feedback_stats=feedback_stats,
+        reddit_policy=reddit_policy,
+        reddit_config=reddit_config,
+        golden_status=_golden_dataset_status(),
+        feedback_decisions=sorted(VALID_DECISIONS),
+    )
+
+
+@bp.route("/quality/rules", methods=("POST",))
+@login_required
+def quality_rules_update():
+    db = get_db()
+    policy = get_policy_by_source_key(db, "reddit")
+    if policy is None:
+        flash("No existe politica de Reddit para actualizar.", "error")
+        return redirect(url_for("main.quality_command_center"))
+
+    config = _policy_config(policy)
+    reddit_config = dict(config.get("reddit") if isinstance(config.get("reddit"), dict) else {})
+    reddit_config.update(
+        {
+            "allowlist": _split_rule_list(request.form.get("allowlist")),
+            "greylist": _split_rule_list(request.form.get("greylist")),
+            "blocklist": _split_rule_list(request.form.get("blocklist")),
+            "minCommercialIntentScore": _safe_int(request.form.get("minCommercialIntentScore"), 65),
+            "hideRejectedByDefault": request.form.get("hideRejectedByDefault") == "on",
+            "hideDuplicates": request.form.get("hideDuplicates") == "on",
+        }
+    )
+    quality_config = dict(config.get("quality") if isinstance(config.get("quality"), dict) else {})
+    quality_config.update(
+        {
+            "minReadyToContactScore": _safe_int(request.form.get("minReadyToContactScore"), 75),
+            "minBuyerConfidence": _safe_int(request.form.get("minBuyerConfidence"), 50),
+            "rejectCriticalRisk": request.form.get("rejectCriticalRisk") == "on",
+            "hideDuplicates": request.form.get("hideDuplicates") == "on",
+        }
+    )
+    config["reddit"] = reddit_config
+    config["quality"] = quality_config
+    db.execute(
+        "UPDATE source_policies SET config_json = ? WHERE source_key = 'reddit'",
+        (json.dumps(config, ensure_ascii=False, indent=2),),
+    )
+    db.commit()
+    flash("Reglas de calidad actualizadas. Reprocesa calidad para aplicar sobre datos existentes.", "success")
+    return redirect(url_for("main.quality_command_center"))
+
+
+@bp.route("/quality/recompute", methods=("POST",))
+@login_required
+def quality_recompute():
+    db = get_db()
+    summary = recompute_quality(db, limit=_safe_int(request.form.get("limit"), 500), profile=_get_profile(db, g.user["id"]))
+    flash(
+        "Calidad recalculada. "
+        f"Processed: {summary['processed']}, Updated: {summary['updated']}, "
+        f"Rejected: {summary['rejected']}, Duplicates hidden: {summary['duplicates_hidden']}, Errors: {summary['errors']}.",
+        "success" if summary["errors"] == 0 else "error",
+    )
+    return redirect(url_for("main.quality_command_center"))
 
 
 @bp.route("/ingest/run", methods=("POST",))
@@ -764,6 +847,7 @@ def opportunity_detail(opportunity_id: int):
     item = _serialize_opportunity(row)
     outreach_drafts = list_active_outreach_drafts(db, opportunity_id=opportunity_id)
     outreach_by_type = _drafts_by_type(outreach_drafts)
+    feedback_history = get_feedback_for_opportunity(db, opportunity_id, limit=12)
     return render_template(
         "opportunity_detail.html",
         opportunity=item,
@@ -779,7 +863,42 @@ def opportunity_detail(opportunity_id: int):
         lost_reasons=LOST_REASONS,
         ignored_reasons=IGNORED_REASONS,
         quick_actions=_quick_actions(item),
+        feedback_history=feedback_history,
+        feedback_decisions=sorted(VALID_DECISIONS),
     )
+
+
+@bp.route("/opportunities/<int:opportunity_id>/quality-feedback", methods=("POST",))
+@login_required
+def opportunity_quality_feedback(opportunity_id: int):
+    decision = request.form.get("decision", "").strip().upper()
+    if decision not in VALID_DECISIONS:
+        flash("Decision de feedback no permitida.", "error")
+        return _commercial_redirect(opportunity_id)
+
+    db = get_db()
+    row = db.execute("SELECT id FROM opportunities WHERE id = ?", (opportunity_id,)).fetchone()
+    if row is None:
+        abort(404)
+    try:
+        record_feedback(
+            db,
+            opportunity_id=opportunity_id,
+            actor_user_id=g.user["id"],
+            decision=decision,
+            reason=request.form.get("reason", "").strip(),
+            corrected_stage=request.form.get("corrected_stage", "").strip(),
+            corrected_grade=request.form.get("corrected_grade", "").strip(),
+            metadata={"source": "ui"},
+        )
+        recompute_quality_for_opportunity(db, opportunity_id, profile=_get_profile(db, g.user["id"]))
+    except ValueError as exc:
+        flash(str(exc), "error")
+    except LookupError:
+        abort(404)
+    else:
+        flash("Feedback guardado y calidad recalculada.", "success")
+    return _commercial_redirect(opportunity_id)
 
 
 @bp.route("/opportunities/<int:opportunity_id>/status", methods=("POST",))
@@ -1492,6 +1611,89 @@ def export_csv():
     )
 
 
+@bp.route("/exports/quality-audit.csv")
+@login_required
+def export_quality_audit_csv():
+    db = get_db()
+    rows = _fetch_opportunities(db, _blank_filters(), limit=None)
+    items = _sort_items([_serialize_opportunity(row) for row in rows])
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(
+        [
+            "id",
+            "title",
+            "source",
+            "url",
+            "qualityStage",
+            "grade",
+            "finalScore",
+            "commercialIntentLabel",
+            "commercialIntentScore",
+            "riskLevel",
+            "riskScore",
+            "riskReasons",
+            "buyerName",
+            "buyerConfidence",
+            "budgetRawEvidence",
+            "budgetValid",
+            "budgetConfidence",
+            "sourceTrustScore",
+            "authorTrustScore",
+            "domainTrustScore",
+            "duplicateClusterId",
+            "duplicateCount",
+            "isContactable",
+            "explanationHeadline",
+            "nextBestAction",
+            "rejectionReasons",
+            "createdAt",
+        ]
+    )
+    for item in items:
+        quality = item["quality"]
+        budget = quality.get("budget") or {}
+        explanation = item.get("explanation") or {}
+        writer.writerow(
+            [
+                item["id"],
+                item["title"],
+                item.get("source_label") or item.get("source_key"),
+                item["url"],
+                quality.get("quality_stage"),
+                quality.get("grade") or item.get("priority_tier"),
+                quality.get("quality_score"),
+                quality.get("commercial_intent_label"),
+                quality.get("commercial_intent_score"),
+                quality.get("risk_level"),
+                quality.get("risk_score"),
+                "; ".join(quality.get("risk_reasons") or []),
+                item.get("buyer_name") or item.get("company"),
+                quality.get("buyer_confidence"),
+                budget.get("raw_evidence", ""),
+                "yes" if budget.get("is_valid_commercial_budget") else "no",
+                quality.get("budget_confidence"),
+                quality.get("source_trust_score"),
+                quality.get("author_trust_score"),
+                quality.get("domain_trust_score"),
+                quality.get("duplicate_cluster_id", ""),
+                quality.get("duplicate_count", 0),
+                "yes" if quality.get("is_contactable") else "no",
+                explanation.get("headline", ""),
+                explanation.get("next_best_action", item.get("next_best_action", "")),
+                "; ".join(quality.get("rejection_reasons") or []),
+                item.get("created_at", ""),
+            ]
+        )
+
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=loto-signal-quality-audit.csv"},
+    )
+
+
 def _run_commercial_action(opportunity_id: int, action: str, **kwargs) -> dict:
     db = get_db()
     try:
@@ -1702,6 +1904,8 @@ def _hot_accounts(db, *, limit: int) -> list[dict]:
         FROM buyer_accounts
         WHERE opportunity_count > 0
           AND account_tier IN ('hot', 'warm')
+          AND LOWER(name) NOT IN ('conspiracy', 'nosleep', 'unknown reddit user', 'reddit')
+          AND COALESCE(normalized_domain, '') NOT IN ('reddit.com', 'old.reddit.com', 'www.reddit.com')
         ORDER BY
             CASE account_tier WHEN 'hot' THEN 1 ELSE 2 END,
             account_score DESC,
@@ -1840,6 +2044,7 @@ def _serialize_opportunity(row) -> dict:
     item["score_reasons"] = _json_list(item.get("score_reasons"))
     item["analysis"] = _json_dict(item.get("analysis_json"))
     item["quality"] = _quality_payload(item)
+    item["explanation"] = explain_opportunity(item).to_dict()
     item["budget_display"] = _format_budget(item)
     item["estimated_value_display"] = _format_estimated_value(item)
     item["state_badge_class"] = STATE_BADGE_STYLES.get(item["state"], "border border-slate-600 bg-slate-800 text-slate-300")
@@ -1894,6 +2099,11 @@ def _opportunity_intelligence(item: dict) -> dict:
         "evidence": evidence,
         "risk": risk.to_dict(),
         "outreach_preview": outreach.to_dict(),
+        "copilot_modes": {
+            "evaluar": copilot_mode(payload, mode="evaluar").to_dict(),
+            "investigar": copilot_mode(payload, mode="investigar").to_dict(),
+            "redactar": copilot_mode(payload, mode="redactar").to_dict(),
+        },
     }
 
 
@@ -2057,6 +2267,38 @@ def _safe_int(value: str, default: int = 0) -> int:
 
 def _truthy_arg(value) -> bool:
     return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _policy_config(policy_row) -> dict:
+    if policy_row is None:
+        return {}
+    try:
+        parsed = json.loads(policy_row["config_json"] or "{}")
+    except (TypeError, json.JSONDecodeError):
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def _split_rule_list(value) -> list[str]:
+    if not value:
+        return []
+    parts = []
+    for chunk in str(value).replace(",", "\n").splitlines():
+        cleaned = chunk.strip().lower().replace("r/", "")
+        if cleaned:
+            parts.append(cleaned)
+    return list(dict.fromkeys(parts))
+
+
+def _golden_dataset_status() -> dict:
+    fixture_path = Path(current_app.root_path).parent / "tests" / "fixtures" / "opportunity_quality_golden.json"
+    if not fixture_path.exists():
+        return {"exists": False, "total": 0, "path": str(fixture_path)}
+    try:
+        cases = json.loads(fixture_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {"exists": True, "total": 0, "path": str(fixture_path), "error": "invalid_json"}
+    return {"exists": True, "total": len(cases) if isinstance(cases, list) else 0, "path": str(fixture_path)}
 
 
 def _authorize_internal_request():
@@ -2751,8 +2993,11 @@ def _source_performance(items: list[dict]) -> list[dict]:
                 "ignored_count": 0,
                 "ignored_bad_fit_count": 0,
                 "contactable_count": 0,
+                "watchlist_count": 0,
                 "rejected_noise_count": 0,
                 "suspect_count": 0,
+                "duplicate_count": 0,
+                "trust_total": 0,
                 "score_total": 0,
                 "total_won_value": 0,
             },
@@ -2762,10 +3007,15 @@ def _source_performance(items: list[dict]) -> list[dict]:
         quality = item.get("quality") or {}
         if quality.get("is_contactable"):
             bucket["contactable_count"] += 1
+        if quality.get("quality_stage") == "WATCHLIST":
+            bucket["watchlist_count"] += 1
         if quality.get("quality_stage") == "REJECTED_NOISE":
             bucket["rejected_noise_count"] += 1
         if quality.get("quality_stage") == "SUSPECT":
             bucket["suspect_count"] += 1
+        if quality.get("quality_stage") == "DUPLICATE" or quality.get("duplicate_count"):
+            bucket["duplicate_count"] += 1
+        bucket["trust_total"] += int(quality.get("source_trust_score") or 0)
         grade_v2 = item.get("intelligence", {}).get("score", {}).get("grade") or item.get("priority_tier")
         if grade_v2 == "A1":
             bucket["a1_count"] += 1
@@ -2797,7 +3047,9 @@ def _source_performance(items: list[dict]) -> list[dict]:
         ignore_rate = bucket["ignored_count"] / total
         a_focus_rate = (bucket["a1_count"] + bucket["a2_count"]) / total
         contactable_rate = bucket["contactable_count"] / total
-        trash_rate = (bucket["rejected_noise_count"] + bucket["suspect_count"] + bucket["ignored_count"]) / total
+        trash_rate = (bucket["rejected_noise_count"] + bucket["suspect_count"] + bucket["ignored_count"] + bucket["duplicate_count"]) / total
+        trust_score = round(bucket["trust_total"] / total)
+        health_score = max(0, min(100, round(trust_score + (contactable_rate * 35) - (trash_rate * 30))))
         classification = "Prometedora"
         if bucket["won_count"] and win_rate >= 0.15 and trash_rate < 0.4:
             classification = "Elite"
@@ -2816,6 +3068,8 @@ def _source_performance(items: list[dict]) -> list[dict]:
                 "ignore_rate": round(ignore_rate * 100),
                 "contactable_rate": round(contactable_rate * 100),
                 "trash_rate": round(trash_rate * 100),
+                "trust_score": trust_score,
+                "health_score": health_score,
                 "false_positive_rate": round((bucket["ignored_bad_fit_count"] / total) * 100),
                 "a_focus_rate": round(a_focus_rate * 100),
                 "classification": classification,

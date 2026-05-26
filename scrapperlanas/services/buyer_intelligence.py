@@ -537,6 +537,9 @@ def _account_metrics(opportunities: list[dict]) -> dict:
     usable_opportunities = [opportunity for opportunity in opportunities if not is_quality_noise_mapping(opportunity)]
     opportunity_count = len(usable_opportunities)
     active = [opportunity for opportunity in usable_opportunities if _status(opportunity) not in {"ignored", "lost"}]
+    valid_signals = [opportunity for opportunity in usable_opportunities if _is_valid_account_signal(opportunity)]
+    contactable_signals = [opportunity for opportunity in valid_signals if _quality(opportunity).get("is_contactable")]
+    noise_signals = len(opportunities) - len(usable_opportunities)
     active_a1_count = sum(1 for opportunity in active if _tier(opportunity) == "A1")
     active_a2_count = sum(1 for opportunity in active if _tier(opportunity) == "A2")
     ignored_count = sum(1 for opportunity in opportunities if _status(opportunity) == "ignored" or is_quality_noise_mapping(opportunity))
@@ -560,6 +563,9 @@ def _account_metrics(opportunities: list[dict]) -> dict:
         opportunity_count=opportunity_count,
         active_a1_count=active_a1_count,
         active_a2_count=active_a2_count,
+        valid_signal_count=len(valid_signals),
+        contactable_signal_count=len(contactable_signals),
+        noise_signal_count=noise_signals,
         replied_count=replied_count,
         proposal_count=proposal_count,
         won_count=won_count,
@@ -575,6 +581,9 @@ def _account_metrics(opportunities: list[dict]) -> dict:
         opportunity_count=opportunity_count,
         active_a1_count=active_a1_count,
         active_a2_count=active_a2_count,
+        valid_signal_count=len(valid_signals),
+        contactable_signal_count=len(contactable_signals),
+        noise_signal_count=noise_signals,
         ignored_count=ignored_count,
     )
     return {
@@ -587,6 +596,9 @@ def _account_metrics(opportunities: list[dict]) -> dict:
         "won_count": won_count,
         "lost_count": lost_count,
         "ignored_count": ignored_count,
+        "valid_signal_count": len(valid_signals),
+        "noise_signal_count": noise_signals,
+        "contactable_signal_count": len(contactable_signals),
         "total_estimated_value": total_estimated_value,
         "total_proposal_value": total_proposal_value,
         "total_won_value": total_won_value,
@@ -610,6 +622,9 @@ def _account_score(
     opportunity_count: int,
     active_a1_count: int,
     active_a2_count: int,
+    valid_signal_count: int,
+    contactable_signal_count: int,
+    noise_signal_count: int,
     replied_count: int,
     proposal_count: int,
     won_count: int,
@@ -621,9 +636,10 @@ def _account_score(
     opportunities: list[dict],
 ) -> int:
     score = average_score
-    score += min(15, max(0, opportunity_count - 1) * 5)
+    score += min(15, max(0, valid_signal_count - 1) * 5)
     score += min(24, active_a1_count * 12)
     score += min(12, active_a2_count * 6)
+    score += min(12, contactable_signal_count * 6)
     score += min(18, replied_count * 5 + proposal_count * 8 + won_count * 10)
     if total_won_value:
         score += 12
@@ -632,14 +648,29 @@ def _account_score(
     elif total_estimated_value >= 10000:
         score += 5
     score -= ignored_count * 18
+    score -= noise_signal_count * 12
     score -= sum(_lost_penalty(opportunity) for opportunity in opportunities if _status(opportunity) == "lost")
     return max(0, min(100, int(round(score))))
 
 
-def _account_tier(*, score: int, opportunity_count: int, active_a1_count: int, active_a2_count: int, ignored_count: int) -> str:
+def _account_tier(
+    *,
+    score: int,
+    opportunity_count: int,
+    active_a1_count: int,
+    active_a2_count: int,
+    valid_signal_count: int,
+    contactable_signal_count: int,
+    noise_signal_count: int,
+    ignored_count: int,
+) -> str:
+    if valid_signal_count < 1:
+        return "noisy" if noise_signal_count or ignored_count else "cold"
     if opportunity_count and ignored_count >= max(1, (opportunity_count + 1) // 2):
         return "noisy"
-    if score >= 80 or active_a1_count >= 2:
+    if noise_signal_count > valid_signal_count:
+        return "noisy"
+    if (score >= 80 and valid_signal_count >= 2 and contactable_signal_count >= 1) or active_a1_count >= 2:
         return "hot"
     if score >= 60 or (active_a1_count + active_a2_count) > 0:
         return "warm"
@@ -704,6 +735,41 @@ def _top_json_values(opportunities: list[dict], field: str, *, limit: int) -> li
         for value in _json_list(opportunity.get(field)):
             counter[_clean(value)] += 1
     return [value for value, _count in counter.most_common(limit)]
+
+
+def _is_valid_account_signal(opportunity: Mapping[str, Any]) -> bool:
+    quality = _quality(opportunity)
+    if not quality:
+        return _tier(opportunity) in {"A1", "A2", "B"} and _status(opportunity) not in {"ignored", "lost"}
+    stage = str(quality.get("quality_stage") or "").upper()
+    buyer_confidence = _int_value(quality.get("buyer_confidence"))
+    if stage not in {"READY_TO_CONTACT", "REVIEW_REQUIRED", "WATCHLIST"}:
+        return False
+    if buyer_confidence < 45:
+        return False
+    buyer_name = _clean(opportunity.get("buyer_name") or opportunity.get("company")).lower()
+    buyer_domain = _clean(opportunity.get("buyer_domain")).lower()
+    if buyer_domain in {"reddit.com", "old.reddit.com", "www.reddit.com"} and buyer_confidence < 70:
+        return False
+    if buyer_name in {"conspiracy", "nosleep", "unknown reddit user", "reddit", "upwork"} and buyer_confidence < 70:
+        return False
+    return True
+
+
+def _quality(opportunity: Mapping[str, Any]) -> dict:
+    analysis = opportunity.get("analysis")
+    if isinstance(analysis, Mapping) and isinstance(analysis.get("quality"), Mapping):
+        return dict(analysis["quality"])
+    analysis_json = opportunity.get("analysis_json")
+    if analysis_json:
+        try:
+            parsed = json.loads(str(analysis_json))
+        except json.JSONDecodeError:
+            parsed = {}
+        quality = parsed.get("quality") if isinstance(parsed, Mapping) else {}
+        if isinstance(quality, Mapping):
+            return dict(quality)
+    return {}
 
 
 def _status(opportunity: Mapping[str, Any]) -> str:

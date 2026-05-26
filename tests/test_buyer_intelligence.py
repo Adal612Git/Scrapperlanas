@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -254,6 +255,43 @@ def test_multiple_active_a1_makes_account_hot(app):
         account = recalculate_buyer_account(db, account["id"])
 
         assert account["account_tier"] == "hot"
+
+
+def test_weak_reddit_user_cannot_become_hot_account(app):
+    with app.app_context():
+        db = get_db()
+        quality = {
+            "quality_stage": "WATCHLIST",
+            "buyer_confidence": 28,
+            "is_contactable": False,
+            "rejection_reasons": ["buyer_identity_weak"],
+        }
+        first_id = _insert_opportunity(
+            db,
+            title="Reddit one",
+            buyer_name="unknown reddit user",
+            buyer_domain="reddit.com",
+            score_total=95,
+            score_tier="A1",
+            suffix="weak-reddit-1",
+        )
+        second_id = _insert_opportunity(
+            db,
+            title="Reddit two",
+            buyer_name="unknown reddit user",
+            buyer_domain="reddit.com",
+            score_total=94,
+            score_tier="A1",
+            suffix="weak-reddit-2",
+        )
+        db.execute("UPDATE opportunities SET analysis_json = ? WHERE id IN (?, ?)", (json.dumps({"quality": quality}), first_id, second_id))
+
+        account = assign_buyer_account(db, first_id)
+        assign_buyer_account(db, second_id)
+        account = recalculate_buyer_account(db, account["id"])
+
+        assert account["account_tier"] != "hot"
+        assert account["account_tier"] in {"noisy", "warm", "cold"}
 
 
 def test_ignored_opportunities_do_not_remain_hot(app):

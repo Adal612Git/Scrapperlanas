@@ -66,8 +66,11 @@ REDDIT_BLOCKLIST = {
 DIRECT_HIRING_TERMS = (
     "hiring",
     "looking for someone",
+    "looking for a contractor",
     "need a developer",
     "need an agency",
+    "needs a developer",
+    "needs an agency",
     "necesito un",
     "necesitamos",
     "buscamos freelance",
@@ -111,6 +114,9 @@ PAY_TERMS = (
     "contract",
     "freelance",
     "usd",
+    "mxn",
+    "eur",
+    "gbp",
 )
 
 NEGATIVE_INTENT_PATTERNS = {
@@ -159,6 +165,12 @@ NEGATIVE_INTENT_PATTERNS = {
         "saves 3-6 months",
         "generate native salesforce packages",
     ),
+    "MARKET_RESEARCH": (
+        "tool recommendations",
+        "recommend a tool",
+        "what tool should i use",
+        "which crm",
+    ),
 }
 
 JOB_AGGREGATOR_PATTERNS = (
@@ -179,6 +191,15 @@ RISK_FLAGS = {
     "identity_abuse": ("send your id", "bank account", "investment", "forex", "casino"),
     "bad_work": ("adult", "dating", "essay writing", "homework", "account creation", "fake reviews", "review posting"),
 }
+
+LOW_VALUE_TASK_PATTERNS = (
+    "lovable app testing",
+    "manual vector tracing",
+    "logos to svg",
+    "logo to svg",
+    "quick testing",
+    "simple testing",
+)
 
 COMMERCIAL_SOURCE_TYPES = {"direct_rfp", "procurement", "github_issue", "hiring_signal"}
 CONTACTABLE_INTENTS = {"DIRECT_HIRING", "PROCUREMENT", "RFP", "SERVICE_REQUEST"}
@@ -267,10 +288,11 @@ def parse_commercial_budget(raw_text: str) -> BudgetQuality:
         if match and not re.search(r"(?i)(?:usd|\$)\s*\d", text):
             return BudgetQuality(raw_evidence=match.group(0), rejection_reason="numeric_context_not_budget")
 
+    currency = r"(?:usd|mxn|eur|euro|gbp|cad|aud|dollars?|pesos?|\$)"
     range_patterns = (
-        r"(?i)(?:usd|\$)\s*(\d[\d,]*(?:\.\d+)?)\s*(k)?\s*(?:-|to|hasta|a)\s*(?:usd|\$)?\s*(\d[\d,]*(?:\.\d+)?)\s*(k)?",
-        r"(?i)\b(\d[\d,]*(?:\.\d+)?)\s*(k)?\s*(?:-|to|hasta|a)\s*(\d[\d,]*(?:\.\d+)?)\s*(k)?\s*usd\b",
-        r"(?i)(?:entre|between)\s+(\d[\d,]*(?:\.\d+)?)\s*(k)?\s*(?:y|and)\s*(\d[\d,]*(?:\.\d+)?)\s*(k)?\s*(?:usd|\$)",
+        rf"(?i){currency}\s*(\d[\d,]*(?:\.\d+)?)\s*(k)?\s*(?:-|to|hasta|a)\s*(?:{currency})?\s*(\d[\d,]*(?:\.\d+)?)\s*(k)?",
+        rf"(?i)\b(\d[\d,]*(?:\.\d+)?)\s*(k)?\s*(?:-|to|hasta|a)\s*(\d[\d,]*(?:\.\d+)?)\s*(k)?\s*{currency}\b",
+        rf"(?i)(?:entre|between)\s+(\d[\d,]*(?:\.\d+)?)\s*(k)?\s*(?:y|and)\s*(\d[\d,]*(?:\.\d+)?)\s*(k)?\s*{currency}",
     )
     for pattern in range_patterns:
         match = re.search(pattern, text)
@@ -286,7 +308,7 @@ def parse_commercial_budget(raw_text: str) -> BudgetQuality:
         return BudgetQuality(
             amount_min=min(amount_min, amount_max),
             amount_max=max(amount_min, amount_max),
-            currency="USD",
+            currency=_currency_from_evidence(evidence),
             unit=unit,
             confidence=confidence,
             raw_evidence=evidence,
@@ -294,8 +316,8 @@ def parse_commercial_budget(raw_text: str) -> BudgetQuality:
         )
 
     single_patterns = (
-        r"(?i)(?:usd|\$)\s*(\d[\d,]*(?:\.\d+)?)\s*(k)?",
-        r"(?i)\b(\d[\d,]*(?:\.\d+)?)\s*(k)?\s*usd\b",
+        rf"(?i){currency}\s*(\d[\d,]*(?:\.\d+)?)\s*(k)?",
+        rf"(?i)\b(\d[\d,]*(?:\.\d+)?)\s*(k)?\s*{currency}\b",
     )
     matches = []
     for pattern in single_patterns:
@@ -313,7 +335,7 @@ def parse_commercial_budget(raw_text: str) -> BudgetQuality:
         return BudgetQuality(
             amount_min=amount,
             amount_max=amount,
-            currency="USD",
+            currency=_currency_from_evidence(evidence),
             unit=unit,
             confidence=confidence,
             raw_evidence=evidence,
@@ -412,6 +434,9 @@ def assess_opportunity_quality(
     if intent_label == "SEO_CONTENT":
         cap = min(cap, 35)
         rejection_reasons.append("seo_content")
+    if intent_label == "MARKET_RESEARCH":
+        cap = min(cap, 45)
+        rejection_reasons.append("market_research")
     if buyer_identity.confidence < 30:
         cap = min(cap, 45)
         rejection_reasons.append("buyer_identity_weak")
@@ -425,6 +450,9 @@ def assess_opportunity_quality(
     elif risk_score >= 65:
         cap = min(cap, 44)
         rejection_reasons.append("high_risk")
+    if _is_low_value_task(lowered, budget=budget):
+        cap = min(cap, 35)
+        rejection_reasons.append("low_value_budget")
 
     risk_level = _risk_level(risk_score)
     evidence_score = _evidence_score(opportunity, budget=budget, buyer_identity=buyer_identity, intent_score=intent_score)
@@ -523,7 +551,8 @@ def is_quality_noise_mapping(opportunity: Mapping[str, Any]) -> bool:
 
 def _commercial_intent(text: str, *, source_type: str) -> tuple[str, int, list[str]]:
     reasons: list[str] = []
-    for label, patterns in NEGATIVE_INTENT_PATTERNS.items():
+    for label in ("FICTION", "CONSPIRACY", "NEWS", "SEO_CONTENT", "DISCUSSION", "SELF_PROMO", "MARKET_RESEARCH"):
+        patterns = NEGATIVE_INTENT_PATTERNS[label]
         if any(pattern in text for pattern in patterns):
             reasons.append(f"Clasificado como {label}.")
             return label, 10 if label in NOISE_INTENTS else 22, reasons
@@ -535,6 +564,12 @@ def _commercial_intent(text: str, *, source_type: str) -> tuple[str, int, list[s
         return "PROCUREMENT", 88, reasons
     if "rfp" in text or "request for proposal" in text:
         return "RFP", 90, ["Menciona RFP."]
+    if source_type == "direct_rfp" and any(term in text for term in ("needs ", "need ", "looking for", "seeking ", "busca ", "necesita ")) and any(term in text for term in PAY_TERMS):
+        reasons.append("Solicitud directa con necesidad y senal de pago.")
+        return "SERVICE_REQUEST", 84, reasons
+    if source_type == "github_issue" and any(term in text for term in ("bounty", "paid", "usd", "$", "fixed")):
+        reasons.append("Issue tecnico con bounty o senal de pago.")
+        return "SERVICE_REQUEST", 72, reasons
     if any(term in text for term in DIRECT_HIRING_TERMS):
         score = 76
         if any(term in text for term in PAY_TERMS):
@@ -561,7 +596,14 @@ def _risk_score(text: str, opportunity: Any) -> tuple[int, list[str]]:
     reasons: list[str] = []
     for reason, patterns in RISK_FLAGS.items():
         if any(pattern in text for pattern in patterns):
-            score += 28 if reason in {"commission_only", "serious_side_income", "identity_abuse"} else 18
+            if reason in {"commission_only", "serious_side_income", "identity_abuse"}:
+                score += 42
+            elif reason == "bad_work":
+                score += 52
+            elif reason in {"dm_only", "no_contract"}:
+                score += 34
+            else:
+                score += 18
             reasons.append(reason)
     if not (_value(opportunity, "buyer_name") or _value(opportunity, "company")):
         score += 14
@@ -594,7 +636,7 @@ def _buyer_identity(opportunity: Any, *, source_type: str, subreddit: str) -> Bu
         confidence = 58
         buyer_type = "company"
     elif source_type == "github_issue" and buyer_name:
-        confidence = 50
+        confidence = 58
         buyer_type = "individual"
 
     if domain and domain not in {"reddit.com", "old.reddit.com", "www.reddit.com"}:
@@ -619,11 +661,12 @@ def _buyer_identity(opportunity: Any, *, source_type: str, subreddit: str) -> Bu
 
 
 def _source_trust(opportunity: Any, *, source_key: str, source_type: str, subreddit: str, reddit_policy: dict) -> tuple[int, list[str]]:
-    reasons: list[str] = []
     if source_type == "procurement":
         return 90, ["Fuente formal de procurement."]
     if source_key in {"workana_projects", "email_alerts"}:
         return 72, ["Fuente transaccional o marketplace."]
+    if source_type == "github_issue":
+        return 62, ["Issue tecnico con URL accionable."]
     if source_type == "hiring_signal":
         return 68, ["ATS o hiring signal reconocido."]
     if source_key == "reddit":
@@ -682,12 +725,16 @@ def _quality_stage(
         return "SUSPECT"
     if risk_level == "HIGH":
         return "SUSPECT"
-    if intent_label in {"SEO_CONTENT", "DISCUSSION", "SELF_PROMO"}:
+    if intent_label in {"SEO_CONTENT", "DISCUSSION", "SELF_PROMO", "MARKET_RESEARCH"}:
         return "LOW_VALUE"
     if intent_label == "JOB_AGGREGATOR":
         return "WATCHLIST"
+    if "low_value_budget" in rejection_reasons:
+        return "LOW_VALUE"
     if source_key == "reddit" and subreddit in reddit_policy["greylist"] and buyer_confidence < 50:
         return "REVIEW_REQUIRED"
+    if intent_label == "PROCUREMENT" and buyer_confidence >= 85 and quality_score >= 60:
+        return "READY_TO_CONTACT"
     if intent_label in CONTACTABLE_INTENTS and buyer_confidence >= 70 and quality_score >= 75 and (budget.is_valid_commercial_budget or buyer_confidence >= 85):
         return "READY_TO_CONTACT"
     if intent_label in REVIEWABLE_INTENTS and buyer_confidence >= 50 and quality_score >= 55:
@@ -818,15 +865,15 @@ def _risk_level(score: int) -> str:
 
 def _budget_unit(text: str, start: int, end: int) -> str:
     window = _window(text, start, end, size=46)
-    if any(term in window for term in ("/hour", "/hr", "per hour", "hourly", " an hour", " p/h")):
+    if any(term in window for term in ("/hour", "/hr", "/h", "per hour", "hourly", " an hour", " p/h", "por hora", "hora")):
         return "hour"
-    if any(term in window for term in ("per month", "/month", "monthly")):
+    if any(term in window for term in ("per month", "/month", "monthly", "mensual", "mes")):
         return "month"
-    if any(term in window for term in ("per year", "/year", "yearly", "salary")):
+    if any(term in window for term in ("per year", "/year", "yearly", "salary", "anual")):
         return "year"
-    if any(term in window for term in ("event", "minutes", "minute", "hours")):
+    if any(term in window for term in ("event", "minutes", "minute", "hours", "evento", "event-based")):
         return "event"
-    if any(term in window for term in ("fixed", "project", "budget", "presupuesto", "milestone", "contract", "award", "amount", "solicitation")):
+    if any(term in window for term in ("fixed", "fixed price", "project", "proyecto", "fijo", "budget", "presupuesto", "milestone", "contract", "award", "amount", "solicitation")):
         return "project"
     return "unknown"
 
@@ -836,7 +883,7 @@ def _budget_confidence(text: str, start: int, end: int, *, unit: str, has_curren
     score = 45 if has_currency else 20
     if unit != "unknown":
         score += 25
-    if any(term in window for term in ("budget", "presupuesto", "pago", "pay", "paid", "rate", "fixed", "hourly", "contract", "compensation", "award", "amount", "solicitation")):
+    if any(term in window for term in ("budget", "presupuesto", "pago", "pagamos", "pay", "paid", "rate", "fixed", "project", "proyecto", "hourly", "contract", "compensation", "award", "amount", "solicitation", "fee", "mxn", "usd")):
         score += 22
     if any(term in window for term in ("jobs", "opened", "months", "plans", "days", "percent", "commission")) and unit == "unknown":
         score -= 28
@@ -861,7 +908,35 @@ def _money_to_int(value: str, suffix: str | None) -> int:
     return int(number)
 
 
+def _currency_from_evidence(evidence: str) -> str:
+    lowered = evidence.lower()
+    if "mxn" in lowered or "peso" in lowered:
+        return "MXN"
+    if "eur" in lowered or "euro" in lowered:
+        return "EUR"
+    if "gbp" in lowered:
+        return "GBP"
+    if "cad" in lowered:
+        return "CAD"
+    if "aud" in lowered:
+        return "AUD"
+    return "USD"
+
+
+def _is_low_value_task(text: str, *, budget: BudgetQuality) -> bool:
+    amount = budget.amount_max or budget.amount_min or 0
+    if budget.is_valid_commercial_budget and budget.unit != "hour" and amount and amount < 75:
+        return True
+    if budget.is_valid_commercial_budget and budget.unit == "event" and amount and amount < 100:
+        return True
+    return any(pattern in text for pattern in LOW_VALUE_TASK_PATTERNS)
+
+
 def _reddit_subreddit(opportunity: Any) -> str:
+    source_key = _clean_text(_value(opportunity, "source_key")).lower()
+    url = _clean_text(_value(opportunity, "url")).lower()
+    if source_key != "reddit" and "reddit.com/" not in url:
+        return ""
     company = _clean_text(_value(opportunity, "company") or _value(opportunity, "buyer_name")).lower().replace("r/", "")
     if company:
         return re.sub(r"[^a-z0-9_]+", "", company)
@@ -880,6 +955,10 @@ def _contact_method(opportunity: Any) -> str:
             return "email"
         if lowered.startswith("phone:"):
             return "phone"
+        if lowered.startswith("portal:"):
+            return "portal"
+        if "github_issue" in lowered:
+            return "github_issue"
     if _value(opportunity, "contact_url") or _value(opportunity, "apply_url"):
         return "url"
     return ""

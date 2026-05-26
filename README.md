@@ -12,6 +12,7 @@ Loto Signal es una consola operativa para detectar, priorizar y dar seguimiento 
 - Normalizacion de comprador, dominio, pais, presupuesto, deadline, skills, dolores, contacto, evidencia y URL de accion.
 - Intelligence V2 deterministica: score explicable A1/A2/B/C/D, risk engine, evidence engine, dedupe/account intelligence, next best action y outreach composer.
 - Opportunity Quality Firewall para cortar ruido de Reddit, scams, contenido SEO, ficcion, discusiones sin comprador, duplicados y presupuestos mal interpretados.
+- Buyer Intelligence V2.1: Quality Memory, Lead Explainer, Quality Command Center, golden dataset de regresion, export de auditoria y Copiloto con modos Evaluar/Investigar/Redactar.
 - Pipeline comercial con estados historicos y maquina canonica: `new`, `triaged`, `interesting`, `outreach_drafted`, `contacted`, `replied`, `proposal_drafted`, `proposal_sent`, `follow_up_due`, `won`, `lost`, `suspicious`, `discarded`, `archived`.
 - Copiloto comercial con resumen de pipeline, deadlines, fuente de mejor calidad, riesgos, borrador de outreach y accion recomendada.
 - Agrupacion de compradores en cuentas, deteccion de duplicados y merge.
@@ -89,6 +90,22 @@ Endpoints autenticados nuevos:
 - `POST /api/opportunities/<id>/outreach/draft`
 - `GET /api/accounts/<id>/merge-suggestions`
 
+## Quality Command Center
+
+La cabina de mando de calidad vive en `/quality`. Permite auditar salud de ingesta, calidad por fuente, razones de rechazo, ultimos falsos positivos, reglas Reddit y acciones seguras de reproceso.
+
+Comando seguro para recalcular calidad sin reingestar:
+
+```powershell
+flask --app scrapperlanas recompute-quality --limit 500
+```
+
+Export profesional:
+
+- `/exports/quality-audit.csv`: incluye stage, intent, riesgo, trust, presupuesto, comprador, explicacion y siguiente accion.
+
+El feedback manual queda en `quality_feedback` y puede sobreescribir la decision automatica sin borrar la evaluacion original guardada en `analysis_json.quality_auto`.
+
 ## Automatizacion
 
 Endpoints internos protegidos por `Authorization: Bearer <CRON_SECRET>`:
@@ -133,6 +150,7 @@ Guia operativa: [automation/n8n/README.md](automation/n8n/README.md).
 
 - [Redisenio e inteligencia](docs/operacion/loto-signal-redesign-intelligence-2026-05-26.md)
 - [Quality hardening](docs/operacion/scrapperlanas-quality-hardening-2026-05-26.md)
+- [Buyer Intelligence V2.1](docs/operacion/scrapperlanas-buyer-intelligence-v2-1-2026-05-26.md)
 - [Maquina de estados](docs/operacion/loto-signal-state-machine.md)
 - [Intelligence V2](docs/operacion/loto-signal-intelligence-v2.md)
 

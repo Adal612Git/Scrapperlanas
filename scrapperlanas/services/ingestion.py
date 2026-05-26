@@ -1189,7 +1189,6 @@ def build_evidence_snippets(
     if not text:
         return []
 
-    lowered = text.lower()
     needles = [
         *[skill.lower() for skill in required_skills[:5]],
         "budget",
