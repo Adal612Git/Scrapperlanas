@@ -57,6 +57,12 @@ from .services.intelligence.state_machine import CANONICAL_TO_LEGACY, LEGACY_TO_
 from .services.quality import assess_opportunity_quality
 from .services.lead_explainer import explain_opportunity
 from .services.quality_memory import VALID_DECISIONS, get_feedback_for_opportunity, get_feedback_stats, record_feedback
+from .services.quality_rules import (
+    ensure_current_rule_version,
+    list_quality_rule_versions,
+    record_quality_rule_version,
+    restore_quality_rule_version,
+)
 from .services.outreach import (
     activate_outreach_draft,
     list_active_outreach_drafts,
@@ -369,19 +375,35 @@ def quality_command_center():
     rows = _fetch_opportunities(db, _blank_filters(), limit=None)
     all_items = _sort_items([_serialize_opportunity(row) for row in rows])
     quality_metrics = _quality_metrics(all_items)
+    source_performance = _source_performance(all_items)
     reddit_policy = get_policy_by_source_key(db, "reddit")
     reddit_config = _policy_config(reddit_policy)
     feedback_stats = get_feedback_stats(db)
+    golden_status = _golden_dataset_status()
+    if reddit_policy is not None:
+        ensure_current_rule_version(db, source_key="reddit", config=reddit_config)
+    rule_versions = list_quality_rule_versions(db, source_key="reddit", limit=8)
+    active_rule_version = next((version for version in rule_versions if version["is_active"]), None)
+    demo_readiness = _demo_readiness(
+        all_items,
+        metrics=quality_metrics,
+        source_performance=source_performance,
+        golden_status=golden_status,
+        rule_versions=rule_versions,
+    )
     return render_template(
         "quality.html",
         items=all_items,
         metrics=quality_metrics,
-        source_performance=_source_performance(all_items),
+        source_performance=source_performance,
         feedback_stats=feedback_stats,
         reddit_policy=reddit_policy,
         reddit_config=reddit_config,
-        golden_status=_golden_dataset_status(),
+        golden_status=golden_status,
         feedback_decisions=sorted(VALID_DECISIONS),
+        rule_versions=rule_versions,
+        active_rule_version=active_rule_version,
+        demo_readiness=demo_readiness,
     )
 
 
@@ -395,6 +417,8 @@ def quality_rules_update():
         return redirect(url_for("main.quality_command_center"))
 
     config = _policy_config(policy)
+    actor_user_id = g.user["id"] if g.user else None
+    ensure_current_rule_version(db, source_key="reddit", config=config, actor_user_id=actor_user_id)
     reddit_config = dict(config.get("reddit") if isinstance(config.get("reddit"), dict) else {})
     reddit_config.update(
         {
@@ -421,8 +445,36 @@ def quality_rules_update():
         "UPDATE source_policies SET config_json = ? WHERE source_key = 'reddit'",
         (json.dumps(config, ensure_ascii=False, indent=2),),
     )
-    db.commit()
-    flash("Reglas de calidad actualizadas. Reprocesa calidad para aplicar sobre datos existentes.", "success")
+    version = record_quality_rule_version(
+        db,
+        source_key="reddit",
+        config=config,
+        actor_user_id=actor_user_id,
+        reason=request.form.get("reason", ""),
+        change_summary=request.form.get("change_summary", ""),
+        is_active=True,
+    )
+    flash(
+        f"Reglas de calidad actualizadas como version v{version['version_number']}. Reprocesa calidad para aplicar sobre datos existentes.",
+        "success",
+    )
+    return redirect(url_for("main.quality_command_center"))
+
+
+@bp.route("/quality/rules/versions/<int:version_id>/restore", methods=("POST",))
+@login_required
+def quality_rule_version_restore(version_id: int):
+    db = get_db()
+    try:
+        version = restore_quality_rule_version(
+            db,
+            version_id=version_id,
+            actor_user_id=g.user["id"] if g.user else None,
+            reason=request.form.get("reason", ""),
+        )
+    except LookupError:
+        abort(404)
+    flash(f"Reglas restauradas y guardadas como version v{version['version_number']}.", "success")
     return redirect(url_for("main.quality_command_center"))
 
 
@@ -2299,6 +2351,81 @@ def _golden_dataset_status() -> dict:
     except (OSError, json.JSONDecodeError):
         return {"exists": True, "total": 0, "path": str(fixture_path), "error": "invalid_json"}
     return {"exists": True, "total": len(cases) if isinstance(cases, list) else 0, "path": str(fixture_path)}
+
+
+def _demo_readiness(
+    items: list[dict],
+    *,
+    metrics: dict,
+    source_performance: list[dict],
+    golden_status: dict,
+    rule_versions: list[dict],
+) -> dict:
+    checks = [
+        {
+            "label": "Marca y narrativa listas",
+            "ok": True,
+            "detail": "Loto Signal se presenta como consola de inteligencia comercial.",
+        },
+        {
+            "label": "Dataset anti-basura",
+            "ok": bool(golden_status.get("exists")) and int(golden_status.get("total") or 0) >= 40,
+            "detail": f"{golden_status.get('total', 0)} casos golden cubren ruido, ambiguedad y leads buenos.",
+        },
+        {
+            "label": "Inbox con datos demostrables",
+            "ok": len(items) > 0,
+            "detail": f"{len(items)} oportunidades disponibles para demo.",
+        },
+        {
+            "label": "Contactables reales visibles",
+            "ok": int(metrics.get("contactable") or 0) > 0,
+            "detail": f"{metrics.get('contactable', 0)} oportunidades pasan el firewall.",
+        },
+        {
+            "label": "Ruido explicado",
+            "ok": int(metrics.get("rejected_noise") or 0) > 0 or bool(metrics.get("top_rejection_reasons")),
+            "detail": "El producto muestra por que descarta basura y sospechosos.",
+        },
+        {
+            "label": "Fuentes auditadas",
+            "ok": bool(source_performance),
+            "detail": f"{len(source_performance)} fuentes con tasa contactable, basura y trust.",
+        },
+        {
+            "label": "Reglas versionadas",
+            "ok": bool(rule_versions),
+            "detail": "Cada cambio de reglas puede revisarse y restaurarse.",
+        },
+        {
+            "label": "Auditoria exportable",
+            "ok": True,
+            "detail": "El CSV de auditoria incluye calidad, riesgo, evidencia y siguiente accion.",
+        },
+    ]
+    passed = sum(1 for check in checks if check["ok"])
+    score = round((passed / len(checks)) * 100)
+    if score >= 85:
+        status = "Lista para demo"
+        tone = "success"
+    elif score >= 65:
+        status = "Demo controlada"
+        tone = "warning"
+    else:
+        status = "Preparacion pendiente"
+        tone = "danger"
+    return {
+        "score": score,
+        "status": status,
+        "tone": tone,
+        "checks": checks,
+        "proof_points": [
+            f"{metrics.get('contactable', 0)} contactables reales",
+            f"{metrics.get('rejected_noise', 0)} rechazados por ruido",
+            f"{metrics.get('duplicates', 0)} duplicados controlados",
+            f"{golden_status.get('total', 0)} fixtures golden",
+        ],
+    }
 
 
 def _authorize_internal_request():

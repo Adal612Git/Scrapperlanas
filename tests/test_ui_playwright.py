@@ -91,6 +91,12 @@ def test_loto_signal_playwright_smoke(live_loto_app: str, tmp_path: Path):
         expect(page.get_by_text("Redactar mensaje").first).to_be_visible()
         page.screenshot(path=str(screenshot_dir / "loto-signal-dashboard-data-desktop.png"), full_page=True)
 
+        page.goto(f"{live_loto_app}/quality", wait_until="networkidle")
+        expect(page.locator("h1").filter(has_text="Centro de Control de Calidad")).to_be_visible()
+        expect(page.get_by_text("Demo readiness")).to_be_visible()
+        expect(page.get_by_text("Historial de reglas")).to_be_visible()
+        page.screenshot(path=str(screenshot_dir / "loto-signal-quality-command-center.png"), full_page=True)
+
         mobile = browser.new_context(viewport={"width": 390, "height": 844}, is_mobile=True)
         mobile_page = mobile.new_page()
         mobile_page.goto(f"{live_loto_app}/auth/login", wait_until="networkidle")

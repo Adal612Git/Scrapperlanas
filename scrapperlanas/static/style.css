@@ -364,6 +364,140 @@ summary:focus-visible {
   font-size: 12px;
 }
 
+.loto-demo-banner {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 16px;
+  padding: 18px;
+  border: 1px solid #dbeafe;
+  border-radius: var(--loto-radius-lg);
+  background: linear-gradient(135deg, #fff 0%, #eef7ff 58%, #ecfeff 100%);
+  box-shadow: var(--loto-shadow-sm);
+}
+
+.loto-demo-banner h2 {
+  margin: 4px 0 6px;
+  color: var(--loto-text);
+  font-size: 22px;
+}
+
+.loto-demo-banner p {
+  margin: 0;
+  color: var(--loto-text-muted);
+  font-size: 14px;
+}
+
+.loto-readiness-score {
+  width: 112px;
+  min-width: 112px;
+  height: 112px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  border: 1px solid #bfdbfe;
+  background: #fff;
+  color: var(--loto-primary);
+}
+
+.loto-readiness-score strong {
+  display: block;
+  color: inherit;
+  font-size: 28px;
+  line-height: 1;
+}
+
+.loto-readiness-score span {
+  margin-top: 6px;
+  color: #475467;
+  font-size: 12px;
+  font-weight: 760;
+  text-align: center;
+}
+
+.loto-readiness-score.success {
+  border-color: #bbf7d0;
+  color: var(--loto-success);
+}
+
+.loto-readiness-score.warning {
+  border-color: #fde68a;
+  color: var(--loto-warning);
+}
+
+.loto-readiness-score.danger {
+  border-color: #fecaca;
+  color: var(--loto-danger);
+}
+
+.loto-proof-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.loto-proof-grid span {
+  min-height: 26px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  background: #fff;
+  color: #1e3a8a;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.loto-demo-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 170px;
+}
+
+.loto-check-card {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  border: 1px solid var(--loto-border);
+  border-radius: var(--loto-radius-md);
+  background: #fff;
+  padding: 12px;
+  box-shadow: var(--loto-shadow-sm);
+}
+
+.loto-check-card i {
+  margin-top: 2px;
+}
+
+.loto-check-card.is-ok i {
+  color: var(--loto-success);
+}
+
+.loto-check-card.is-warn i {
+  color: var(--loto-warning);
+}
+
+.loto-check-card strong,
+.loto-check-card span {
+  display: block;
+}
+
+.loto-check-card strong {
+  color: var(--loto-text);
+  font-size: 13px;
+}
+
+.loto-check-card span {
+  margin-top: 3px;
+  color: var(--loto-text-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .loto-input,
 .loto-select,
 .loto-textarea {
@@ -495,6 +629,42 @@ summary:focus-visible {
   padding: 4px 9px;
   font-size: 12px;
   font-weight: 760;
+}
+
+.loto-version-list {
+  display: grid;
+  gap: 10px;
+}
+
+.loto-version-item {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--loto-border);
+  border-radius: var(--loto-radius-md);
+  background: #fff;
+  padding: 12px;
+}
+
+.loto-version-item.is-active {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+}
+
+.loto-version-item strong {
+  color: var(--loto-text);
+}
+
+.loto-version-item p {
+  margin: 8px 0 4px;
+  color: var(--loto-text);
+  font-size: 13px;
+}
+
+.loto-version-item small {
+  display: block;
+  color: var(--loto-text-muted);
+  font-size: 12px;
+  line-height: 1.35;
 }
 
 .loto-score-badge.grade-a1 {
@@ -809,6 +979,15 @@ summary:focus-visible {
 @media (max-width: 1180px) {
   .loto-dashboard-grid {
     grid-template-columns: 1fr;
+  }
+
+  .loto-demo-banner {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .loto-demo-actions {
+    min-width: 0;
   }
 
   .loto-copilot {

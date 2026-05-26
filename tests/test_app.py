@@ -357,7 +357,9 @@ def test_quality_command_center_and_audit_export(app, client):
 
     response = client.get("/quality")
     assert response.status_code == 200
-    assert b"Quality Command Center" in response.data
+    assert b"Centro de Control de Calidad" in response.data
+    assert b"Demo readiness" in response.data
+    assert b"Historial de reglas" in response.data
     assert b"Calidad por fuente" in response.data
 
     audit = client.get("/exports/quality-audit.csv")
@@ -366,6 +368,79 @@ def test_quality_command_center_and_audit_export(app, client):
     assert "qualityStage" in text
     assert "explanationHeadline" in text
     assert "sourceTrustScore" in text
+
+
+def test_quality_rules_are_versioned_and_restorable(app, client):
+    register(client)
+
+    response = client.get("/quality")
+    assert response.status_code == 200
+
+    with app.app_context():
+        db = get_db()
+        initial = db.execute(
+            "SELECT id, version_number FROM quality_rule_versions WHERE source_key = 'reddit' AND is_active = 1"
+        ).fetchone()
+        assert initial["version_number"] == 1
+
+    token = get_csrf_token(client, "/quality")
+    response = client.post(
+        "/quality/rules",
+        data={
+            "allowlist": "forhire\nautomation",
+            "greylist": "python",
+            "blocklist": "nosleep\nconspiracy\naskreddit",
+            "minCommercialIntentScore": "72",
+            "minReadyToContactScore": "80",
+            "minBuyerConfidence": "60",
+            "hideRejectedByDefault": "on",
+            "hideDuplicates": "on",
+            "rejectCriticalRisk": "on",
+            "change_summary": "Endurecer reglas para demo.",
+            "reason": "Evitar que Reddit infle cuentas calientes.",
+            "csrf_token": token,
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert b"version v2" in response.data
+
+    with app.app_context():
+        db = get_db()
+        versions = db.execute(
+            "SELECT id, version_number, is_active, config_json FROM quality_rule_versions WHERE source_key = 'reddit' ORDER BY version_number"
+        ).fetchall()
+        assert [row["version_number"] for row in versions] == [1, 2]
+        assert versions[0]["is_active"] == 0
+        assert versions[1]["is_active"] == 1
+        initial_id = versions[0]["id"]
+        active_config = db.execute(
+            "SELECT config_json FROM source_policies WHERE source_key = 'reddit'"
+        ).fetchone()["config_json"]
+        assert '"minCommercialIntentScore": 72' in active_config
+
+    response = client.post(
+        f"/quality/rules/versions/{initial_id}/restore",
+        data={
+            "reason": "Rollback test.",
+            "csrf_token": get_csrf_token(client, "/quality"),
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert b"Reglas restauradas" in response.data
+
+    with app.app_context():
+        db = get_db()
+        versions = db.execute(
+            "SELECT version_number, is_active FROM quality_rule_versions WHERE source_key = 'reddit' ORDER BY version_number"
+        ).fetchall()
+        assert [row["version_number"] for row in versions] == [1, 2, 3]
+        assert versions[-1]["is_active"] == 1
+        restored_config = db.execute(
+            "SELECT config_json FROM source_policies WHERE source_key = 'reddit'"
+        ).fetchone()["config_json"]
+        assert '"minCommercialIntentScore": 72' not in restored_config
 
 
 def test_quality_feedback_route_recomputes_opportunity(app, client):

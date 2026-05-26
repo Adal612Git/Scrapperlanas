@@ -151,6 +151,7 @@ Guia operativa: [automation/n8n/README.md](automation/n8n/README.md).
 - [Redisenio e inteligencia](docs/operacion/loto-signal-redesign-intelligence-2026-05-26.md)
 - [Quality hardening](docs/operacion/scrapperlanas-quality-hardening-2026-05-26.md)
 - [Buyer Intelligence V2.1](docs/operacion/scrapperlanas-buyer-intelligence-v2-1-2026-05-26.md)
+- [V3 demo readiness](docs/operacion/scrapperlanas-v3-demo-readiness-2026-05-26.md)
 - [Maquina de estados](docs/operacion/loto-signal-state-machine.md)
 - [Intelligence V2](docs/operacion/loto-signal-intelligence-v2.md)
 

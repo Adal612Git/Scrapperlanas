@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% block title %}Control de calidad | Loto Signal{% endblock %}
-{% block page_kicker %}Buyer Intelligence V2.1{% endblock %}
-{% block page_title %}Quality Command Center{% endblock %}
-{% block page_description %}Audita fuentes, ajusta reglas anti-basura y revisa por que una oportunidad entra o se queda fuera.{% endblock %}
+{% block page_kicker %}Buyer Intelligence V3{% endblock %}
+{% block page_title %}Centro de Control de Calidad{% endblock %}
+{% block page_description %}Audita fuentes, versiona reglas anti-basura y prepara demos con evidencia clara de por que una oportunidad entra o se queda fuera.{% endblock %}
 {% block page_actions %}
   <a href="{{ url_for('main.export_quality_audit_csv') }}" class="loto-secondary-button">
     <i class="fa-solid fa-file-csv"></i>
@@ -20,6 +20,48 @@
 {% block content %}
   {% set reddit_rules = reddit_config.reddit if reddit_config.reddit is mapping else reddit_config %}
   {% set quality_rules = reddit_config.quality if reddit_config.quality is mapping else {} %}
+
+  <section class="loto-demo-banner">
+    <div class="loto-readiness-score {{ demo_readiness.tone }}">
+      <strong>{{ demo_readiness.score }}%</strong>
+      <span>{{ demo_readiness.status }}</span>
+    </div>
+    <div class="min-w-0 flex-1">
+      <p class="loto-card-eyebrow">Demo readiness</p>
+      <h2>Producto listo para explicar, defender y operar</h2>
+      <p>
+        El centro muestra pruebas de calidad, reglas reversibles y evidencia comercial para que la demo no dependa de
+        promesas: depende de datos auditables.
+      </p>
+      <div class="loto-proof-grid">
+        {% for point in demo_readiness.proof_points %}
+          <span>{{ point }}</span>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="loto-demo-actions">
+      <a href="{{ url_for('main.dashboard') }}" class="loto-primary-button">
+        <i class="fa-solid fa-inbox"></i>
+        Abrir inbox demo
+      </a>
+      <a href="{{ url_for('main.export_quality_audit_csv') }}" class="loto-secondary-button">
+        <i class="fa-solid fa-file-export"></i>
+        Exportar auditoria
+      </a>
+    </div>
+  </section>
+
+  <section class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+    {% for check in demo_readiness.checks %}
+      <article class="loto-check-card {{ 'is-ok' if check.ok else 'is-warn' }}">
+        <i class="fa-solid {{ 'fa-circle-check' if check.ok else 'fa-circle-exclamation' }}"></i>
+        <div>
+          <strong>{{ check.label }}</strong>
+          <span>{{ check.detail }}</span>
+        </div>
+      </article>
+    {% endfor %}
+  </section>
 
   <section class="grid gap-4 lg:grid-cols-4">
     <article class="loto-kpi-card">
@@ -153,18 +195,23 @@
       <article class="loto-panel">
         <p class="loto-card-eyebrow">Reglas configurables</p>
         <h2>Reddit como fuente controlada</h2>
+        {% if active_rule_version %}
+          <p class="mt-2 text-sm text-slate-500">
+            Version activa: v{{ active_rule_version.version_number }} · hash {{ active_rule_version.hash_short }}
+          </p>
+        {% endif %}
         <form action="{{ url_for('main.quality_rules_update') }}" method="post" class="mt-4 space-y-4">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <label class="block">
-            <span class="text-sm font-semibold text-slate-700">Allowlist</span>
+            <span class="text-sm font-semibold text-slate-700">Subreddits permitidos</span>
             <textarea name="allowlist" class="loto-textarea mt-2 min-h-32">{{ (reddit_rules.allowlist or []) | join('\n') }}</textarea>
           </label>
           <label class="block">
-            <span class="text-sm font-semibold text-slate-700">Greylist</span>
+            <span class="text-sm font-semibold text-slate-700">Subreddits en revision</span>
             <textarea name="greylist" class="loto-textarea mt-2 min-h-28">{{ (reddit_rules.greylist or []) | join('\n') }}</textarea>
           </label>
           <label class="block">
-            <span class="text-sm font-semibold text-slate-700">Blocklist</span>
+            <span class="text-sm font-semibold text-slate-700">Subreddits bloqueados</span>
             <textarea name="blocklist" class="loto-textarea mt-2 min-h-32">{{ (reddit_rules.blocklist or []) | join('\n') }}</textarea>
           </label>
           <div class="grid gap-3 sm:grid-cols-2">
@@ -189,8 +236,47 @@
             <input type="checkbox" name="rejectCriticalRisk" {% if quality_rules.rejectCriticalRisk is not sameas false %}checked{% endif %}>
             Rechazar riesgo critico
           </label>
+          <label class="block">
+            <span class="text-sm font-semibold text-slate-700">Resumen del cambio</span>
+            <input class="loto-input mt-2" type="text" name="change_summary" maxlength="180" placeholder="Ej. endurecer blocklist de Reddit para demo con clientes">
+          </label>
+          <label class="block">
+            <span class="text-sm font-semibold text-slate-700">Motivo</span>
+            <textarea name="reason" class="loto-textarea mt-2 min-h-24" placeholder="Por que este ajuste mejora la calidad o reduce falsos positivos"></textarea>
+          </label>
           <button type="submit" class="loto-primary-button w-full">Guardar reglas</button>
         </form>
+      </article>
+
+      <article class="loto-panel">
+        <p class="loto-card-eyebrow">Versionado y rollback</p>
+        <h2>Historial de reglas</h2>
+        <div class="loto-version-list mt-4">
+          {% for version in rule_versions %}
+            <article class="loto-version-item {{ 'is-active' if version.is_active else '' }}">
+              <div>
+                <div class="flex flex-wrap items-center gap-2">
+                  <strong>v{{ version.version_number }}</strong>
+                  {% if version.is_active %}
+                    <span class="loto-badge">Activa</span>
+                  {% endif %}
+                  <span class="loto-badge">hash {{ version.hash_short }}</span>
+                </div>
+                <p>{{ version.change_summary or "Sin resumen escrito" }}</p>
+                <small>{{ version.reason or "Sin motivo registrado" }} · {{ version.created_at }}</small>
+              </div>
+              {% if not version.is_active %}
+                <form action="{{ url_for('main.quality_rule_version_restore', version_id=version.id) }}" method="post">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <input type="hidden" name="reason" value="Rollback manual desde Centro de Control de Calidad">
+                  <button type="submit" class="loto-secondary-button">Restaurar</button>
+                </form>
+              {% endif %}
+            </article>
+          {% else %}
+            <p class="text-sm text-slate-500">Todavia no hay snapshots de reglas.</p>
+          {% endfor %}
+        </div>
       </article>
 
       <article class="loto-panel">
