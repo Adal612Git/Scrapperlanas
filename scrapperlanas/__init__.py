@@ -61,14 +61,14 @@ def _validate_runtime_config(app: Flask) -> None:
 
     secret_key = str(app.config.get("SECRET_KEY", "")).strip()
     if _is_weak_secret(secret_key):
-        raise RuntimeError("Set a strong SECRET_KEY before running Scrapperlanas in production.")
+        raise RuntimeError("Set a strong SECRET_KEY before running Loto Signal in production.")
 
     cron_secret = str(app.config.get("CRON_SECRET", "") or "").strip()
     if _is_weak_secret(cron_secret):
-        raise RuntimeError("Set a strong CRON_SECRET before running Scrapperlanas in production.")
+        raise RuntimeError("Set a strong CRON_SECRET before running Loto Signal in production.")
 
     if app.config.get("DEBUG"):
-        raise RuntimeError("Disable DEBUG before running Scrapperlanas in production.")
+        raise RuntimeError("Disable DEBUG before running Loto Signal in production.")
 
     if not app.config.get("SESSION_COOKIE_SECURE") and not app.config.get("ALLOW_INSECURE_PRODUCTION_COOKIES"):
         raise RuntimeError("SESSION_COOKIE_SECURE must be enabled in production.")

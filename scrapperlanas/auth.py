@@ -92,7 +92,7 @@ def register():
             session.clear()
             session.permanent = True
             session["user_id"] = user_id
-            flash("Cuenta creada. Bienvenido a Scrapperlanas.", "success")
+            flash("Cuenta creada. Bienvenido a Loto Signal.", "success")
             return redirect(url_for("main.dashboard"))
 
         flash(error, "error")

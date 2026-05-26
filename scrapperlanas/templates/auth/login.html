@@ -1,66 +1,52 @@
 {% extends "base.html" %}
-{% block title %}Login | Scrapperlanas{% endblock %}
+{% block title %}Login | Loto Signal{% endblock %}
 {% block auth_content %}
-  <section class="grid items-stretch gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-    <article class="rounded-[32px] border border-slate-800 bg-gradient-to-br from-slate-900 via-blue-950 to-slate-950 p-8 shadow-2xl shadow-black/40">
-      <div class="flex items-center gap-3">
-        <div class="grid h-14 w-14 place-items-center rounded-2xl bg-blue-500/20 text-2xl text-blue-300 shadow-[0_0_24px_rgba(59,130,246,0.25)]">
-          <i class="fa-solid fa-crosshairs"></i>
+  <section class="loto-auth-grid">
+    <article class="loto-auth-hero">
+      <img src="{{ url_for('static', filename='logo.jpg') }}" alt="Loto Software" class="loto-auth-logo">
+      <p class="loto-kicker mt-4">Loto Signal</p>
+      <h1>Buyer Intelligence Console</h1>
+      <p class="mt-5 max-w-xl text-base leading-7">Encuentra compradores, entiende por que importan y prepara el siguiente mensaje sin perder trazabilidad comercial.</p>
+      <div class="loto-auth-feature-grid">
+        <div class="loto-auth-feature">
+          <strong>Inbox inteligente</strong>
+          <p class="mt-1 text-sm">A1/A2, presupuesto, deadline, evidencia y siguiente mejor accion en una sola vista.</p>
         </div>
-        <div>
-          <p class="text-xs font-bold uppercase tracking-[0.32em] text-blue-200/80">Operacion legal-first</p>
-          <h1 class="mt-2 text-4xl font-black tracking-tight text-white">Convierte ruido en pipeline.</h1>
+        <div class="loto-auth-feature">
+          <strong>Copiloto comercial</strong>
+          <p class="mt-1 text-sm">Resumen operativo, riesgos, drafts y recomendaciones explicables.</p>
         </div>
-      </div>
-
-      <p class="mt-6 max-w-xl text-sm leading-7 text-slate-300">Iniciar sesion te devuelve al shell operativo que ahora replica el prototipo oficial sobre la aplicacion real: inbox, visualizacion, pipeline y trazabilidad en una sola superficie.</p>
-
-      <div class="mt-8 grid gap-4">
-        <div class="rounded-[24px] border border-blue-500/20 bg-blue-500/10 p-5">
-          <strong class="block text-base text-white">Inbox vivo</strong>
-          <p class="mt-2 text-sm leading-6 text-slate-300">Lectura clara, tarjetas con score y un ritmo visual tomado del prototipo oficial.</p>
-        </div>
-        <div class="rounded-[24px] border border-fuchsia-500/20 bg-fuchsia-500/10 p-5">
-          <strong class="block text-base text-white">Decision asistida</strong>
-          <p class="mt-2 text-sm leading-6 text-slate-300">Resumen IA, match semantico y siguiente accion dentro del mismo flujo.</p>
-        </div>
-        <div class="rounded-[24px] border border-emerald-500/20 bg-emerald-500/10 p-5">
-          <strong class="block text-base text-white">Trazabilidad persistente</strong>
-          <p class="mt-2 text-sm leading-6 text-slate-300">Estados, notas y movimientos auditables sin perder continuidad visual.</p>
+        <div class="loto-auth-feature">
+          <strong>Loto Software</strong>
+          <p class="mt-1 text-sm">Consola premium para convertir senales de compra en pipeline real.</p>
         </div>
       </div>
     </article>
 
-    <article class="rounded-[32px] border border-slate-800 bg-slate-900/85 p-8 shadow-2xl shadow-black/40 backdrop-blur">
-      <p class="text-xs font-bold uppercase tracking-[0.32em] text-slate-500">Access</p>
-      <h2 class="mt-2 text-3xl font-black text-white">Iniciar sesion</h2>
-      <p class="mt-2 text-sm text-slate-400">Usa tu cuenta operativa para entrar al dashboard real.</p>
+    <article class="loto-auth-card">
+      <p class="loto-kicker">Acceso seguro</p>
+      <h2 class="mt-2">Iniciar sesion</h2>
+      <p class="mt-2 text-sm">Entra a Loto Signal con tu cuenta operativa.</p>
 
-      <form method="post" class="mt-8 grid gap-5">
+      <form method="post" class="mt-8 grid gap-4">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <label class="block">
-          <span class="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Email</span>
-          <div class="relative">
-            <i class="fa-solid fa-envelope pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
-            <input type="email" name="email" placeholder="usuario@empresa.com" required class="w-full rounded-2xl border border-slate-700 bg-slate-950 py-3 pl-11 pr-4 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
-          </div>
+        <label>
+          <span class="loto-label">Email</span>
+          <input class="loto-input" type="email" name="email" placeholder="usuario@empresa.com" required autocomplete="email">
         </label>
-        <label class="block">
-          <span class="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Contrasena</span>
-          <div class="relative">
-            <i class="fa-solid fa-lock pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
-            <input type="password" name="password" placeholder="Minimo 8 caracteres" required class="w-full rounded-2xl border border-slate-700 bg-slate-950 py-3 pl-11 pr-4 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
-          </div>
+        <label>
+          <span class="loto-label">Contrasena</span>
+          <input class="loto-input" type="password" name="password" placeholder="Minimo 8 caracteres" required autocomplete="current-password">
         </label>
-        <button type="submit" class="inline-flex items-center justify-center gap-2 rounded-2xl border border-blue-500/30 bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-[0_0_20px_rgba(37,99,235,0.28)] hover:bg-blue-500">
+        <button type="submit" class="loto-primary-button">
           <i class="fa-solid fa-right-to-bracket"></i>
-          Entrar al dashboard
+          Entrar a Loto Signal
         </button>
       </form>
 
-      <p class="mt-6 text-sm text-slate-400">
+      <p class="mt-6 text-sm">
         No tienes cuenta?
-        <a class="font-bold text-blue-300 transition hover:text-blue-200" href="{{ url_for('auth.register') }}">Crear usuario</a>
+        <a class="font-bold text-blue-600" href="{{ url_for('auth.register') }}">Crear usuario</a>
       </p>
     </article>
   </section>

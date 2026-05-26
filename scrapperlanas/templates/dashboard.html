@@ -1,1027 +1,354 @@
 {% extends "base.html" %}
-{% block title %}Dashboard | Scrapperlanas{% endblock %}
-{% block page_kicker %}Operacion{% endblock %}
-{% block page_title %}Dashboard (Inbox){% endblock %}
-{% block page_description %}Inbox comercial para encontrar oportunidades, priorizar las que pueden pagar y moverlas hasta respuesta, seguimiento o cierre.{% endblock %}
+{% block title %}Inbox inteligente | Loto Signal{% endblock %}
+{% block page_kicker %}Buyer Intelligence Console by Loto Software{% endblock %}
+{% block page_title %}Inbox inteligente{% endblock %}
+{% block page_description %}Decide en segundos a quien contactar hoy, por que importa, con que mensaje y cual es el siguiente paso.{% endblock %}
 {% block page_status %}
-  <span class="rounded-full border border-cyan-500/30 bg-cyan-500/15 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-cyan-200">{{ automation_summary.mode_label }}</span>
-  <span class="rounded-full border border-blue-500/30 bg-blue-500/15 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-blue-200">Live inbox</span>
-  <span class="rounded-full border border-slate-700 bg-slate-900 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-slate-300">{{ items|length }} visibles</span>
+  <span class="loto-badge"><i class="fa-solid fa-circle-check text-emerald-600"></i>{{ automation_summary.mode_label }}</span>
+  <span class="loto-badge">{{ items|length }} visibles</span>
 {% endblock %}
 {% block page_actions %}
   <form action="{{ url_for('main.ingest_now') }}" method="post">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <button type="submit" class="inline-flex items-center gap-2 rounded-2xl border border-blue-500/30 bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-[0_0_18px_rgba(37,99,235,0.28)] hover:bg-blue-500">
+    <button type="submit" class="loto-primary-button">
       <i class="fa-solid fa-satellite-dish"></i>
-      Ejecutar ingesta ahora
+      Ejecutar ingesta
     </button>
   </form>
-  <a href="{{ url_for('main.export_csv', **filters) }}" class="inline-flex items-center gap-2 rounded-2xl border border-slate-700 bg-slate-900 px-4 py-2.5 text-sm font-bold text-white hover:border-slate-600 hover:bg-slate-800">
-    <i class="fa-solid fa-download text-slate-400"></i>
+  <a href="{{ url_for('main.export_csv', **filters) }}" class="loto-secondary-button">
+    <i class="fa-solid fa-download"></i>
     Exportar CSV
   </a>
 {% endblock %}
+
 {% block content %}
-  <section class="rounded-[28px] border border-slate-800 bg-slate-900/80 p-4 shadow-2xl shadow-black/20 backdrop-blur xl:p-6">
-    <div class="grid gap-4 xl:grid-cols-12">
-      <form method="get" class="xl:col-span-9">
-        <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
-          <label class="block xl:col-span-2">
-            <span class="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Busqueda</span>
-            <div class="relative">
-              <i class="fa-solid fa-magnifying-glass pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
-              <input type="text" name="q" value="{{ filters.q }}" placeholder="Buscar en oportunidades..." class="w-full rounded-2xl border border-slate-700 bg-slate-950 py-3 pl-11 pr-4 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
-            </div>
-          </label>
-          <label class="block">
-            <span class="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Estado</span>
-            <select name="state" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
-              <option value="">Todos</option>
-              {% for state in pipeline_states %}
-                <option value="{{ state }}" {% if filters.state == state %}selected{% endif %}>{{ state }}</option>
-              {% endfor %}
-            </select>
-          </label>
-          <label class="block">
-            <span class="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Fuente</span>
-            <select name="source" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
-              <option value="">Todas</option>
-              {% for source in available_sources %}
-                <option value="{{ source }}" {% if filters.source == source %}selected{% endif %}>{{ source }}</option>
-              {% endfor %}
-            </select>
-          </label>
-          <label class="block">
-            <span class="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Sector</span>
-            <input type="text" name="sector" value="{{ filters.sector }}" placeholder="Tecnologia, SaaS, FinTech" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
-          </label>
-          <label class="block">
-            <span class="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Riesgo</span>
-            <select name="risk" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
-              <option value="">Todos</option>
-              {% for risk in ["low", "medium", "high"] %}
-                <option value="{{ risk }}" {% if filters.risk == risk %}selected{% endif %}>{{ risk }}</option>
-              {% endfor %}
-            </select>
-          </label>
-          <label class="block">
-            <span class="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Min budget</span>
-            <input type="number" name="min_budget" value="{{ filters.min_budget }}" min="0" step="100" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
-          </label>
-        </div>
-
-        <div class="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <p class="text-sm text-slate-400">Todos los filtros siguen activos al exportar y al guardar una vista.</p>
-          <div class="flex flex-wrap gap-2">
-            <button type="submit" class="inline-flex items-center gap-2 rounded-2xl border border-blue-500/30 bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-500">
-              <i class="fa-solid fa-filter"></i>
-              Aplicar filtros
-            </button>
-            <a href="{{ url_for('main.dashboard') }}" class="inline-flex items-center gap-2 rounded-2xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm font-bold text-slate-200 hover:border-slate-600 hover:bg-slate-800">
-              <i class="fa-solid fa-rotate-left"></i>
-              Limpiar
-            </a>
-          </div>
-        </div>
-      </form>
-
-      <form action="{{ url_for('main.save_view') }}" method="post" class="xl:col-span-3">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <input type="hidden" name="query_string" value="{{ active_query_string }}">
-        <div class="h-full rounded-[26px] border border-slate-800 bg-slate-950/80 p-5">
-          <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Persistencia de criterio</p>
-          <h2 class="mt-2 text-xl font-black text-white">Guardar vista operativa</h2>
-          <p class="mt-2 text-sm leading-6 text-slate-400">Recupera el mismo enfoque sin volver a construir la combinacion de filtros.</p>
-          <label class="mt-5 block">
-            <span class="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Nombre</span>
-            <input type="text" name="name" placeholder="Rust remoto high-score" class="w-full rounded-2xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
-          </label>
-          <button type="submit" class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-blue-500/30 bg-blue-500/15 px-4 py-3 text-sm font-bold text-blue-200 hover:bg-blue-500/20">
-            <i class="fa-solid fa-floppy-disk"></i>
-            Guardar filtros
-          </button>
-        </div>
-      </form>
-    </div>
-  </section>
-
-  <section class="mt-6 grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.6fr)]">
-    <article class="rounded-[28px] border border-emerald-500/20 bg-slate-900/90 p-6 shadow-xl shadow-black/20">
-      <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <p class="text-xs font-bold uppercase tracking-[0.28em] text-emerald-300/80">Cierre comercial</p>
-          <h2 class="mt-2 text-2xl font-black tracking-tight text-white">Radar de dinero accionable</h2>
-          <p class="mt-2 text-sm leading-6 text-slate-400">Prioriza oportunidades con dolor claro, presupuesto visible o senal publica de compra.</p>
-        </div>
-        <span class="rounded-full border border-emerald-500/30 bg-emerald-500/15 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-emerald-200">{{ sales_cockpit.focus_count }} cuentas foco</span>
-      </div>
-
-      <div class="mt-5 grid gap-4 md:grid-cols-4">
-        <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-          <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Targets A1/A2</p>
-          <p class="mt-3 text-3xl font-black text-white">{{ sales_cockpit.focus_count }}</p>
-        </div>
-        <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-          <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Valor foco</p>
-          <p class="mt-3 text-3xl font-black text-white">${{ "{:,.0f}".format(sales_cockpit.proposal_value) }}</p>
-        </div>
-        <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-          <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Respuestas listas</p>
-          <p class="mt-3 text-3xl font-black text-white">{{ sales_cockpit.reply_ready_count }}</p>
-        </div>
-        <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-          <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Seguimientos</p>
-          <p class="mt-3 text-3xl font-black text-white">{{ sales_cockpit.follow_up_count }}</p>
-        </div>
-      </div>
-    </article>
-
-    <article class="rounded-[28px] border border-slate-800 bg-slate-900/90 p-6 shadow-xl shadow-black/20">
-      <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Calidad por fuente</p>
-      <h2 class="mt-2 text-2xl font-black text-white">Canales que pagan</h2>
-      <div class="mt-5 space-y-3">
-        {% for source in source_performance[:4] %}
-          <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-            <div class="flex items-start justify-between gap-3">
-              <div>
-                <p class="text-sm font-bold text-white">{{ source.source_label }}</p>
-                <p class="mt-1 text-xs uppercase tracking-[0.16em] text-slate-500">{{ source.total }} total / {{ source.a1_count + source.a2_count }} foco / {{ source.classification }}</p>
-              </div>
-              <span class="text-sm font-semibold text-emerald-300">${{ "{:,.0f}".format(source.total_won_value) }}</span>
-            </div>
-            <div class="mt-3 grid grid-cols-3 gap-2 text-xs text-slate-400">
-              <span>Reply {{ source.reply_rate }}%</span>
-              <span>Win {{ source.win_rate }}%</span>
-              <span>Ignore {{ source.ignore_rate }}%</span>
-            </div>
-          </div>
-        {% else %}
-          <div class="rounded-2xl border border-dashed border-slate-700 bg-slate-950/40 p-4 text-sm text-slate-500">Sin datos comerciales todavia.</div>
-        {% endfor %}
-      </div>
-    </article>
-  </section>
-
-  <section class="mt-6 rounded-[28px] border border-emerald-500/20 bg-slate-900/90 p-6 shadow-xl shadow-black/20">
-    <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-      <div>
-        <p class="text-xs font-bold uppercase tracking-[0.28em] text-emerald-300/80">Cuentas calientes</p>
-        <h2 class="mt-2 text-2xl font-black text-white">Compradores con senales acumuladas</h2>
-        <p class="mt-2 text-sm leading-6 text-slate-400">Agrupa oportunidades por comprador para ver cuentas reales, no leads sueltos.</p>
-      </div>
-      <div class="flex flex-wrap gap-2">
-        <a href="{{ url_for('main.accounts') }}" class="inline-flex items-center gap-2 rounded-2xl border border-emerald-500/30 bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-500">
-          <i class="fa-solid fa-building-user"></i>
-          Ver cuentas
-        </a>
-        <a href="{{ url_for('main.account_duplicates') }}" class="inline-flex items-center gap-2 rounded-2xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm font-bold text-slate-200 hover:border-slate-600">
-          <i class="fa-solid fa-code-compare"></i>
-          Duplicados {{ duplicate_candidates_count }}
-        </a>
-      </div>
-    </div>
-    <div class="mt-5 grid gap-4 xl:grid-cols-3">
-      {% for account in hot_accounts %}
-        <a href="{{ url_for('main.account_detail', account_id=account.id) }}" class="block rounded-2xl border border-slate-800 bg-slate-950/70 p-4 transition hover:border-emerald-500/30">
-          <div class="flex items-start justify-between gap-3">
-            <div class="min-w-0">
-              <p class="truncate text-sm font-black text-white">{{ account.name }}</p>
-              <p class="mt-1 text-xs text-slate-500">{{ account.domain or "sin dominio" }} / {{ account.country or "sin pais" }}</p>
-            </div>
-            <span class="rounded-full px-2.5 py-1 text-xs font-black {{ account.tier_badge_class }}">{{ account.account_tier }} {{ account.account_score }}</span>
-          </div>
-          <div class="mt-3 grid gap-2 text-xs text-slate-400 md:grid-cols-3">
-            <span>{{ account.opportunity_count }} senales</span>
-            <span>A1/A2 {{ account.a1_count }}/{{ account.a2_count }}</span>
-            <span>{{ account.estimated_value_display }}</span>
-          </div>
-          {% if account.primary_pain_signals %}
-            <p class="mt-3 text-xs leading-5 text-slate-400">{{ account.primary_pain_signals[0] }}</p>
-          {% endif %}
-          <p class="mt-3 text-sm leading-6 text-slate-300">{{ account.next_best_action }}</p>
-        </a>
-      {% else %}
-        <div class="rounded-2xl border border-dashed border-slate-700 bg-slate-950/40 p-5 text-sm text-slate-500 xl:col-span-3">Aun no hay cuentas calientes. Apareceran cuando las oportunidades tengan comprador suficiente.</div>
-      {% endfor %}
-    </div>
-  </section>
-
-  <section class="mt-6 rounded-[28px] border border-cyan-500/20 bg-slate-900/90 p-6 shadow-xl shadow-black/20">
-    <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-      <div>
-        <p class="text-xs font-bold uppercase tracking-[0.28em] text-cyan-300/80">Empresas objetivo</p>
-        <h2 class="mt-2 text-2xl font-black text-white">Senales nuevas por target</h2>
-        <p class="mt-2 text-sm leading-6 text-slate-400">Watchlist ATS para detectar crecimiento tecnico sin crear una oportunidad por cada vacante.</p>
-      </div>
-      <a href="{{ url_for('main.targets') }}" class="inline-flex items-center gap-2 rounded-2xl border border-cyan-500/30 bg-cyan-500/15 px-4 py-2.5 text-sm font-bold text-cyan-200 hover:bg-cyan-500/20">
-        <i class="fa-solid fa-crosshairs"></i>
-        Ver targets
-      </a>
-    </div>
-    <div class="mt-5 grid gap-4 xl:grid-cols-3">
-      {% for target in target_signals %}
-        <a href="{{ url_for('main.target_detail', target_id=target.id) }}" class="block rounded-2xl border border-slate-800 bg-slate-950/70 p-4 transition hover:border-cyan-500/30">
-          <div class="flex items-start justify-between gap-3">
-            <div class="min-w-0">
-              <p class="truncate text-sm font-black text-white">{{ target.name }}</p>
-              <p class="mt-1 text-xs text-slate-500">{{ target.provider_label }} / {{ target.ats_slug or "sin slug" }}</p>
-            </div>
-            <span class="rounded-full px-2.5 py-1 text-xs font-black {{ target.priority_badge_class }}">{{ target.priority }}</span>
-          </div>
-          <div class="mt-3 grid gap-2 text-xs text-slate-400 md:grid-cols-3">
-            <span>{{ target.enabled_label }}</span>
-            <span>{{ target.opportunities_generated }} senales</span>
-            <span>{{ target.last_signal_display }}</span>
-          </div>
-          <p class="mt-3 text-sm text-slate-300">Ultimo scan: {{ target.last_checked_display }}</p>
-        </a>
-      {% else %}
-        <div class="rounded-2xl border border-dashed border-slate-700 bg-slate-950/40 p-5 text-sm text-slate-500 xl:col-span-3">No hay targets ATS configurados todavia.</div>
-      {% endfor %}
-    </div>
-  </section>
-
-  <section class="mt-6 rounded-[28px] border border-cyan-500/20 bg-slate-900/90 p-6 shadow-xl shadow-black/20">
-    <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-      <div>
-        <p class="text-xs font-bold uppercase tracking-[0.28em] text-cyan-300/80">Acciones de hoy</p>
-        <h2 class="mt-2 text-2xl font-black text-white">Que empujar ahora</h2>
-        <p class="mt-2 text-sm leading-6 text-slate-400">A1 sin contactar, seguimientos vencidos y propuestas que no deben enfriarse.</p>
-      </div>
-      <span class="w-fit rounded-full border border-cyan-500/30 bg-cyan-500/15 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-cyan-200">{{ sales_actions.today_count }} acciones</span>
-    </div>
-
-    <div class="mt-5 grid gap-4 xl:grid-cols-3">
-      <article class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-        <div class="flex items-center justify-between gap-3">
-          <h3 class="text-sm font-black uppercase tracking-[0.18em] text-emerald-200">Contactar hoy</h3>
-          <span class="rounded-full border border-emerald-500/30 bg-emerald-500/15 px-2.5 py-1 text-xs font-bold text-emerald-200">{{ sales_actions.a1_new|length }}</span>
-        </div>
-        <div class="mt-4 space-y-3">
-          {% for item in sales_actions.a1_new[:4] %}
-            <div class="rounded-2xl border border-slate-800 bg-slate-900/80 p-4">
-              <a href="{{ url_for('main.opportunity_detail', opportunity_id=item.id) }}" class="block text-sm font-black text-white transition hover:text-emerald-200">{{ item.title }}</a>
-              <p class="mt-1 text-xs text-slate-500">{{ item.buyer_name or item.company or item.source_label }} / {{ item.estimated_value_display }}</p>
-              <p class="mt-2 text-xs leading-5 text-slate-400">{{ item.next_best_action or "Contactar hoy" }}</p>
-              <div class="mt-3 flex flex-wrap items-center gap-2">
-                <span class="rounded-full border border-slate-700 bg-slate-950 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-slate-300">Canal {{ item.outreach_recommended_channel }}</span>
-                {% if item.outreach_initial %}
-                  <textarea id="dashboard-initial-{{ item.id }}" class="hidden">{{ item.outreach_initial.body }}</textarea>
-                  <button type="button" data-copy-target="dashboard-initial-{{ item.id }}" data-copy-log-url="{{ url_for('main.outreach_copy_log', opportunity_id=item.id, draft_id=item.outreach_initial.id) }}" class="rounded-xl border border-cyan-500/30 bg-cyan-500/15 px-3 py-2 text-xs font-bold text-cyan-200 hover:bg-cyan-500/20">Copiar mensaje</button>
-                  <a href="{{ url_for('main.opportunity_detail', opportunity_id=item.id) }}#outreach" class="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-bold text-slate-200 hover:border-slate-600">Ver drafts</a>
-                {% else %}
-                  <form action="{{ url_for('main.outreach_generate', opportunity_id=item.id) }}" method="post">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <input type="hidden" name="next" value="{{ request.full_path }}">
-                    <button type="submit" class="rounded-xl border border-cyan-500/30 bg-cyan-500/15 px-3 py-2 text-xs font-bold text-cyan-200 hover:bg-cyan-500/20">Generar mensajes</button>
-                  </form>
-                {% endif %}
-              </div>
-              <div class="mt-3 flex flex-wrap gap-2">
-                <a href="{{ url_for('main.opportunity_detail', opportunity_id=item.id) }}" class="inline-flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-bold text-slate-200 hover:border-slate-600">Ver</a>
-                <form action="{{ url_for('main.commercial_status_update', opportunity_id=item.id) }}" method="post">
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                  <input type="hidden" name="next" value="{{ request.full_path }}">
-                  <input type="hidden" name="commercial_status" value="reviewed">
-                  <button type="submit" class="rounded-xl border border-blue-500/30 bg-blue-500/15 px-3 py-2 text-xs font-bold text-blue-200 hover:bg-blue-500/20">Revisada</button>
-                </form>
-                <form action="{{ url_for('main.commercial_contacted', opportunity_id=item.id) }}" method="post">
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                  <input type="hidden" name="next" value="{{ request.full_path }}">
-                  <button type="submit" class="rounded-xl border border-emerald-500/30 bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-500">Contactada</button>
-                </form>
-                <form action="{{ url_for('main.commercial_ignored', opportunity_id=item.id) }}" method="post">
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                  <input type="hidden" name="next" value="{{ request.full_path }}">
-                  <input type="hidden" name="ignored_reason" value="other">
-                  <button type="submit" class="rounded-xl border border-rose-500/30 bg-rose-500/15 px-3 py-2 text-xs font-bold text-rose-200 hover:bg-rose-500/20">Ignorar</button>
-                </form>
-              </div>
-            </div>
-          {% else %}
-            <p class="rounded-2xl border border-dashed border-slate-700 bg-slate-950/50 p-4 text-sm text-slate-500">No hay A1 nuevos pendientes.</p>
-          {% endfor %}
-        </div>
-      </article>
-
-      <article class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-        <div class="flex items-center justify-between gap-3">
-          <h3 class="text-sm font-black uppercase tracking-[0.18em] text-amber-200">Seguimientos vencidos</h3>
-          <span class="rounded-full border border-amber-500/30 bg-amber-500/15 px-2.5 py-1 text-xs font-bold text-amber-200">{{ sales_actions.followups_due|length }}</span>
-        </div>
-        <div class="mt-4 space-y-3">
-          {% for item in sales_actions.followups_due[:4] %}
-            <div class="rounded-2xl border border-slate-800 bg-slate-900/80 p-4">
-              <a href="{{ url_for('main.opportunity_detail', opportunity_id=item.id) }}" class="block text-sm font-black text-white transition hover:text-amber-200">{{ item.title }}</a>
-              <p class="mt-1 text-xs text-slate-500">{{ item.commercial_status_label }} / vence {{ item.next_followup_display }}</p>
-              <p class="mt-2 text-xs leading-5 text-slate-400">{{ item.next_best_action }}</p>
-              <div class="mt-3 flex flex-wrap items-center gap-2">
-                <span class="rounded-full border border-slate-700 bg-slate-950 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-slate-300">Canal {{ item.outreach_recommended_channel }}</span>
-                {% if item.outreach_followup %}
-                  <textarea id="dashboard-followup-{{ item.id }}" class="hidden">{{ item.outreach_followup.body }}</textarea>
-                  <button type="button" data-copy-target="dashboard-followup-{{ item.id }}" data-copy-log-url="{{ url_for('main.outreach_copy_log', opportunity_id=item.id, draft_id=item.outreach_followup.id) }}" class="rounded-xl border border-cyan-500/30 bg-cyan-500/15 px-3 py-2 text-xs font-bold text-cyan-200 hover:bg-cyan-500/20">Copiar follow-up</button>
-                  <a href="{{ url_for('main.opportunity_detail', opportunity_id=item.id) }}#outreach" class="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-bold text-slate-200 hover:border-slate-600">Ver drafts</a>
-                {% else %}
-                  <form action="{{ url_for('main.outreach_generate', opportunity_id=item.id) }}" method="post">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <input type="hidden" name="next" value="{{ request.full_path }}">
-                    <button type="submit" class="rounded-xl border border-cyan-500/30 bg-cyan-500/15 px-3 py-2 text-xs font-bold text-cyan-200 hover:bg-cyan-500/20">Generar drafts</button>
-                  </form>
-                {% endif %}
-              </div>
-              <div class="mt-3 flex flex-wrap gap-2">
-                <a href="{{ url_for('main.opportunity_detail', opportunity_id=item.id) }}" class="inline-flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-bold text-slate-200 hover:border-slate-600">Ver</a>
-                <form action="{{ url_for('main.commercial_followup_completed', opportunity_id=item.id) }}" method="post">
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                  <input type="hidden" name="next" value="{{ request.full_path }}">
-                  <button type="submit" class="rounded-xl border border-amber-500/30 bg-amber-500/15 px-3 py-2 text-xs font-bold text-amber-200 hover:bg-amber-500/20">Follow-up hecho</button>
-                </form>
-                <form action="{{ url_for('main.commercial_replied', opportunity_id=item.id) }}" method="post">
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                  <input type="hidden" name="next" value="{{ request.full_path }}">
-                  <button type="submit" class="rounded-xl border border-teal-500/30 bg-teal-500/15 px-3 py-2 text-xs font-bold text-teal-200 hover:bg-teal-500/20">Respondio</button>
-                </form>
-                <form action="{{ url_for('main.commercial_snooze', opportunity_id=item.id) }}" method="post">
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                  <input type="hidden" name="next" value="{{ request.full_path }}">
-                  <button type="submit" class="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-bold text-slate-200 hover:border-slate-600">Pausar</button>
-                </form>
-                <form action="{{ url_for('main.commercial_lost', opportunity_id=item.id) }}" method="post">
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                  <input type="hidden" name="next" value="{{ request.full_path }}">
-                  <input type="hidden" name="lost_reason" value="no_response">
-                  <button type="submit" class="rounded-xl border border-rose-500/30 bg-rose-500/15 px-3 py-2 text-xs font-bold text-rose-200 hover:bg-rose-500/20">Perdida</button>
-                </form>
-              </div>
-            </div>
-          {% else %}
-            <p class="rounded-2xl border border-dashed border-slate-700 bg-slate-950/50 p-4 text-sm text-slate-500">Sin seguimientos vencidos.</p>
-          {% endfor %}
-        </div>
-      </article>
-
-      <article class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-        <div class="flex items-center justify-between gap-3">
-          <h3 class="text-sm font-black uppercase tracking-[0.18em] text-fuchsia-200">Propuestas abiertas</h3>
-          <span class="rounded-full border border-fuchsia-500/30 bg-fuchsia-500/15 px-2.5 py-1 text-xs font-bold text-fuchsia-200">{{ sales_actions.proposals_open|length }}</span>
-        </div>
-        <div class="mt-4 space-y-3">
-          {% for item in sales_actions.proposals_open[:4] %}
-            <div class="rounded-2xl border border-slate-800 bg-slate-900/80 p-4">
-              <a href="{{ url_for('main.opportunity_detail', opportunity_id=item.id) }}" class="block text-sm font-black text-white transition hover:text-fuchsia-200">{{ item.title }}</a>
-              <p class="mt-1 text-xs text-slate-500">{{ item.proposal_value_display }} / seguimiento {{ item.next_followup_display }}</p>
-              <p class="mt-2 text-xs leading-5 text-slate-400">{{ item.next_best_action or "Seguir propuesta" }}</p>
-              <div class="mt-3 flex flex-wrap gap-2">
-                <a href="{{ url_for('main.opportunity_detail', opportunity_id=item.id) }}" class="inline-flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-bold text-slate-200 hover:border-slate-600">Ver</a>
-                <form action="{{ url_for('main.commercial_won', opportunity_id=item.id) }}" method="post">
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                  <input type="hidden" name="next" value="{{ request.full_path }}">
-                  <button type="submit" class="rounded-xl border border-emerald-500/30 bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-500">Ganada</button>
-                </form>
-                <form action="{{ url_for('main.commercial_lost', opportunity_id=item.id) }}" method="post">
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                  <input type="hidden" name="next" value="{{ request.full_path }}">
-                  <input type="hidden" name="lost_reason" value="other">
-                  <button type="submit" class="rounded-xl border border-rose-500/30 bg-rose-500/15 px-3 py-2 text-xs font-bold text-rose-200 hover:bg-rose-500/20">Perdida</button>
-                </form>
-                <form action="{{ url_for('main.commercial_followup_completed', opportunity_id=item.id) }}" method="post">
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                  <input type="hidden" name="next" value="{{ request.full_path }}">
-                  <button type="submit" class="rounded-xl border border-fuchsia-500/30 bg-fuchsia-500/15 px-3 py-2 text-xs font-bold text-fuchsia-200 hover:bg-fuchsia-500/20">Seguir</button>
-                </form>
-              </div>
-            </div>
-          {% else %}
-            <p class="rounded-2xl border border-dashed border-slate-700 bg-slate-950/50 p-4 text-sm text-slate-500">No hay propuestas abiertas.</p>
-          {% endfor %}
-        </div>
-      </article>
-    </div>
-  </section>
-
-  <section class="mt-6 grid gap-4 xl:grid-cols-2">
-    <article class="rounded-[28px] border border-emerald-500/20 bg-slate-900/90 p-6 shadow-xl shadow-black/20">
-      <div class="flex items-start justify-between gap-3">
-        <div>
-          <p class="text-xs font-bold uppercase tracking-[0.28em] text-emerald-300/80">Ganadas recientes</p>
-          <h2 class="mt-2 text-2xl font-black text-white">Ingreso validado</h2>
-        </div>
-        <span class="rounded-full border border-emerald-500/30 bg-emerald-500/15 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-emerald-200">{{ sales_actions.won_recent|length }}</span>
-      </div>
-      <div class="mt-5 space-y-3">
-        {% for item in sales_actions.won_recent %}
-          <a href="{{ url_for('main.opportunity_detail', opportunity_id=item.id) }}" class="block rounded-2xl border border-slate-800 bg-slate-950/70 p-4 transition hover:border-emerald-500/30">
-            <div class="flex items-start justify-between gap-3">
-              <div>
-                <p class="text-sm font-black text-white">{{ item.title }}</p>
-                <p class="mt-1 text-xs text-slate-500">{{ item.source_label }} / {{ item.buyer_name or item.company or "Comprador pendiente" }}</p>
-              </div>
-              <span class="text-sm font-bold text-emerald-300">{{ item.won_value_display }}</span>
-            </div>
-          </a>
-        {% else %}
-          <div class="rounded-2xl border border-dashed border-slate-700 bg-slate-950/40 p-5 text-sm text-slate-500">Aun no hay ganadas registradas.</div>
-        {% endfor %}
-      </div>
-    </article>
-
-    <article class="rounded-[28px] border border-rose-500/20 bg-slate-900/90 p-6 shadow-xl shadow-black/20">
-      <div class="flex items-start justify-between gap-3">
-        <div>
-          <p class="text-xs font-bold uppercase tracking-[0.28em] text-rose-300/80">Perdidas recientes</p>
-          <h2 class="mt-2 text-2xl font-black text-white">Ruido y aprendizaje</h2>
-        </div>
-        <span class="rounded-full border border-rose-500/30 bg-rose-500/15 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-rose-200">{{ sales_actions.lost_recent|length }}</span>
-      </div>
-      <div class="mt-5 space-y-3">
-        {% for item in sales_actions.lost_recent %}
-          <a href="{{ url_for('main.opportunity_detail', opportunity_id=item.id) }}" class="block rounded-2xl border border-slate-800 bg-slate-950/70 p-4 transition hover:border-rose-500/30">
-            <p class="text-sm font-black text-white">{{ item.title }}</p>
-            <p class="mt-1 text-xs text-slate-500">{{ item.source_label }} / motivo: {{ item.lost_reason or "other" }}</p>
-          </a>
-        {% else %}
-          <div class="rounded-2xl border border-dashed border-slate-700 bg-slate-950/40 p-5 text-sm text-slate-500">Sin perdidas registradas.</div>
-        {% endfor %}
-      </div>
-    </article>
-  </section>
-
-  <section class="mt-6 grid gap-4 xl:grid-cols-2">
-    <article class="rounded-[28px] border border-emerald-500/20 bg-slate-900/90 p-6 shadow-xl shadow-black/20">
-      <div class="flex items-start justify-between gap-3">
-        <div>
-          <p class="text-xs font-bold uppercase tracking-[0.28em] text-emerald-300/80">A1 Hoy</p>
-          <h2 class="mt-2 text-2xl font-black text-white">Tiros que merecen energia inmediata</h2>
-        </div>
-        <span class="rounded-full border border-emerald-500/30 bg-emerald-500/15 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-emerald-200">{{ a1_items|length }}</span>
-      </div>
-      <div class="mt-5 space-y-3">
-        {% for item in a1_items %}
-          <a href="{{ url_for('main.opportunity_detail', opportunity_id=item.id) }}" class="block rounded-2xl border border-slate-800 bg-slate-950/70 p-4 transition hover:border-emerald-500/30">
-            <div class="flex items-start justify-between gap-3">
-              <div class="min-w-0">
-                <p class="truncate text-sm font-black text-white">{{ item.title }}</p>
-                <p class="mt-1 text-xs text-slate-500">{{ item.buyer_name or item.company or item.source_label }} / {{ item.source_type or item.application_host }}</p>
-              </div>
-              <span class="rounded-full px-2.5 py-1 text-xs font-black {{ item.priority_badge_class }}">{{ item.priority_score }}</span>
-            </div>
-            <div class="mt-3 grid gap-2 text-xs text-slate-400 md:grid-cols-3">
-              <span>Valor: {{ item.estimated_value_display }}</span>
-              <span>Deadline: {{ item.deadline_display }}</span>
-              <span>Contacto: {{ item.score_breakdown.contactability }}/100</span>
-            </div>
-            <p class="mt-3 text-sm leading-6 text-slate-300">{{ item.next_best_action or item.action_summary }}</p>
-            {% if item.evidence_snippets %}
-              <p class="mt-2 text-xs leading-5 text-slate-500">{{ item.evidence_snippets[0] }}</p>
-            {% endif %}
-          </a>
-        {% else %}
-          <div class="rounded-2xl border border-dashed border-slate-700 bg-slate-950/40 p-5 text-sm text-slate-500">No hay A1 activos. Eso es sano si el radar esta filtrando ruido.</div>
-        {% endfor %}
-      </div>
-    </article>
-
-    <article class="rounded-[28px] border border-blue-500/20 bg-slate-900/90 p-6 shadow-xl shadow-black/20">
-      <div class="flex items-start justify-between gap-3">
-        <div>
-          <p class="text-xs font-bold uppercase tracking-[0.28em] text-blue-300/80">A2 Esta Semana</p>
-          <h2 class="mt-2 text-2xl font-black text-white">Oportunidades para validar sin prisa falsa</h2>
-        </div>
-        <span class="rounded-full border border-blue-500/30 bg-blue-500/15 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-blue-200">{{ a2_items|length }}</span>
-      </div>
-      <div class="mt-5 space-y-3">
-        {% for item in a2_items %}
-          <a href="{{ url_for('main.opportunity_detail', opportunity_id=item.id) }}" class="block rounded-2xl border border-slate-800 bg-slate-950/70 p-4 transition hover:border-blue-500/30">
-            <div class="flex items-start justify-between gap-3">
-              <div class="min-w-0">
-                <p class="truncate text-sm font-black text-white">{{ item.title }}</p>
-                <p class="mt-1 text-xs text-slate-500">{{ item.buyer_name or item.company or item.source_label }} / {{ item.application_host }}</p>
-              </div>
-              <span class="rounded-full px-2.5 py-1 text-xs font-black {{ item.priority_badge_class }}">{{ item.priority_score }}</span>
-            </div>
-            <div class="mt-3 flex flex-wrap gap-2">
-              <span class="rounded-full border border-slate-700 bg-slate-900 px-2.5 py-1 text-xs text-slate-300">Dinero {{ item.score_breakdown.money }}</span>
-              <span class="rounded-full border border-slate-700 bg-slate-900 px-2.5 py-1 text-xs text-slate-300">Fit {{ item.score_breakdown.fit }}</span>
-              <span class="rounded-full border border-slate-700 bg-slate-900 px-2.5 py-1 text-xs text-slate-300">Urgencia {{ item.score_breakdown.urgency }}</span>
-            </div>
-            <p class="mt-3 text-sm leading-6 text-slate-300">{{ item.priority_reason }}</p>
-          </a>
-        {% else %}
-          <div class="rounded-2xl border border-dashed border-slate-700 bg-slate-950/40 p-5 text-sm text-slate-500">No hay A2 activos con el criterio actual.</div>
-        {% endfor %}
-      </div>
-    </article>
-  </section>
-
-  <section class="mt-6 grid gap-4 xl:grid-cols-3">
-    <article class="rounded-[28px] border border-slate-800 bg-slate-900/90 p-6 shadow-xl shadow-black/20 xl:col-span-2">
-      <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Automatizacion</p>
-          <h2 class="mt-2 text-2xl font-black text-white">{{ automation_summary.headline }}</h2>
-          <p class="mt-3 text-sm leading-6 text-slate-400">{{ automation_summary.summary }}</p>
-        </div>
-        <span class="inline-flex w-fit items-center gap-2 rounded-full border px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] {% if automation_summary.automation_ready %}border-emerald-500/30 bg-emerald-500/15 text-emerald-200{% else %}border-amber-500/30 bg-amber-500/15 text-amber-200{% endif %}">
-          <i class="fa-solid {% if automation_summary.automation_ready %}fa-bolt{% else %}fa-triangle-exclamation{% endif %}"></i>
-          {% if automation_summary.automation_ready %}Scheduler listo{% else %}Revisar config{% endif %}
+  <section class="loto-filterbar" aria-label="Filtros principales">
+    <form method="get" class="grid gap-3 lg:grid-cols-[minmax(280px,1fr)_190px_170px_160px_auto] lg:items-end">
+      <label>
+        <span class="loto-label">Busqueda global</span>
+        <span class="loto-search">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input class="loto-input" type="search" name="q" value="{{ filters.q }}" placeholder="Buscar comprador, skill, pais, fuente o dolor...">
         </span>
+      </label>
+      <label>
+        <span class="loto-label">Fuente</span>
+        <select class="loto-select" name="source">
+          <option value="">Todas las fuentes</option>
+          {% for source in available_sources %}
+            <option value="{{ source }}" {% if filters.source == source %}selected{% endif %}>{{ source }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
+        <span class="loto-label">Rango</span>
+        <select class="loto-select" name="range">
+          <option value="7d" {% if filters.range == "7d" %}selected{% endif %}>Ultimos 7 dias</option>
+          <option value="30d" {% if filters.range == "30d" %}selected{% endif %}>Ultimos 30 dias</option>
+          <option value="90d" {% if filters.range == "90d" %}selected{% endif %}>Ultimos 90 dias</option>
+          <option value="all" {% if filters.range == "all" %}selected{% endif %}>Todo</option>
+        </select>
+      </label>
+      <label>
+        <span class="loto-label">Riesgo</span>
+        <select class="loto-select" name="risk">
+          <option value="">Todos</option>
+          {% for risk in ["low", "medium", "high"] %}
+            <option value="{{ risk }}" {% if filters.risk == risk %}selected{% endif %}>{{ risk }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <div class="flex flex-wrap gap-2">
+        <button type="submit" class="loto-primary-button"><i class="fa-solid fa-filter"></i>Filtrar</button>
+        <a href="{{ url_for('main.dashboard') }}" class="loto-secondary-button">Limpiar</a>
       </div>
+    </form>
+  </section>
 
-      <div class="mt-6 grid gap-4 md:grid-cols-3">
-        <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-          <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Fuentes activas</p>
-          <p class="mt-3 text-3xl font-black text-white">{{ automation_summary.enabled_count }}</p>
-          <p class="mt-2 text-sm text-slate-400">Politicas habilitadas para trabajar.</p>
-        </div>
-        <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-          <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Listas ahora</p>
-          <p class="mt-3 text-3xl font-black text-white">{{ automation_summary.due_count }}</p>
-          <p class="mt-2 text-sm text-slate-400">Fuentes ya vencidas segun su frecuencia.</p>
-        </div>
-        <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-          <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Siguiente ventana</p>
-          <p class="mt-3 text-3xl font-black text-white">{{ automation_summary.next_due_label }}</p>
-          <p class="mt-2 text-sm text-slate-400">Proxima fuente a disparar en automatico.</p>
-        </div>
-      </div>
-
-      <div class="mt-4 grid gap-4 md:grid-cols-3">
-        <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-          <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Runs 24h</p>
-          <p class="mt-3 text-3xl font-black text-white">{{ automation_summary.stability.total_runs }}</p>
-          <p class="mt-2 text-sm text-slate-400">{{ automation_summary.stability.successful_runs }} ok / {{ automation_summary.stability.failed_runs }} error.</p>
-        </div>
-        <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-          <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Duracion promedio</p>
-          <p class="mt-3 text-3xl font-black text-white">{{ automation_summary.stability.average_duration_ms }} ms</p>
-          <p class="mt-2 text-sm text-slate-400">Promedio de las corridas registradas.</p>
-        </div>
-        <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-          <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Ultima salud</p>
-          <p class="mt-3 text-sm font-bold text-white">{{ automation_summary.runtime.last_success_at or "sin corridas" }}</p>
-          <p class="mt-2 text-sm text-slate-400">{% if automation_summary.runtime.last_error %}Error: {{ automation_summary.runtime.last_error }}{% else %}Sin error activo.{% endif %}</p>
-        </div>
-      </div>
-
-      <p class="mt-6 text-sm leading-6 text-slate-400">La IA no corre “todo el tiempo”: corre dentro de cada ingesta. Para no castigar fuentes ni llenar el dashboard, el scheduler solo debe disparar fuentes vencidas y el boton manual se usa como override puntual. Log local: {{ automation_summary.runtime.log_path }}.</p>
+  <section class="loto-kpi-grid mt-4" aria-label="Indicadores principales">
+    <article class="loto-kpi-card">
+      <span>Oportunidades activas</span>
+      <strong>{{ metrics.active }}</strong>
+      <small>Leads vivos en pipeline.</small>
     </article>
+    <article class="loto-kpi-card">
+      <span>A1/A2 detectadas</span>
+      <strong>{{ sales_cockpit.focus_count }}</strong>
+      <small>Contactar o revisar esta semana.</small>
+    </article>
+    <article class="loto-kpi-card">
+      <span>Cuentas calientes</span>
+      <strong>{{ hot_accounts|length }}</strong>
+      <small>Compradores con senales acumuladas.</small>
+    </article>
+    <article class="loto-kpi-card">
+      <span>Valor estimado</span>
+      <strong>${{ "{:,.0f}".format(sales_cockpit.proposal_value) }}</strong>
+      <small>Valor foco en oportunidades A1/A2.</small>
+    </article>
+    <article class="loto-kpi-card">
+      <span>Follow-ups hoy</span>
+      <strong>{{ sales_actions.followups_due|length }}</strong>
+      <small>Seguimientos vencidos o listos.</small>
+    </article>
+  </section>
 
-    <article class="rounded-[28px] border border-slate-800 bg-slate-900/90 p-6 shadow-xl shadow-black/20">
-      <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Ritmo por fuente</p>
-      <h2 class="mt-2 text-2xl font-black text-white">Proximas corridas</h2>
-      <div class="mt-6 space-y-3">
-        {% for policy in automation_summary.policies[:5] %}
-          <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-            <div class="flex items-start justify-between gap-3">
-              <div>
-                <p class="text-sm font-bold text-white">{{ policy.display_name }}</p>
-                <p class="mt-1 text-xs uppercase tracking-[0.16em] text-slate-500">cada {{ policy.frequency_minutes }} min</p>
-              </div>
-              <span class="rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.16em] {% if policy.is_due %}border border-emerald-500/30 bg-emerald-500/15 text-emerald-200{% else %}border border-slate-700 bg-slate-900 text-slate-300{% endif %}">
-                {% if policy.is_due %}lista{% else %}en cola{% endif %}
-              </span>
-            </div>
-            <p class="mt-3 text-sm text-slate-400">Ultima corrida: {{ policy.last_run_display }}</p>
-            <p class="mt-1 text-sm text-slate-400">Siguiente: {{ policy.next_run_display }}</p>
+  <section class="loto-dashboard-grid mt-4">
+    <div class="loto-grid">
+      <section id="section-inbox" class="app-section loto-panel">
+        <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p class="loto-card-eyebrow">Oportunidades priorizadas</p>
+            <h2>Inbox inteligente</h2>
+            <p class="mt-2 text-sm">Cada fila explica valor, fit, urgencia, contacto y evidencia. No dependas solo del numero.</p>
+          </div>
+          <form action="{{ url_for('main.save_view') }}" method="post" class="flex flex-wrap gap-2">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="query_string" value="{{ active_query_string }}">
+            <input class="loto-input" style="width: 210px" type="text" name="name" placeholder="Nombre de vista">
+            <button type="submit" class="loto-secondary-button"><i class="fa-solid fa-bookmark"></i>Guardar vista</button>
+          </form>
+        </div>
+
+        <div class="loto-quick-filters mt-4" aria-label="Filtros rapidos">
+          {% set quick_filters = [
+            ("high_intent", "Alta intencion"),
+            ("budget_visible", "Presupuesto visible"),
+            ("uncontacted", "Sin contactar"),
+            ("deadline_close", "Deadline cercano"),
+            ("low_risk", "Riesgo bajo"),
+            ("strong_evidence", "Evidencia fuerte"),
+            ("possible_duplicates", "Duplicados posibles")
+          ] %}
+          {% for key, label in quick_filters %}
+            <a class="loto-chip {% if filters.quick == key %}is-active{% endif %}" href="{{ url_for('main.dashboard', quick=key, range=filters.range, q=filters.q, source=filters.source, risk=filters.risk) }}">{{ label }}</a>
+          {% endfor %}
+        </div>
+
+        <div class="loto-stage-tabs mt-3" aria-label="Etapas">
+          <a class="loto-chip {% if not filters.state %}is-active{% endif %}" href="{{ url_for('main.dashboard', range=filters.range, quick=filters.quick) }}">Todos</a>
+          {% for state in pipeline_states %}
+            <a class="loto-chip {% if filters.state == state %}is-active{% endif %}" href="{{ url_for('main.dashboard', state=state, range=filters.range, quick=filters.quick) }}">{{ state }}</a>
+          {% endfor %}
+        </div>
+
+        <form action="{{ url_for('main.opportunities_bulk_action') }}" method="post" class="mt-4">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="loto-bulkbar mb-3">
+            <select class="loto-select" name="bulk_action" style="width: 180px">
+              <option value="move_stage">Mover etapa</option>
+              <option value="discard">Marcar descartado</option>
+            </select>
+            <select class="loto-select" name="target_state" style="width: 180px">
+              {% for state in pipeline_states %}
+                <option value="{{ state }}">{{ state }}</option>
+              {% endfor %}
+            </select>
+            <button type="submit" class="loto-secondary-button">Aplicar a seleccionadas</button>
+            <a href="{{ url_for('main.export_csv', **filters) }}" class="loto-secondary-button">Exportar CSV</a>
+          </div>
+
+          <div class="loto-inbox-list">
+            {% for item in items %}
+              {% set score = item.intelligence.score %}
+              {% set nba = item.intelligence.next_best_action %}
+              <article class="loto-inbox-row" id="opportunity-{{ item.id }}">
+                <input type="checkbox" name="opportunity_ids" value="{{ item.id }}" aria-label="Seleccionar {{ item.title }}">
+                <div class="min-w-0">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <span class="loto-score-badge grade-{{ score.grade|lower }}">{{ score.grade }} {{ score.numeric_score }}</span>
+                    <span class="loto-state-pill">{{ item.commercial_status_label }}</span>
+                    <span class="loto-badge">{{ item.source_label }}</span>
+                    {% if item.deadline_at %}
+                      <span class="loto-badge"><i class="fa-solid fa-clock text-amber-600"></i>{{ item.deadline_display }}</span>
+                    {% endif %}
+                  </div>
+                  <a class="loto-row-title mt-2 block" href="{{ url_for('main.opportunity_detail', opportunity_id=item.id) }}">{{ item.buyer_name or item.company or "Comprador por validar" }} · {{ item.title }}</a>
+                  <div class="loto-row-meta">
+                    <span>{{ item.buyer_domain or item.application_host }}</span>
+                    <span>{{ item.country or "pais no detectado" }}</span>
+                    <span>{{ item.estimated_value_display }}</span>
+                    <span>{{ item.posted_display }}</span>
+                  </div>
+                  <p class="loto-row-action mt-2"><strong>Siguiente mejor accion:</strong> {{ nba.label }}. {{ nba.description }}</p>
+                  <p class="loto-row-action mt-1"><strong>Por que es {{ score.grade }}:</strong> {{ score.reasons[0] if score.reasons else "Falta evidencia para explicar el score." }}</p>
+                  <div class="loto-skill-list">
+                    {% for skill in item.required_skills[:6] %}
+                      <span class="loto-skill">{{ skill }}</span>
+                    {% else %}
+                      <span class="loto-skill">Skills por validar</span>
+                    {% endfor %}
+                  </div>
+                  <details class="mt-3">
+                    <summary class="loto-chip w-fit cursor-pointer">Ver evidencia</summary>
+                    <ul class="loto-simple-list">
+                      {% for evidence in item.intelligence.evidence %}
+                        <li>{{ evidence }}</li>
+                      {% else %}
+                        <li>No hay evidencia suficiente todavia.</li>
+                      {% endfor %}
+                    </ul>
+                  </details>
+                </div>
+                <div class="loto-row-actions">
+                  <a class="loto-primary-button" href="{{ url_for('main.opportunity_detail', opportunity_id=item.id) }}#outreach">
+                    <i class="fa-solid fa-pen"></i>
+                    Redactar
+                  </a>
+                  <a class="loto-secondary-button" href="{{ item.url }}" target="_blank" rel="noreferrer">
+                    <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                    Investigar
+                  </a>
+                </div>
+              </article>
+            {% else %}
+              <article class="loto-empty-state">
+                <img src="{{ url_for('static', filename='logo.jpg') }}" alt="Loto Software" class="loto-auth-logo">
+                <h2 class="mt-3">No encontramos oportunidades con estos filtros.</h2>
+                <p class="mt-2">Prueba ampliar fuentes, quitar deadline cercano o ejecutar una nueva ingesta.</p>
+                <div class="mt-4 flex flex-wrap gap-2">
+                  <a href="{{ url_for('main.dashboard') }}" class="loto-secondary-button">Quitar filtros</a>
+                  <button type="submit" formaction="{{ url_for('main.ingest_now') }}" formmethod="post" class="loto-primary-button">Ejecutar ingesta</button>
+                </div>
+              </article>
+            {% endfor %}
+          </div>
+        </form>
+      </section>
+
+      <section id="section-oportunidades" class="app-section loto-panel hidden">
+        <p class="loto-card-eyebrow">Vista compacta</p>
+        <h2>Oportunidades</h2>
+        <p class="mt-2 text-sm">Usa los filtros del inbox para revisar por fuente, presupuesto o riesgo. Las acciones fuertes viven en la lista central.</p>
+      </section>
+
+      <section id="section-pipeline" class="app-section loto-panel hidden">
+        <p class="loto-card-eyebrow">Pipeline</p>
+        <h2>Etapas comerciales</h2>
+        <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {% for state in state_summary %}
+            <article class="loto-card">
+              <span class="loto-card-eyebrow">{{ state.state }}</span>
+              <strong class="mt-2 block text-2xl">{{ state.total }}</strong>
+            </article>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section id="section-vistas" class="app-section loto-panel hidden">
+        <p class="loto-card-eyebrow">Vistas guardadas</p>
+        <h2>Atajos de trabajo</h2>
+        <div class="mt-4 grid gap-2">
+          {% for view in saved_views %}
+            <a class="loto-chip w-fit" href="{{ url_for('main.dashboard') }}?{{ view.query_string }}">{{ view.name }}</a>
+          {% else %}
+            <p class="loto-muted">No hay vistas guardadas. Guarda una combinacion de filtros desde el inbox.</p>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section id="section-alertas" class="app-section loto-panel hidden">
+        <p class="loto-card-eyebrow">Alertas</p>
+        <h2>Estado de automatizacion</h2>
+        <p class="mt-2 text-sm">{{ automation_summary.headline }}</p>
+        <p class="mt-2 text-sm">{{ automation_summary.summary }}</p>
+      </section>
+    </div>
+
+    <aside class="loto-copilot" aria-label="Copiloto comercial">
+      <section class="loto-copilot-card">
+        <p class="loto-card-eyebrow">Copiloto comercial</p>
+        <h2>Resumen IA operativo</h2>
+        <p class="mt-2 text-sm">{{ copilot_summary.summary }}</p>
+      </section>
+
+      <section class="loto-copilot-card">
+        <p class="loto-card-eyebrow">Siguiente mejor accion</p>
+        {% if copilot_summary.top_opportunity %}
+          <h2>{{ copilot_summary.recommendation.label }}</h2>
+          <p class="mt-2 text-sm">{{ copilot_summary.recommendation.description }}</p>
+          <p class="mt-2 text-sm"><strong>{{ copilot_summary.top_opportunity.buyer_name or copilot_summary.top_opportunity.company or "Comprador por validar" }}</strong> · {{ copilot_summary.top_opportunity.title }}</p>
+          <div class="mt-4 flex flex-wrap gap-2">
+            <a class="loto-primary-button" href="{{ url_for('main.opportunity_detail', opportunity_id=copilot_summary.top_opportunity.id) }}#outreach">Redactar mensaje</a>
+            <a class="loto-secondary-button" href="{{ url_for('main.opportunity_detail', opportunity_id=copilot_summary.top_opportunity.id) }}">Ver detalle</a>
           </div>
         {% else %}
-          <div class="rounded-2xl border border-dashed border-slate-700 bg-slate-950/40 p-4 text-sm text-slate-500">No hay fuentes activas.</div>
+          <h2>Ejecutar ingesta</h2>
+          <p class="mt-2 text-sm">No hay una oportunidad prioritaria. Ejecuta ingesta o cambia filtros.</p>
+        {% endif %}
+      </section>
+
+      <section class="loto-copilot-card">
+        <p class="loto-card-eyebrow">Borrador de outreach</p>
+        {% if copilot_summary.outreach %}
+          <strong class="block">{{ copilot_summary.outreach.subject }}</strong>
+          <div id="copilot-draft" class="loto-draft-box">{{ copilot_summary.outreach.body }}</div>
+          <div class="mt-3 flex flex-wrap gap-2">
+            <button type="button" class="loto-secondary-button" data-copy-target="copilot-draft">Copiar</button>
+            <span class="loto-badge">{{ copilot_summary.outreach.tone }}</span>
+            <span class="loto-badge">{{ copilot_summary.outreach.confidence }}% confianza</span>
+          </div>
+        {% else %}
+          <p class="text-sm">Selecciona una oportunidad A1/A2 para generar un borrador.</p>
+        {% endif %}
+      </section>
+
+      <section class="loto-copilot-card">
+        <p class="loto-card-eyebrow">Riesgos</p>
+        <h2>Antes de contactar</h2>
+        <ul class="loto-risk-list">
+          {% for item in copilot_summary.risk_items %}
+            <li>{{ item.buyer_name or item.company or item.title }}: {{ item.intelligence.risk.warnings[0] }}</li>
+          {% else %}
+            <li>No hay riesgos fuertes en las oportunidades visibles.</li>
+          {% endfor %}
+        </ul>
+      </section>
+
+      <section class="loto-copilot-card">
+        <p class="loto-card-eyebrow">Merge sugerido</p>
+        <h2>Cuentas similares</h2>
+        <p class="mt-2 text-sm">{{ duplicate_candidates_count }} candidatos abiertos. Revisa evidencia antes de fusionar.</p>
+        <a href="{{ url_for('main.account_duplicates') }}" class="loto-secondary-button mt-3">Revisar duplicados</a>
+      </section>
+    </aside>
+  </section>
+
+  <section class="mt-4 grid gap-4 xl:grid-cols-2">
+    <article class="loto-panel">
+      <p class="loto-card-eyebrow">Calidad por fuente</p>
+      <h2>Fuentes que generan mejores leads</h2>
+      <div class="mt-4 grid gap-3">
+        {% for source in source_performance[:5] %}
+          <div class="flex items-center justify-between gap-3 border-b border-slate-100 pb-3">
+            <div>
+              <strong>{{ source.source_label }}</strong>
+              <p class="loto-muted">{{ source.total }} total · A1/A2 {{ source.a1_count + source.a2_count }} · reply {{ source.reply_rate }}%</p>
+            </div>
+            <span class="loto-badge">${{ "{:,.0f}".format(source.total_won_value) }}</span>
+          </div>
+        {% else %}
+          <p class="loto-muted">Sin datos comerciales todavia.</p>
+        {% endfor %}
+      </div>
+    </article>
+
+    <article class="loto-panel">
+      <p class="loto-card-eyebrow">Cuentas calientes</p>
+      <h2>Compradores con señales acumuladas</h2>
+      <div class="mt-4 grid gap-3">
+        {% for account in hot_accounts[:5] %}
+          <a href="{{ url_for('main.account_detail', account_id=account.id) }}" class="loto-inbox-row" style="grid-template-columns: minmax(0,1fr) auto">
+            <span>
+              <strong>{{ account.name }}</strong>
+              <span class="loto-row-meta">{{ account.domain or "sin dominio" }} · {{ account.estimated_value_display }} · {{ account.opportunity_count }} señales</span>
+            </span>
+            <span class="loto-score-badge grade-{{ account.account_tier|lower }}">{{ account.account_tier }} {{ account.account_score }}</span>
+          </a>
+        {% else %}
+          <p class="loto-muted">No hay cuentas calientes todavía.</p>
         {% endfor %}
       </div>
     </article>
   </section>
-
-  <section class="mt-6 rounded-[28px] border border-slate-800 bg-slate-900/90 p-5 shadow-xl shadow-black/20">
-    <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-      <div>
-        <p class="text-xs font-bold uppercase tracking-[0.28em] text-slate-500">Objetivos reales</p>
-        <h2 class="mt-2 text-2xl font-black tracking-tight text-white">Plan de ataque de hoy</h2>
-        <p class="mt-2 text-sm text-slate-400">Esta capa ya no es solo inbox: prioriza lo que vale tiempo comercial hoy mismo.</p>
-      </div>
-      <span class="rounded-full border border-emerald-500/30 bg-emerald-500/15 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-emerald-200">{{ daily_plan.focus_now }} targets A1/A2</span>
-    </div>
-
-    <div class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-      <article class="rounded-[24px] border border-emerald-500/20 bg-gradient-to-br from-slate-950 to-emerald-900/20 p-5">
-        <p class="text-xs font-bold uppercase tracking-[0.18em] text-emerald-200/80">Aplicar hoy</p>
-        <p class="mt-3 text-4xl font-black text-white">{{ daily_plan.apply_now }}</p>
-        <p class="mt-2 text-sm text-slate-300">Matches donde la recomendacion ya es avanzar.</p>
-      </article>
-      <article class="rounded-[24px] border border-blue-500/20 bg-gradient-to-br from-slate-950 to-blue-900/20 p-5">
-        <p class="text-xs font-bold uppercase tracking-[0.18em] text-blue-200/80">Resolver hoy</p>
-        <p class="mt-3 text-4xl font-black text-white">{{ daily_plan.review_today }}</p>
-        <p class="mt-2 text-sm text-slate-300">Necesitan lectura completa y decision en el mismo dia.</p>
-      </article>
-      <article class="rounded-[24px] border border-fuchsia-500/20 bg-gradient-to-br from-slate-950 to-fuchsia-900/20 p-5">
-        <p class="text-xs font-bold uppercase tracking-[0.18em] text-fuchsia-200/80">Muy frescas</p>
-        <p class="mt-3 text-4xl font-black text-white">{{ daily_plan.fresh }}</p>
-        <p class="mt-2 text-sm text-slate-300">Publicadas hace poco, con mejor chance de entrar temprano.</p>
-      </article>
-      <article class="rounded-[24px] border border-amber-500/20 bg-gradient-to-br from-slate-950 to-amber-900/20 p-5">
-        <p class="text-xs font-bold uppercase tracking-[0.18em] text-amber-200/80">Foco real</p>
-        <p class="mt-3 text-4xl font-black text-white">{{ daily_plan.focus_now }}</p>
-        <p class="mt-2 text-sm text-slate-300">Cuantas merecen energia inmediata antes que el resto.</p>
-      </article>
-    </div>
-
-    <div class="mt-6 grid gap-4 xl:grid-cols-2">
-      {% for item in focus_items %}
-        <article class="rounded-[26px] border border-slate-800 bg-slate-950/70 p-5 transition hover:border-blue-500/30">
-          <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-            <div class="min-w-0">
-              <div class="flex flex-wrap gap-2">
-                <span class="rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] {{ item.priority_badge_class }}">{{ item.priority_tier }} / {{ item.priority_label }}</span>
-                <span class="rounded-full border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-slate-300">{{ item.freshness_label }}</span>
-              </div>
-              <h3 class="mt-4 text-xl font-black leading-tight text-white">
-                <a href="{{ url_for('main.opportunity_detail', opportunity_id=item.id) }}" class="transition hover:text-blue-300">{{ item.title }}</a>
-              </h3>
-              <p class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-sm text-slate-400">
-                <span>{{ item.company or "Empresa no identificada" }}</span>
-                <span>{{ item.source_label }}</span>
-                <span>{{ item.application_host }}</span>
-              </p>
-              <p class="mt-4 text-sm leading-7 text-slate-300">{{ item.priority_reason }}</p>
-              <p class="mt-3 text-sm text-slate-400">Siguiente paso: {{ item.action_summary }}</p>
-            </div>
-
-            <div class="w-fit rounded-[22px] border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-center">
-              <small class="block text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">Prioridad</small>
-              <strong class="mt-2 block text-3xl font-black leading-none text-white">{{ item.priority_score }}</strong>
-            </div>
-          </div>
-
-          <div class="mt-4 flex flex-wrap gap-2">
-            <span class="rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] {{ item.state_badge_class }}">{{ item.state }}</span>
-            <span class="rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] {{ item.risk_badge_class }}">{{ item.risk_level }}</span>
-            <span class="rounded-full border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-slate-200">{{ item.action_label }}</span>
-            {% if item.analysis.fit_label %}
-              <span class="rounded-full border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-slate-200">{{ item.fit_label_display }}</span>
-            {% endif %}
-          </div>
-
-          <div class="mt-5 flex flex-wrap gap-3">
-            <a href="{{ url_for('main.opportunity_detail', opportunity_id=item.id) }}" class="inline-flex items-center gap-2 rounded-2xl border border-blue-500/30 bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-500">
-              <i class="fa-solid fa-bullseye"></i>
-              Abrir plan
-            </a>
-            <a href="{{ item.url }}" target="_blank" rel="noreferrer" class="inline-flex items-center gap-2 rounded-2xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm font-bold text-slate-200 hover:border-slate-600 hover:bg-slate-800">
-              <i class="fa-solid fa-arrow-up-right-from-square text-blue-300"></i>
-              Aplicar / revisar
-            </a>
-          </div>
-        </article>
-      {% else %}
-        <article class="rounded-[28px] border border-dashed border-slate-700 bg-slate-950/40 p-10 text-center text-sm text-slate-500 xl:col-span-2">
-          No hay objetivos priorizados con los filtros actuales.
-        </article>
-      {% endfor %}
-    </div>
-  </section>
-
-  <div id="section-inbox" class="app-section mt-6 block">
-    <div class="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-      <div>
-        <p class="text-xs font-bold uppercase tracking-[0.28em] text-slate-500">Inbox vivo</p>
-        <h2 class="mt-2 text-2xl font-black tracking-tight text-white">Ultimas oportunidades</h2>
-      </div>
-      <span class="inline-flex w-fit items-center gap-2 rounded-full border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-medium text-slate-300">
-        <span class="h-2 w-2 animate-pulse rounded-full bg-emerald-400"></span>
-        {{ items|length }} resultados visibles
-      </span>
-    </div>
-
-    <div class="grid gap-4">
-      {% for item in items %}
-        <article class="rounded-[28px] border border-slate-800 bg-slate-900/90 p-5 shadow-xl shadow-black/20 transition hover:border-blue-500/30 hover:bg-slate-900">
-          <div class="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-            <div class="min-w-0 flex-1">
-              <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                <div class="min-w-0">
-                  <p class="text-xs font-bold uppercase tracking-[0.28em] text-slate-500">{{ item.source_label }}</p>
-                  <h3 class="mt-2 text-2xl font-black leading-tight text-white">
-                    <a href="{{ url_for('main.opportunity_detail', opportunity_id=item.id) }}" class="transition hover:text-blue-300">{{ item.title }}</a>
-                  </h3>
-                  <p class="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-sm text-slate-400">
-                    <span>{{ item.company or "Empresa no identificada" }}</span>
-                    <span>{{ item.sector or "Sector pendiente" }}</span>
-                    <span>{{ item.budget_display }}</span>
-                  </p>
-                </div>
-
-                <div class="w-fit rounded-[24px] border border-blue-500/20 bg-blue-500/10 px-5 py-4 text-center">
-                  <small class="block text-[11px] font-bold uppercase tracking-[0.24em] text-slate-400">Score</small>
-                  <strong class="mt-2 block text-4xl font-black leading-none text-white">{{ item.score }}</strong>
-                </div>
-              </div>
-
-              <p class="mt-4 text-sm leading-7 text-slate-300">{{ item.ai_summary }}</p>
-
-              <div class="mt-4 flex flex-wrap gap-2">
-                <span class="rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] {{ item.priority_badge_class }}">{{ item.priority_tier }}</span>
-                <span class="rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] {{ item.state_badge_class }}">{{ item.state }}</span>
-                <span class="rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] {{ item.risk_badge_class }}">{{ item.risk_level }}</span>
-                {% if item.analysis.fit_label %}
-                  <span class="rounded-full border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-slate-200">{{ item.fit_label_display }}</span>
-                {% endif %}
-                {% for stack in item.stack[:4] %}
-                  <span class="rounded-full border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs font-semibold text-slate-300">{{ stack }}</span>
-                {% endfor %}
-              </div>
-
-              {% if item.analysis.recommended_action or item.analysis.semantic_score is not none %}
-                <p class="mt-4 text-sm text-slate-400">
-                  {% if item.analysis.recommended_action %}Accion IA: {{ item.action_label }}{% endif %}
-                  {% if item.analysis.recommended_action and item.analysis.semantic_score is not none %} / {% endif %}
-                  {% if item.analysis.semantic_score is not none %}Match semantico: {{ item.analysis.semantic_score }}/100{% endif %}
-                </p>
-              {% endif %}
-              <p class="mt-2 text-sm text-slate-500">Canal: {{ item.application_host }} / Frescura: {{ item.freshness_label }}</p>
-
-              {% if item.risk_reasons %}
-                <ul class="mt-4 list-disc space-y-1 pl-5 text-sm text-slate-400">
-                  {% for reason in item.risk_reasons[:2] %}
-                    <li>{{ reason }}</li>
-                  {% endfor %}
-                </ul>
-              {% endif %}
-            </div>
-
-            <div class="flex flex-wrap gap-3 xl:w-48 xl:flex-col">
-              <a href="{{ url_for('main.opportunity_detail', opportunity_id=item.id) }}" class="inline-flex items-center justify-center gap-2 rounded-2xl border border-blue-500/30 bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-500">
-                <i class="fa-solid fa-eye"></i>
-                Ver detalle
-              </a>
-              <a href="{{ item.url }}" target="_blank" rel="noreferrer" class="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm font-bold text-slate-200 hover:border-slate-600 hover:bg-slate-800">
-                <i class="fa-solid fa-arrow-up-right-from-square text-blue-300"></i>
-                Fuente
-              </a>
-            </div>
-          </div>
-        </article>
-      {% else %}
-        <article class="rounded-[28px] border border-slate-800 bg-slate-900/90 p-10 text-center shadow-xl shadow-black/20">
-          <p class="text-xs font-bold uppercase tracking-[0.28em] text-slate-500">Sin coincidencias</p>
-          <h3 class="mt-3 text-2xl font-black text-white">No hay oportunidades para estos filtros.</h3>
-          <p class="mt-3 text-sm text-slate-400">Fuerza una ingesta manual o espera a que el scheduler dispare la siguiente fuente vencida.</p>
-        </article>
-      {% endfor %}
-    </div>
-  </div>
-
-  <div id="section-visualizacion" class="app-section mt-6 hidden">
-    <div class="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-      <div>
-        <p class="text-xs font-bold uppercase tracking-[0.28em] text-slate-500">Visualizacion</p>
-        <h2 class="mt-2 text-2xl font-black tracking-tight text-white">Analisis estrategico del mercado</h2>
-      </div>
-      <span class="inline-flex w-fit items-center gap-2 rounded-full border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-medium text-slate-300">
-        <i class="fa-solid fa-calendar-days text-blue-300"></i>
-        Ultimos 7 cortes
-      </span>
-    </div>
-
-    <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-      <article class="rounded-[28px] border border-blue-500/20 bg-gradient-to-br from-slate-900 to-blue-900/30 p-5 shadow-xl shadow-black/20">
-        <p class="text-xs font-bold uppercase tracking-[0.24em] text-blue-200/80">Scraping total</p>
-        <p class="mt-3 text-4xl font-black text-white">{{ metrics.total }}</p>
-        <p class="mt-2 text-sm text-slate-300">Inventario completo del radar operativo.</p>
-      </article>
-      <article class="rounded-[28px] border border-emerald-500/20 bg-gradient-to-br from-slate-900 to-emerald-900/30 p-5 shadow-xl shadow-black/20">
-        <p class="text-xs font-bold uppercase tracking-[0.24em] text-emerald-200/80">Pipeline activo</p>
-        <p class="mt-3 text-4xl font-black text-white">{{ metrics.active }}</p>
-        <p class="mt-2 text-sm text-slate-300">{{ high_priority_ratio }}% del radar actual ya supera score 70.</p>
-      </article>
-      <article class="rounded-[28px] border border-fuchsia-500/20 bg-gradient-to-br from-slate-900 to-fuchsia-900/30 p-5 shadow-xl shadow-black/20">
-        <p class="text-xs font-bold uppercase tracking-[0.24em] text-fuchsia-200/80">Score promedio</p>
-        <p class="mt-3 text-4xl font-black text-white">{{ score_average }}</p>
-        <p class="mt-2 text-sm text-slate-300">{{ metrics.high_score }} oportunidades estan en la franja alta.</p>
-      </article>
-      <article class="rounded-[28px] border border-amber-500/20 bg-gradient-to-br from-slate-900 to-amber-900/30 p-5 shadow-xl shadow-black/20">
-        <p class="text-xs font-bold uppercase tracking-[0.24em] text-amber-200/80">Cashflow potencial</p>
-        <p class="mt-3 text-4xl font-black text-white">${{ "{:,.0f}".format(metrics.cashflow) }}</p>
-        <p class="mt-2 text-sm text-slate-300">Valor agregado sobre pipeline priorizado.</p>
-      </article>
-    </div>
-
-    <div class="mt-6 grid gap-4 xl:grid-cols-3">
-      <article class="rounded-[28px] border border-slate-800 bg-slate-900/90 p-5 shadow-xl shadow-black/20 xl:col-span-2">
-        <div class="flex items-center justify-between gap-3">
-          <div>
-            <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Tendencia</p>
-            <h3 class="mt-2 text-xl font-black text-white">Volumen por fecha</h3>
-          </div>
-          <span class="rounded-full border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-slate-300">{{ trend_summary|length }} marcas</span>
-        </div>
-        <div class="mt-6 space-y-4">
-          {% for row in trend_summary %}
-            {% set width = ((row.total / metrics.total) * 100) if metrics.total else 0 %}
-            <div>
-              <div class="mb-2 flex items-center justify-between text-sm">
-                <span class="font-semibold text-slate-300">{{ row.day }}</span>
-                <span class="text-slate-500">{{ row.total }} oportunidades</span>
-              </div>
-              <div class="h-3 rounded-full bg-slate-950">
-                <div class="h-3 rounded-full bg-gradient-to-r from-blue-500 to-cyan-400 shadow-[0_0_14px_rgba(56,189,248,0.25)]" style="width: {{ width }}%"></div>
-              </div>
-            </div>
-          {% else %}
-            <p class="text-sm text-slate-400">Aun no hay suficiente historico para mostrar tendencia.</p>
-          {% endfor %}
-        </div>
-      </article>
-
-      <div class="grid gap-4">
-        <article class="rounded-[28px] border border-slate-800 bg-slate-900/90 p-5 shadow-xl shadow-black/20">
-          <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Cobertura</p>
-          <h3 class="mt-2 text-xl font-black text-white">Fuentes</h3>
-          <div class="mt-5 space-y-4">
-            {% for row in source_summary %}
-              {% set width = ((row.total / metrics.total) * 100) if metrics.total else 0 %}
-              <div>
-                <div class="mb-2 flex items-center justify-between gap-3 text-sm">
-                  <span class="font-medium text-slate-300">{{ row.source_label }}</span>
-                  <span class="text-slate-500">{{ row.total }}</span>
-                </div>
-                <div class="h-2 rounded-full bg-slate-950">
-                  <div class="h-2 rounded-full bg-blue-500" style="width: {{ width }}%"></div>
-                </div>
-              </div>
-            {% else %}
-              <p class="text-sm text-slate-400">Todavia sin datos.</p>
-            {% endfor %}
-          </div>
-        </article>
-
-        <article class="rounded-[28px] border border-slate-800 bg-slate-900/90 p-5 shadow-xl shadow-black/20">
-          <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Sectores</p>
-          <h3 class="mt-2 text-xl font-black text-white">Rentabilidad y volumen</h3>
-          <div class="mt-5 space-y-4">
-            {% for row in sector_summary %}
-              <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-                <div class="flex items-start justify-between gap-3">
-                  <div>
-                    <p class="text-sm font-bold text-white">{{ row.sector_label }}</p>
-                    <p class="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">{{ row.total }} oportunidades</p>
-                  </div>
-                  <span class="text-sm font-semibold text-emerald-300">${{ "{:,.0f}".format(row.budget_total) }}</span>
-                </div>
-              </div>
-            {% else %}
-              <p class="text-sm text-slate-400">Sin sectores priorizados todavia.</p>
-            {% endfor %}
-          </div>
-        </article>
-      </div>
-    </div>
-  </div>
-
-  <div id="section-historial" class="app-section mt-6 hidden">
-    <div class="mb-6">
-      <p class="text-xs font-bold uppercase tracking-[0.28em] text-slate-500">Pipeline</p>
-      <h2 class="mt-2 text-2xl font-black tracking-tight text-white">Estados persistentes del flujo</h2>
-      <p class="mt-2 text-sm text-slate-400">Vista kanban alineada a los estados reales del motor.</p>
-    </div>
-
-    <div class="flex gap-4 overflow-x-auto pb-2">
-      {% for column in kanban_columns %}
-        <article class="w-80 shrink-0 rounded-[28px] border bg-slate-900/90 shadow-xl shadow-black/20 {{ column.panel_class }}">
-          <div class="flex items-center justify-between rounded-t-[28px] border-b px-4 py-4 {{ column.header_class }}">
-            <span class="flex items-center gap-2 text-sm font-bold uppercase tracking-[0.18em]">
-              <i class="{{ column.icon }}"></i>
-              {{ column.label }}
-            </span>
-            <span class="rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] {{ column.count_class }}">{{ pipeline_board[column.state]|length }}</span>
-          </div>
-          <div class="max-h-[34rem] space-y-3 overflow-y-auto p-4">
-            {% for item in pipeline_board[column.state] %}
-              <a href="{{ url_for('main.opportunity_detail', opportunity_id=item.id) }}" class="block rounded-2xl border border-slate-800 bg-slate-950/80 p-4 transition hover:border-blue-500/30 hover:bg-slate-950">
-                <div class="flex items-start justify-between gap-3">
-                  <div class="min-w-0">
-                    <p class="truncate text-sm font-bold text-white">{{ item.title }}</p>
-                    <p class="mt-1 text-xs text-slate-500">{{ item.company or item.source_label }}</p>
-                  </div>
-                  <span class="rounded-full border border-slate-700 bg-slate-900 px-2.5 py-1 text-xs font-bold text-slate-200">{{ item.score }}</span>
-                </div>
-                <div class="mt-3 flex flex-wrap gap-2">
-                  <span class="rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.16em] {{ item.risk_badge_class }}">{{ item.risk_level }}</span>
-                  {% if item.sector %}
-                    <span class="rounded-full border border-slate-700 bg-slate-900 px-2.5 py-1 text-[11px] font-semibold text-slate-300">{{ item.sector }}</span>
-                  {% endif %}
-                </div>
-              </a>
-            {% else %}
-              <div class="rounded-2xl border border-dashed border-slate-700 bg-slate-950/40 p-4 text-sm text-slate-500">Sin tarjetas en esta columna.</div>
-            {% endfor %}
-          </div>
-        </article>
-      {% endfor %}
-    </div>
-  </div>
-
-  <div id="section-busquedas" class="app-section mt-6 hidden">
-    <div class="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-      <div>
-        <p class="text-xs font-bold uppercase tracking-[0.28em] text-slate-500">Memoria de trabajo</p>
-        <h2 class="mt-2 text-2xl font-black tracking-tight text-white">Busquedas guardadas y filtros</h2>
-      </div>
-      <span class="rounded-full border border-slate-700 bg-slate-900 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-slate-300">{{ saved_views|length }} vistas</span>
-    </div>
-
-    <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-      {% for view in saved_views %}
-        <article class="rounded-[28px] border border-slate-800 bg-slate-900/90 p-5 shadow-xl shadow-black/20 transition hover:border-blue-500/30">
-          <div class="flex items-start justify-between gap-3">
-            <div>
-              <h3 class="text-xl font-black text-white">{{ view.name }}</h3>
-              <p class="mt-2 text-sm leading-6 text-slate-400">Atajo persistente para recuperar el mismo enfoque comercial.</p>
-            </div>
-            <i class="fa-solid fa-star text-amber-400"></i>
-          </div>
-          <div class="mt-4 rounded-2xl border border-slate-800 bg-slate-950/70 p-3 font-mono text-xs text-slate-400">{{ view.query_string or "Sin parametros" }}</div>
-          <div class="mt-5 flex flex-wrap gap-2">
-            <a href="{{ url_for('main.dashboard') }}?{{ view.query_string }}" class="inline-flex items-center gap-2 rounded-2xl border border-blue-500/30 bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-500">
-              <i class="fa-solid fa-bolt"></i>
-              Cargar vista
-            </a>
-            <a href="{{ url_for('main.settings') }}" class="inline-flex items-center gap-2 rounded-2xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm font-bold text-slate-200 hover:border-slate-600 hover:bg-slate-800">
-              <i class="fa-solid fa-gear"></i>
-              Gestionar
-            </a>
-          </div>
-        </article>
-      {% else %}
-        <article class="rounded-[28px] border border-slate-800 bg-slate-900/90 p-10 text-center shadow-xl shadow-black/20 md:col-span-2 xl:col-span-3">
-          <p class="text-xs font-bold uppercase tracking-[0.28em] text-slate-500">Sin memoria guardada</p>
-          <h3 class="mt-3 text-2xl font-black text-white">Todavia no hay vistas persistidas.</h3>
-          <p class="mt-3 text-sm text-slate-400">Guarda la combinacion actual desde el bloque superior para reutilizarla despues.</p>
-        </article>
-      {% endfor %}
-    </div>
-  </div>
-
-  <div id="section-alertas" class="app-section mt-6 hidden">
-    <div class="mb-6">
-      <p class="text-xs font-bold uppercase tracking-[0.28em] text-slate-500">Alertas</p>
-      <h2 class="mt-2 text-2xl font-black tracking-tight text-white">Resumen de notificaciones y criterio personal</h2>
-      <p class="mt-2 text-sm text-slate-400">La configuracion fina vive en Ajustes, pero este panel resume el criterio activo del operador.</p>
-    </div>
-
-    <div class="grid gap-4 xl:grid-cols-3">
-      <article class="rounded-[28px] border border-slate-800 bg-slate-900/90 p-6 shadow-xl shadow-black/20 xl:col-span-2">
-        <div class="flex items-start justify-between gap-4 border-b border-slate-800 pb-4">
-          <div>
-            <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Canal principal</p>
-            <h3 class="mt-2 text-xl font-black text-white">Notificaciones por correo</h3>
-            <p class="mt-2 text-sm leading-6 text-slate-400">La salida recomendada para este prototipo es un aviso directo cuando el radar detecta matches de alto valor.</p>
-          </div>
-          <span class="inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/15 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-blue-200">
-            <i class="fa-solid fa-bell"></i>
-            Enfocado
-          </span>
-        </div>
-
-        <div class="mt-6 grid gap-4 md:grid-cols-2">
-          <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-            <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Correo destino</p>
-            <p class="mt-2 text-sm font-semibold text-white">{{ g.user.email }}</p>
-          </div>
-          <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-            <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Pago minimo activo</p>
-            <p class="mt-2 text-sm font-semibold text-white">
-              {% if g.user.min_budget %}${{ "{:,.0f}".format(g.user.min_budget) }}{% else %}Sin minimo{% endif %}
-            </p>
-          </div>
-          <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-            <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Sectores</p>
-            <p class="mt-2 text-sm leading-6 text-slate-300">{{ g.user.sectors or "Sin sectores definidos" }}</p>
-          </div>
-          <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-            <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Keywords</p>
-            <p class="mt-2 text-sm leading-6 text-slate-300">{{ g.user.keywords or "Sin keywords personalizadas" }}</p>
-          </div>
-        </div>
-      </article>
-
-      <article class="rounded-[28px] border border-slate-800 bg-slate-900/90 p-6 shadow-xl shadow-black/20">
-        <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Siguiente paso</p>
-        <h3 class="mt-2 text-xl font-black text-white">Ajustar reglas</h3>
-        <p class="mt-3 text-sm leading-6 text-slate-400">Desde Ajustes puedes editar politicas de fuente, frecuencia, riesgo y la configuracion JSON de cada conector.</p>
-        <div class="mt-5 space-y-3">
-          <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-            <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Fuentes detectadas</p>
-            <p class="mt-2 text-2xl font-black text-white">{{ source_summary|length }}</p>
-          </div>
-          <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-            <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Vistas guardadas</p>
-            <p class="mt-2 text-2xl font-black text-white">{{ saved_views|length }}</p>
-          </div>
-        </div>
-        <a href="{{ url_for('main.settings') }}" class="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-blue-500/30 bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-500">
-          <i class="fa-solid fa-sliders"></i>
-          Abrir ajustes
-        </a>
-      </article>
-    </div>
-  </div>
 {% endblock %}

@@ -103,7 +103,7 @@ class BaseConnector:
         }
 
     def _headers(self, config: Mapping[str, Any]) -> dict[str, str]:
-        user_agent = str(config.get("user_agent") or "Scrapperlanas/0.1").strip()
+        user_agent = str(config.get("user_agent") or "LotoSignal/1.0").strip()
         return {
             "User-Agent": user_agent,
             "Accept": "application/json,text/html;q=0.9,*/*;q=0.8",
@@ -308,7 +308,7 @@ def group_hiring_jobs_to_opportunity(
         f"Domain: {domain}",
         *(_job_text(job) for job in technical_jobs),
     ]
-    signal_url = f"https://scrapperlanas.local/targets/{target_id}/signals/{provider}/{signal_day}"
+    signal_url = f"https://loto-signal.local/targets/{target_id}/signals/{provider}/{signal_day}"
     apply_url = careers_url or _first_url(technical_jobs) or signal_url
     contact = [value for value in (domain and f"domain:{domain}", careers_url and f"careers:{careers_url}") if value]
 

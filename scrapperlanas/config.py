@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DEFAULT_DEV_SECRET = "scrapperlanas-dev-secret"
+DEFAULT_DEV_SECRET = "loto-signal-dev-secret"
 
 
 def _as_bool(value: str | None, default: bool = False) -> bool:
@@ -38,9 +38,9 @@ class Config:
     def __init__(self) -> None:
         project_root = Path(__file__).resolve().parent.parent
         is_vercel = _as_bool(os.getenv("VERCEL"), default=False) or bool(os.getenv("VERCEL_URL"))
-        instance_dir = Path("/tmp/scrapperlanas-instance") if is_vercel else project_root / "instance"
+        instance_dir = Path("/tmp/loto-signal-instance") if is_vercel else project_root / "instance"
         environment = os.getenv("APP_ENV", os.getenv("FLASK_ENV", "development")).strip().lower()
-        deployment_host = (os.getenv("VERCEL_URL", "").strip() or "scrapperlanas.vercel.app").strip("/")
+        deployment_host = (os.getenv("VERCEL_URL", "").strip() or "loto-signal.vercel.app").strip("/")
         default_app_origin = (
             f"https://{deployment_host}"
             if environment == "production" or is_vercel
@@ -61,7 +61,7 @@ class Config:
         self.DATABASE_URL = os.getenv("DATABASE_URL", "").strip() or None
         self.DATABASE = os.getenv(
             "DATABASE_PATH",
-            str(instance_dir / "scrapperlanas.sqlite3"),
+            str(instance_dir / "loto_signal.sqlite3"),
         )
         self.HOST = os.getenv("HOST", "127.0.0.1")
         self.PORT = _as_int(os.getenv("PORT"), default=5000)
@@ -135,7 +135,7 @@ class Config:
         )
         self.INGEST_USER_AGENT = os.getenv(
             "INGEST_USER_AGENT",
-            f"Scrapperlanas/0.1 (+{default_app_origin})",
+            f"LotoSignal/1.0 (+{default_app_origin})",
         )
         self.GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "").strip() or None
         self.GITHUB_API_URL = os.getenv("GITHUB_API_URL", "https://api.github.com").strip().rstrip("/")
@@ -150,12 +150,13 @@ class Config:
             30,
             _as_int(os.getenv("AUTOMATION_POLL_SECONDS"), default=300),
         )
-        self.SCRAPPERLANAS_BASE_URL = (
-            os.getenv("SCRAPPERLANAS_BASE_URL", self.APP_BASE_URL).strip().rstrip("/")
+        self.LOTO_SIGNAL_BASE_URL = (
+            os.getenv("LOTO_SIGNAL_BASE_URL", os.getenv("SCRAPPERLANAS_BASE_URL", self.APP_BASE_URL)).strip().rstrip("/")
         )
+        self.SCRAPPERLANAS_BASE_URL = self.LOTO_SIGNAL_BASE_URL
         self.N8N_PUBLIC_URL = os.getenv("N8N_PUBLIC_URL", "http://localhost:5678").strip().rstrip("/")
         self.N8N_IMPORT_WEBHOOK_PATH = (
-            os.getenv("N8N_IMPORT_WEBHOOK_PATH", "scrapperlanas/import").strip().strip("/")
+            os.getenv("N8N_IMPORT_WEBHOOK_PATH", "loto-signal/import").strip().strip("/")
         )
         self.N8N_SCHEDULER_INTERVAL_MINUTES = max(
             1,
@@ -167,7 +168,7 @@ class Config:
             default=True,
         )
         self.CSRF_ENABLED = _as_bool(os.getenv("CSRF_ENABLED"), default=not testing)
-        self.SESSION_COOKIE_NAME = os.getenv("SESSION_COOKIE_NAME", "scrapperlanas_session")
+        self.SESSION_COOKIE_NAME = os.getenv("SESSION_COOKIE_NAME", "loto_signal_session")
         self.SESSION_COOKIE_HTTPONLY = True
         self.SESSION_COOKIE_SAMESITE = os.getenv("SESSION_COOKIE_SAMESITE", "Lax")
         self.SESSION_COOKIE_SECURE = _as_bool(

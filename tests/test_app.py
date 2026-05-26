@@ -23,9 +23,9 @@ def app(tmp_path: Path):
             "CSRF_ENABLED": True,
             "SESSION_COOKIE_SECURE": False,
             "AUTOMATION_MODE": "n8n",
-            "SCRAPPERLANAS_BASE_URL": "http://web:8000",
+            "LOTO_SIGNAL_BASE_URL": "http://web:8000",
             "N8N_PUBLIC_URL": "http://localhost:5678",
-            "N8N_IMPORT_WEBHOOK_PATH": "scrapperlanas/import",
+            "N8N_IMPORT_WEBHOOK_PATH": "loto-signal/import",
             "N8N_SCHEDULER_INTERVAL_MINUTES": 15,
         }
     )
@@ -80,7 +80,7 @@ def login(client, email: str = "operator@example.com", password: str = "supersec
 def test_register_login_logout(client):
     response = register(client)
     assert response.status_code == 200
-    assert b"Dashboard (Inbox)" in response.data
+    assert b"Inbox inteligente" in response.data
 
     response = client.post(
         "/auth/logout",
@@ -92,7 +92,7 @@ def test_register_login_logout(client):
 
     response = login(client)
     assert response.status_code == 200
-    assert b"Dashboard (Inbox)" in response.data
+    assert b"Inbox inteligente" in response.data
 
 
 def test_logout_requires_post(client):
@@ -326,7 +326,7 @@ def test_commercial_proposal_won_and_source_metrics(app, client):
 
     dashboard = client.get("/dashboard")
     assert dashboard.status_code == 200
-    assert b"Ganadas recientes" in dashboard.data
+    assert b"Copiloto comercial" in dashboard.data
     assert b"Calidad por fuente" in dashboard.data
 
 
@@ -425,7 +425,7 @@ def test_accounts_pages_render_after_ingestion(app, client):
 
     accounts_response = client.get("/accounts")
     assert accounts_response.status_code == 200
-    assert b"Cuentas calientes" in accounts_response.data
+    assert b"Cuentas cliente" in accounts_response.data
 
     with app.app_context():
         db = get_db()
@@ -664,7 +664,7 @@ def test_settings_page_shows_n8n_bootstrap_details(client):
     response = client.get("/settings")
 
     assert response.status_code == 200
-    assert b"Orquestador ya empaquetado" in response.data
-    assert b"Scrapperlanas Scheduler" in response.data
-    assert b"Scrapperlanas Import Webhook" in response.data
-    assert b"http://localhost:5678/webhook/scrapperlanas/import" in response.data
+    assert b"n8n empaquetado" in response.data
+    assert b"Loto Signal Scheduler" in response.data
+    assert b"Loto Signal Import Webhook" in response.data
+    assert b"http://localhost:5678/webhook/loto-signal/import" in response.data

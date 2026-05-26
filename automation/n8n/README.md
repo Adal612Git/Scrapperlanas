@@ -1,75 +1,71 @@
-# n8n para Scrapperlanas
+# n8n para Loto Signal
 
-Scrapperlanas ya hace el trabajo pesado en Python:
+Loto Signal hace el trabajo pesado en Python: conectores, normalizacion, scoring, Intelligence V2, deduplicacion, persistencia y eventos. n8n solo orquesta corridas y recibe oportunidades externas.
 
-- scraping y conectores remotos
-- scoring base
-- enriquecimiento con IA
-- deduplicacion por `url`
-- persistencia y eventos
+Por compatibilidad, algunas variables y rutas internas conservan el alias legado `scrapperlanas`.
 
-n8n debe orquestar, no rehacer esa logica.
+## Workflows Empaquetados
 
-Este repo ya trae bootstrap automatico para dos workflows empaquetados:
+Al levantar `docker compose up --build`, n8n importa y activa:
 
-- `Scrapperlanas Scheduler`
-- `Scrapperlanas Import Webhook`
+- `Loto Signal Scheduler`
+- `Loto Signal Import Webhook`
 
-Cuando levantas `docker compose up --build`, `n8n` importa esos workflows al arranque y los deja activos.
+Los IDs internos siguen siendo `scrapperlanas-scheduler` y `scrapperlanas-import-webhook` para no romper instalaciones existentes.
 
-## URLs internas
+## URLs Internas
 
 - Desde Docker: `http://web:8000`
 - Desde host local: `http://127.0.0.1:5000`
 
-Todas las rutas internas usan:
+Todas las rutas internas requieren:
 
 - Header `Authorization: Bearer <CRON_SECRET>`
 
-## Endpoints listos
+No pongas el `CRON_SECRET` en workflows visibles al usuario final ni en repositorios.
+
+## Endpoints Listos
 
 - `GET /internal/automation/policies`
   Devuelve fuentes habilitadas con `last_run_at`, `next_run_at`, `is_due` y `frequency_minutes`.
 
 - `GET /internal/automation/policies/due`
-  Devuelve solo las fuentes vencidas. Este es el endpoint recomendado para el scheduler.
+  Devuelve solo fuentes vencidas.
 
 - `POST /internal/cron/ingest/policy/<source_key>`
-  Ejecuta una sola fuente. Respeta frecuencia por defecto.
+  Ejecuta una sola fuente y respeta frecuencia por defecto.
 
 - `GET /internal/cron/ingest`
   Ejecuta todas las fuentes vencidas. Sirve para cron simple o compatibilidad.
 
 - `POST /internal/import/opportunities`
-  Inserta o actualiza oportunidades normalizadas desde n8n. Ideal para correo, formularios o webhooks.
+  Inserta o actualiza oportunidades normalizadas desde n8n.
 
-## Workflow recomendado: scheduler real sin castigar fuentes
+## Scheduler Recomendado
 
-El workflow empaquetado usa una ruta mas robusta para bootstrap inicial:
+El workflow empaquetado corre cada `N8N_SCHEDULER_INTERVAL_MINUTES` y llama:
 
-1. `Schedule Trigger`
-   Corre cada `N8N_SCHEDULER_INTERVAL_MINUTES`.
+```text
+GET {{$env.SCRAPPERLANAS_BASE_URL}}/internal/cron/ingest
+```
 
-2. `HTTP Request`
-   `GET {{$env.SCRAPPERLANAS_BASE_URL}}/internal/cron/ingest`
+`SCRAPPERLANAS_BASE_URL` se mantiene como alias de compatibilidad. Puedes documentarlo internamente como URL base de Loto Signal.
 
 Con esto:
 
 - cada fuente corre solo cuando vence su `frequency_minutes`
-- el dashboard no depende de apretar un boton
-- el import inicial es mas simple de validar y desplegar
+- el Inbox inteligente no depende del boton manual
+- se evita polling agresivo contra fuentes publicas
 
-## Workflow recomendado: correo a oportunidades
+## Import Webhook
 
-El workflow empaquetado `Scrapperlanas Import Webhook` deja este endpoint en `n8n`:
+El workflow `Loto Signal Import Webhook` expone:
 
-- `POST {{$env.N8N_PUBLIC_URL}}/webhook/{{$env.N8N_IMPORT_WEBHOOK_PATH}}`
+```text
+POST {{$env.N8N_PUBLIC_URL}}/webhook/{{$env.N8N_IMPORT_WEBHOOK_PATH}}
+```
 
-Ese webhook:
-
-1. acepta un item, un array o un objeto con `items`
-2. normaliza la carga minima
-3. reenvia el payload a `POST {{$env.SCRAPPERLANAS_BASE_URL}}/internal/import/opportunities`
+El default de `N8N_IMPORT_WEBHOOK_PATH` ahora es `loto-signal/import`. Si ya tienes webhooks antiguos, puedes dejar el path legado configurado manualmente.
 
 Payload minimo:
 
@@ -97,15 +93,15 @@ Payload minimo:
 
 Notas:
 
-- Si la `url` ya existe, Scrapperlanas actualiza en vez de duplicar.
-- La IA corre dentro de la importacion igual que en los scrapers normales.
-- `email_alerts` soporta `min_score` y `max_age_days` en su politica para no meter ruido.
-- Para marketplaces con mejor probabilidad freelance, usa alertas oficiales por correo de Upwork y Workana y canalizalas aqui; es mas estable que scrapear HTML privado.
-- Si quieres reimportar los workflows empaquetados, levanta `n8n` con `N8N_BOOTSTRAP_FORCE=true`.
+- Si la `url` ya existe, Loto Signal actualiza en vez de duplicar.
+- Intelligence V2 corre dentro de la importacion igual que en las ingestas normales.
+- `email_alerts` soporta `min_score` y `max_age_days` en su politica.
+- Para marketplaces freelance, usa alertas oficiales por correo de Upwork/Workana hacia `email_alerts`.
+- Para reimportar workflows empaquetados, levanta n8n con `N8N_BOOTSTRAP_FORCE=true`.
 
-## Reglas practicas
+## Reglas Practicas
 
-- No hagas polling agresivo. Empieza con scheduler cada 15 minutos.
+- Empieza con scheduler cada 15 minutos.
 - Manten `frequency_minutes` por fuente en 60-180 para boards publicos.
 - Usa `include_terms`, `exclude_terms`, `remote_only`, `require_budget`, `max_items`, `min_score` y `max_age_days`.
-- El boton del dashboard es solo override manual.
+- El boton del Inbox inteligente es override manual, no el mecanismo principal de automatizacion.

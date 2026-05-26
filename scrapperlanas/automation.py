@@ -43,7 +43,7 @@ def init_app(app) -> None:
         thread = threading.Thread(
             target=_worker_loop,
             args=(app,),
-            name="scrapperlanas-local-automation",
+            name="loto-signal-local-automation",
             daemon=True,
         )
         runtime["worker_enabled"] = True
@@ -217,7 +217,7 @@ def _heartbeat_path(app) -> Path:
 
 
 def _log_path(app) -> Path:
-    return _artifact_root(app) / "scrapperlanas.log"
+    return _artifact_root(app) / "loto-signal.log"
 
 
 def _artifact_root(app) -> Path:

@@ -41,6 +41,17 @@ from .services.cadence import (
 )
 from .services.connectors.base import ERROR_STATUSES
 from .services.connectors.registry import connector_for_provider
+from .services.intelligence import (
+    available_transitions,
+    collect_evidence,
+    compare_accounts,
+    compose_outreach,
+    recommend_next_best_action,
+    score_v2,
+    transition_opportunity,
+)
+from .services.intelligence.risk import assess_risk
+from .services.intelligence.state_machine import CANONICAL_TO_LEGACY, LEGACY_TO_CANONICAL
 from .services.outreach import (
     activate_outreach_draft,
     list_active_outreach_drafts,
@@ -218,8 +229,9 @@ def dashboard():
     profile = _get_profile(db, g.user["id"])
     automation_summary = _automation_summary(db)
     filters = _build_filters(profile)
-    rows = _fetch_opportunities(db, filters, limit=120)
-    items = _sort_items([_serialize_opportunity(row) for row in rows])
+    rows = _fetch_opportunities(db, filters, limit=240)
+    items = _apply_quick_filter(_sort_items([_serialize_opportunity(row) for row in rows]), filters)
+    items = items[:120]
     all_rows = _fetch_opportunities(db, _blank_filters(), limit=None)
     all_items = _sort_items([_serialize_opportunity(row) for row in all_rows])
     _attach_outreach_summary(db, items)
@@ -322,6 +334,7 @@ def dashboard():
     ).fetchone()["total"]
     a1_items = _tier_items(all_items, tier="A1", limit=6)
     a2_items = _tier_items(all_items, tier="A2", limit=6)
+    copilot_summary = _copilot_summary(all_items, source_performance=source_performance)
 
     return render_template(
         "dashboard.html",
@@ -351,6 +364,7 @@ def dashboard():
         duplicate_candidates_count=duplicate_candidates_count,
         a1_items=a1_items,
         a2_items=a2_items,
+        copilot_summary=copilot_summary,
         automation_summary=automation_summary,
     )
 
@@ -392,6 +406,45 @@ def ingest_now():
     )
     for error in stats["errors"]:
         flash(error, "error")
+    return redirect(url_for("main.dashboard"))
+
+
+@bp.route("/opportunities/bulk", methods=("POST",))
+@login_required
+def opportunities_bulk_action():
+    ids = [_safe_int(value) for value in request.form.getlist("opportunity_ids")]
+    ids = [value for value in ids if value > 0]
+    action = request.form.get("bulk_action", "").strip()
+    target_state = request.form.get("target_state", "").strip()
+    if not ids:
+        flash("Selecciona al menos una oportunidad para aplicar una accion masiva.", "error")
+        return redirect(url_for("main.dashboard"))
+
+    db = get_db()
+    changed = 0
+    for opportunity_id in ids[:100]:
+        row = db.execute("SELECT state FROM opportunities WHERE id = ?", (opportunity_id,)).fetchone()
+        if row is None:
+            continue
+        if action == "move_stage" and target_state in PIPELINE_STATES:
+            update_opportunity_state(
+                db,
+                opportunity_id=opportunity_id,
+                actor_user_id=g.user["id"],
+                new_state=target_state,
+                note="Accion masiva desde Inbox inteligente.",
+            )
+            changed += 1
+        elif action == "discard":
+            update_opportunity_state(
+                db,
+                opportunity_id=opportunity_id,
+                actor_user_id=g.user["id"],
+                new_state="DESCARTADO",
+                note="Descartada por accion masiva desde Inbox inteligente.",
+            )
+            changed += 1
+    flash(f"Accion masiva aplicada a {changed} oportunidades.", "success" if changed else "error")
     return redirect(url_for("main.dashboard"))
 
 
@@ -532,6 +585,104 @@ def import_opportunities_internal():
             trigger="internal_import",
         )
     return jsonify({"ok": True, "stats": stats})
+
+
+@bp.route("/api/intelligence/summary", methods=("GET",))
+@login_required
+def api_intelligence_summary():
+    db = get_db()
+    rows = _fetch_opportunities(db, _blank_filters(), limit=None)
+    items = _sort_items([_serialize_opportunity(row) for row in rows])
+    return jsonify({"ok": True, "summary": _copilot_summary(items, source_performance=_source_performance(items))})
+
+
+@bp.route("/api/opportunities/<int:opportunity_id>/intelligence", methods=("GET",))
+@login_required
+def api_opportunity_intelligence(opportunity_id: int):
+    db = get_db()
+    row = db.execute("SELECT * FROM opportunities WHERE id = ?", (opportunity_id,)).fetchone()
+    if row is None:
+        return jsonify({"ok": False, "error": "Opportunity not found."}), 404
+    item = _serialize_opportunity(row)
+    return jsonify({"ok": True, "opportunity_id": opportunity_id, "intelligence": item["intelligence"]})
+
+
+@bp.route("/api/opportunities/<int:opportunity_id>/transition", methods=("POST",))
+@login_required
+def api_opportunity_transition(opportunity_id: int):
+    db = get_db()
+    opportunity = db.execute("SELECT * FROM opportunities WHERE id = ?", (opportunity_id,)).fetchone()
+    if opportunity is None:
+        return jsonify({"ok": False, "error": "Opportunity not found."}), 404
+
+    payload = request.get_json(silent=True) or {}
+    target = str(payload.get("next_state") or "").strip()
+    reason = str(payload.get("reason") or "").strip()
+    override = _truthy_arg(payload.get("override"))
+    context = {
+        **dict(opportunity),
+        **(payload.get("context") if isinstance(payload.get("context"), dict) else {}),
+    }
+    transition = transition_opportunity(
+        opportunity["state"],
+        target,
+        context,
+        actor=str(g.user["id"]),
+        reason=reason,
+        override=override,
+    )
+    if not transition.allowed:
+        return jsonify({"ok": False, "transition": transition.to_dict()}), 409
+
+    legacy_state = CANONICAL_TO_LEGACY.get(transition.next_state)
+    if legacy_state:
+        update_opportunity_state(
+            db,
+            opportunity_id=opportunity_id,
+            actor_user_id=g.user["id"],
+            new_state=legacy_state,
+            note=reason or f"Transition Intelligence V2: {transition.previous_state}->{transition.next_state}",
+        )
+    return jsonify({"ok": True, "transition": transition.to_dict(), "legacy_state": legacy_state})
+
+
+@bp.route("/api/opportunities/<int:opportunity_id>/outreach/draft", methods=("POST",))
+@login_required
+def api_opportunity_outreach_draft(opportunity_id: int):
+    db = get_db()
+    opportunity = db.execute("SELECT * FROM opportunities WHERE id = ?", (opportunity_id,)).fetchone()
+    if opportunity is None:
+        return jsonify({"ok": False, "error": "Opportunity not found."}), 404
+    payload = request.get_json(silent=True) or {}
+    item = _serialize_opportunity(opportunity)
+    draft = compose_outreach(item, tone=str(payload.get("tone") or "consultivo"))
+    return jsonify({"ok": True, "draft": draft.to_dict()})
+
+
+@bp.route("/api/accounts/<int:account_id>/merge-suggestions", methods=("GET",))
+@login_required
+def api_account_merge_suggestions(account_id: int):
+    db = get_db()
+    account = db.execute("SELECT * FROM buyer_accounts WHERE id = ?", (account_id,)).fetchone()
+    if account is None:
+        return jsonify({"ok": False, "error": "Account not found."}), 404
+    candidates = db.execute(
+        """
+        SELECT *
+        FROM buyer_accounts
+        WHERE id <> ?
+        ORDER BY updated_at DESC
+        LIMIT 30
+        """,
+        (account_id,),
+    ).fetchall()
+    suggestions = []
+    for candidate in candidates:
+        assessment = compare_accounts(dict(account), dict(candidate))
+        if assessment.duplicate_confidence >= 0.55:
+            suggestions.append({"account": dict(candidate), "assessment": assessment.to_dict()})
+    suggestions.sort(key=lambda item: item["assessment"]["duplicate_confidence"], reverse=True)
+    return jsonify({"ok": True, "suggestions": suggestions[:8]})
 
 
 @bp.route("/dashboard/save-view", methods=("POST",))
@@ -1319,7 +1470,7 @@ def export_csv():
     return Response(
         output.getvalue(),
         mimetype="text/csv",
-        headers={"Content-Disposition": "attachment; filename=scrapperlanas-opportunities.csv"},
+        headers={"Content-Disposition": "attachment; filename=loto-signal-opportunities.csv"},
     )
 
 
@@ -1603,6 +1754,8 @@ def _build_filters(profile) -> dict:
         "source": request.args.get("source", "").strip(),
         "sector": request.args.get("sector", "").strip() or (profile["sectors"] if profile and not has_query else ""),
         "risk": request.args.get("risk", "").strip(),
+        "quick": request.args.get("quick", "").strip(),
+        "range": request.args.get("range", "30d" if not has_query else "all").strip() or "all",
         "min_budget": request.args.get("min_budget", "").strip()
         or (str(profile["min_budget"]) if profile and profile["min_budget"] and not has_query else ""),
     }
@@ -1615,6 +1768,8 @@ def _blank_filters() -> dict:
         "source": "",
         "sector": "",
         "risk": "",
+        "quick": "",
+        "range": "all",
         "min_budget": "",
     }
 
@@ -1642,6 +1797,11 @@ def _fetch_opportunities(db, filters: dict, *, limit: int | None):
     if filters["min_budget"]:
         query += " AND COALESCE(budget_max, budget_min, 0) >= ?"
         params.append(_safe_int(filters["min_budget"]))
+    if filters.get("range") and filters["range"] != "all":
+        days = {"7d": 7, "30d": 30, "90d": 90}.get(filters["range"], 30)
+        cutoff = (datetime.now(UTC) - timedelta(days=days)).replace(microsecond=0).isoformat()
+        query += " AND COALESCE(posted_at, created_at) >= ?"
+        params.append(cutoff)
 
     query += " ORDER BY score DESC, COALESCE(posted_at, created_at) DESC"
     if limit is not None:
@@ -1689,7 +1849,57 @@ def _serialize_opportunity(row) -> dict:
         "confidence": int(item.get("score_confidence") or 0),
     }
     item.update(_priority_profile(item))
+    item["intelligence"] = _opportunity_intelligence(item)
+    item["canonical_state"] = LEGACY_TO_CANONICAL.get(str(item.get("state") or "").upper(), "new")
+    item["available_transitions"] = available_transitions(item["canonical_state"], item)
     return item
+
+
+def _opportunity_intelligence(item: dict) -> dict:
+    score = score_v2(item)
+    risk = assess_risk(item)
+    payload = {
+        **item,
+        "grade": score.grade,
+        "score_v2": score.numeric_score,
+        "scam_risk": risk.scam_risk,
+    }
+    nba = recommend_next_best_action(payload)
+    outreach = compose_outreach(payload)
+    evidence = collect_evidence(payload)
+    return {
+        "score": score.to_dict(),
+        "next_best_action": nba.to_dict(),
+        "evidence": evidence,
+        "risk": risk.to_dict(),
+        "outreach_preview": outreach.to_dict(),
+    }
+
+
+def _apply_quick_filter(items: list[dict], filters: dict) -> list[dict]:
+    quick = str(filters.get("quick") or "").strip()
+    if not quick:
+        return items
+    now = datetime.now(UTC)
+    if quick == "high_intent":
+        return [item for item in items if item["intelligence"]["score"]["grade"] in {"A1", "A2"}]
+    if quick == "budget_visible":
+        return [item for item in items if _budget_anchor(item) > 0]
+    if quick == "uncontacted":
+        return [item for item in items if item.get("commercial_status") in {"new", "reviewed", ""}]
+    if quick == "deadline_close":
+        return [
+            item
+            for item in items
+            if (deadline := _parse_datetime(item.get("deadline_at"))) and 0 <= (deadline - now).days <= 14
+        ]
+    if quick == "low_risk":
+        return [item for item in items if item.get("risk_level") == "low" and not item["intelligence"]["risk"]["warnings"]]
+    if quick == "strong_evidence":
+        return [item for item in items if len(item["intelligence"]["evidence"]) >= 3]
+    if quick == "possible_duplicates":
+        return [item for item in items if item.get("buyer_account_id") and item.get("buyer_name")]
+    return items
 
 
 def _format_budget(item: dict) -> str:
@@ -1845,17 +2055,21 @@ def _automation_summary(db) -> dict:
 
 def _n8n_summary() -> dict:
     public_url = str(current_app.config.get("N8N_PUBLIC_URL", "") or "").strip().rstrip("/")
-    base_url = str(current_app.config.get("SCRAPPERLANAS_BASE_URL", "") or "").strip().rstrip("/")
+    base_url = str(
+        current_app.config.get("LOTO_SIGNAL_BASE_URL")
+        or current_app.config.get("SCRAPPERLANAS_BASE_URL", "")
+        or ""
+    ).strip().rstrip("/")
     import_path = str(current_app.config.get("N8N_IMPORT_WEBHOOK_PATH", "") or "").strip().strip("/")
     scheduler_interval = max(1, int(current_app.config.get("N8N_SCHEDULER_INTERVAL_MINUTES", 15) or 15))
     workflows = (
         {
-            "name": "Scrapperlanas Scheduler",
+            "name": "Loto Signal Scheduler",
             "filename": "scrapperlanas_scheduler.json",
             "purpose": "Dispara la ingesta due-only sin depender del boton del dashboard.",
         },
         {
-            "name": "Scrapperlanas Import Webhook",
+            "name": "Loto Signal Import Webhook",
             "filename": "scrapperlanas_import_webhook.json",
             "purpose": "Recibe JSON en n8n y lo reinyecta al import interno para correo, forms o webhooks externos.",
         },
@@ -2330,6 +2544,57 @@ def _sales_actions(items: list[dict]) -> dict:
     }
 
 
+def _copilot_summary(items: list[dict], *, source_performance: list[dict]) -> dict:
+    active_items = [
+        item
+        for item in items
+        if item.get("state") not in {"GANADO", "PERDIDO", "DESCARTADO"}
+        and not _is_commercially_closed(item)
+        and not item.get("is_snoozed_active")
+    ]
+    focus = [
+        item
+        for item in active_items
+        if item.get("intelligence", {}).get("score", {}).get("grade") in {"A1", "A2"}
+    ]
+    focus = _sort_items(focus)
+    top_item = focus[0] if focus else (active_items[0] if active_items else None)
+    due_deadlines = [
+        item
+        for item in active_items
+        if (deadline := _parse_datetime(item.get("deadline_at")))
+        and 0 <= (deadline - datetime.now(UTC)).days <= 14
+    ]
+    risk_items = [
+        item
+        for item in active_items
+        if item.get("intelligence", {}).get("risk", {}).get("warnings")
+    ]
+    top_source = source_performance[0] if source_performance else None
+    recommendation = top_item.get("intelligence", {}).get("next_best_action") if top_item else None
+    outreach = top_item.get("intelligence", {}).get("outreach_preview") if top_item else None
+    summary_parts = []
+    if focus:
+        summary_parts.append(f"{len(focus)} oportunidades A1/A2 piden atencion.")
+    if due_deadlines:
+        summary_parts.append(f"{len(due_deadlines)} deadlines estan cerca.")
+    if top_source:
+        summary_parts.append(f"{top_source['source_label']} lidera calidad por fuente.")
+    if not summary_parts:
+        summary_parts.append("No hay urgencias claras; conviene ejecutar ingesta o ampliar filtros.")
+
+    return {
+        "summary": " ".join(summary_parts),
+        "top_opportunity": top_item,
+        "recommendation": recommendation,
+        "outreach": outreach,
+        "risk_items": risk_items[:4],
+        "deadline_items": due_deadlines[:4],
+        "top_source": top_source,
+        "merge_suggestion_count": sum(1 for item in active_items if item.get("buyer_account_id") and item.get("buyer_name")),
+    }
+
+
 def _source_performance(items: list[dict]) -> list[dict]:
     buckets: dict[str, dict] = {}
     for item in items:
@@ -2355,9 +2620,10 @@ def _source_performance(items: list[dict]) -> list[dict]:
         )
         bucket["total"] += 1
         bucket["score_total"] += int(item.get("score_total") or item.get("priority_score") or 0)
-        if item.get("priority_tier") == "A1":
+        grade_v2 = item.get("intelligence", {}).get("score", {}).get("grade") or item.get("priority_tier")
+        if grade_v2 == "A1":
             bucket["a1_count"] += 1
-        if item.get("priority_tier") == "A2":
+        if grade_v2 == "A2":
             bucket["a2_count"] += 1
         if status in {"contacted", "followup_due", "replied", "discovery", "proposal", "won", "lost"} or item.get("last_contacted_at"):
             bucket["contacted_count"] += 1

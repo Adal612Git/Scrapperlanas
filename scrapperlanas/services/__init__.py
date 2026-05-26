@@ -1,2 +1,1 @@
-"""Servicios de dominio para Scrapperlanas."""
-
+"""Servicios de dominio para Loto Signal."""

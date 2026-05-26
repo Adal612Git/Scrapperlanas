@@ -3,167 +3,109 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{% block title %}Scrapperlanas{% endblock %}</title>
+    <title>{% block title %}Loto Signal{% endblock %}</title>
+    <link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='logo.jpg') }}">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <script src="{{ url_for('static', filename='app.js') }}" defer></script>
   </head>
-  <body class="min-h-screen bg-slate-950 text-slate-300 selection:bg-blue-500/30">
+  <body class="loto-body">
     {% if g.user %}
-      <div class="relative min-h-screen overflow-hidden">
-        <div class="pointer-events-none absolute inset-x-0 top-[-12rem] mx-auto h-96 w-96 rounded-full bg-blue-600/20 blur-[120px]"></div>
-        <div class="pointer-events-none absolute bottom-[-10rem] right-[-6rem] h-80 w-80 rounded-full bg-fuchsia-600/15 blur-[120px]"></div>
+      <div id="app-shell" class="loto-shell">
+        <aside id="main-sidebar" class="loto-sidebar panel-transition">
+          <div class="loto-sidebar-brand">
+            <a class="loto-brand" href="{{ url_for('main.dashboard') }}" aria-label="Loto Signal home">
+              <span class="loto-brand-mark">
+                <img src="{{ url_for('static', filename='logo.jpg') }}" alt="Loto Software" loading="eager">
+                <span class="loto-logo-fallback">LS</span>
+              </span>
+              <span class="sidebar-text">
+                <strong>Loto Signal</strong>
+                <small>Buyer Intelligence Console</small>
+              </span>
+            </a>
+            <button type="button" data-sidebar-toggle class="loto-icon-button" aria-label="Contraer navegacion">
+              <i class="fa-solid fa-bars"></i>
+            </button>
+          </div>
 
-        <div id="app-shell" class="relative z-10 flex min-h-screen flex-col lg:flex-row">
-          <aside id="main-sidebar" class="panel-transition border-b border-slate-800 bg-slate-900/95 shadow-2xl shadow-black/30 lg:min-h-screen lg:w-72 lg:shrink-0 lg:border-b-0 lg:border-r">
-            <div class="flex h-full flex-col justify-between">
-              <div>
-                <div class="flex items-center justify-between border-b border-slate-800 px-5 py-4">
-                  <a class="flex items-center gap-3" href="{{ url_for('main.dashboard') }}">
-                    <span class="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-400 text-sm font-black text-white shadow-[0_0_20px_rgba(59,130,246,0.35)]">SL</span>
-                    <span class="sidebar-text">
-                      <strong class="block text-base font-black tracking-wide text-white">Scrapperlanas</strong>
-                      <small class="text-xs uppercase tracking-[0.28em] text-slate-500">Operating shell</small>
-                    </span>
-                  </a>
-                  <button type="button" data-sidebar-toggle class="grid h-11 w-11 place-items-center rounded-2xl border border-slate-700 bg-slate-800/90 text-slate-300 hover:border-blue-500/40 hover:text-blue-300">
-                    <i class="fa-solid fa-bars"></i>
-                  </button>
-                </div>
+          <nav class="loto-nav" aria-label="Navegacion principal">
+            <a href="{{ url_for('main.dashboard') }}#inbox" data-section-target="inbox" class="loto-nav-link {% if request.endpoint == 'main.dashboard' %}is-nav-active{% endif %}">
+              <i class="fa-solid fa-inbox sidebar-icon"></i>
+              <span class="sidebar-text">Inbox inteligente</span>
+            </a>
+            <a href="{{ url_for('main.dashboard') }}#oportunidades" data-section-target="oportunidades" class="loto-nav-link">
+              <i class="fa-solid fa-bolt sidebar-icon"></i>
+              <span class="sidebar-text">Oportunidades</span>
+            </a>
+            <a href="{{ url_for('main.accounts') }}" class="loto-nav-link {% if request.endpoint in ['main.accounts', 'main.account_detail', 'main.account_duplicates'] %}is-nav-active{% endif %}">
+              <i class="fa-solid fa-building-user sidebar-icon"></i>
+              <span class="sidebar-text">Cuentas cliente</span>
+            </a>
+            <a href="{{ url_for('main.dashboard') }}#pipeline" data-section-target="pipeline" class="loto-nav-link">
+              <i class="fa-solid fa-table-columns sidebar-icon"></i>
+              <span class="sidebar-text">Pipeline</span>
+            </a>
+            <a href="{{ url_for('main.targets') }}" class="loto-nav-link {% if request.endpoint in ['main.targets', 'main.target_new', 'main.target_detail'] %}is-nav-active{% endif %}">
+              <i class="fa-solid fa-crosshairs sidebar-icon"></i>
+              <span class="sidebar-text">Targets comerciales</span>
+            </a>
+            <a href="{{ url_for('main.dashboard') }}#vistas" data-section-target="vistas" class="loto-nav-link">
+              <i class="fa-solid fa-bookmark sidebar-icon"></i>
+              <span class="sidebar-text">Vistas guardadas</span>
+            </a>
+            <a href="{{ url_for('main.dashboard') }}#alertas" data-section-target="alertas" class="loto-nav-link">
+              <i class="fa-solid fa-bell sidebar-icon"></i>
+              <span class="sidebar-text">Alertas</span>
+            </a>
+            <a href="{{ url_for('main.export_csv') }}" class="loto-nav-link">
+              <i class="fa-solid fa-file-export sidebar-icon"></i>
+              <span class="sidebar-text">Exportar CSV</span>
+            </a>
+            <a href="{{ url_for('main.settings') }}" class="loto-nav-link {% if request.endpoint == 'main.settings' %}is-nav-active{% endif %}">
+              <i class="fa-solid fa-sliders sidebar-icon"></i>
+              <span class="sidebar-text">Configuracion</span>
+            </a>
+          </nav>
 
-                <nav class="space-y-7 px-4 py-6">
-                  <div class="space-y-2">
-                    <p class="sidebar-label px-3 text-[11px] font-bold uppercase tracking-[0.32em] text-slate-500">Operacion</p>
-                    <a href="{{ url_for('main.dashboard') }}#inbox" data-section-target="inbox" class="sidebar-nav-link {% if request.endpoint == 'main.dashboard' %}is-nav-active{% endif %} flex items-center gap-3 rounded-2xl border border-transparent px-4 py-3 text-sm font-bold text-slate-300 hover:border-slate-700 hover:bg-slate-800 hover:text-white">
-                      <i class="fa-solid fa-inbox sidebar-icon"></i>
-                      <span class="sidebar-text">Dashboard (Inbox)</span>
-                    </a>
-                    <a href="{{ url_for('main.dashboard') }}#visualizacion" data-section-target="visualizacion" class="sidebar-nav-link flex items-center gap-3 rounded-2xl border border-transparent px-4 py-3 text-sm font-semibold text-slate-400 hover:border-slate-700 hover:bg-slate-800 hover:text-white">
-                      <i class="fa-solid fa-chart-pie sidebar-icon"></i>
-                      <span class="sidebar-text">Visualizacion</span>
-                    </a>
-                    <a href="{{ url_for('main.dashboard') }}#historial" data-section-target="historial" class="sidebar-nav-link flex items-center gap-3 rounded-2xl border border-transparent px-4 py-3 text-sm font-semibold text-slate-400 hover:border-slate-700 hover:bg-slate-800 hover:text-white">
-                      <i class="fa-solid fa-table-columns sidebar-icon"></i>
-                      <span class="sidebar-text">Pipeline</span>
-                    </a>
-                    <a href="{{ url_for('main.accounts') }}" class="sidebar-nav-link {% if request.endpoint in ['main.accounts', 'main.account_detail', 'main.account_duplicates'] %}is-nav-active{% endif %} flex items-center gap-3 rounded-2xl border border-transparent px-4 py-3 text-sm font-semibold text-slate-400 hover:border-slate-700 hover:bg-slate-800 hover:text-white">
-                      <i class="fa-solid fa-building-user sidebar-icon"></i>
-                      <span class="sidebar-text">Cuentas</span>
-                    </a>
-                    <a href="{{ url_for('main.targets') }}" class="sidebar-nav-link {% if request.endpoint in ['main.targets', 'main.target_new', 'main.target_detail'] %}is-nav-active{% endif %} flex items-center gap-3 rounded-2xl border border-transparent px-4 py-3 text-sm font-semibold text-slate-400 hover:border-slate-700 hover:bg-slate-800 hover:text-white">
-                      <i class="fa-solid fa-crosshairs sidebar-icon"></i>
-                      <span class="sidebar-text">Targets</span>
-                    </a>
-                  </div>
-
-                  <div class="space-y-2">
-                    <p class="sidebar-label px-3 text-[11px] font-bold uppercase tracking-[0.32em] text-slate-500">Memoria</p>
-                    <a href="{{ url_for('main.dashboard') }}#busquedas" data-section-target="busquedas" class="sidebar-nav-link flex items-center gap-3 rounded-2xl border border-transparent px-4 py-3 text-sm font-semibold text-slate-400 hover:border-slate-700 hover:bg-slate-800 hover:text-white">
-                      <i class="fa-solid fa-bookmark sidebar-icon"></i>
-                      <span class="sidebar-text">Busquedas guardadas</span>
-                    </a>
-                    <a href="{{ url_for('main.dashboard') }}#alertas" data-section-target="alertas" class="sidebar-nav-link flex items-center gap-3 rounded-2xl border border-transparent px-4 py-3 text-sm font-semibold text-slate-400 hover:border-slate-700 hover:bg-slate-800 hover:text-white">
-                      <i class="fa-solid fa-bell sidebar-icon"></i>
-                      <span class="sidebar-text">Alertas</span>
-                    </a>
-                  </div>
-
-                  <div class="space-y-2">
-                    <p class="sidebar-label px-3 text-[11px] font-bold uppercase tracking-[0.32em] text-slate-500">Control</p>
-                    <a href="{{ url_for('main.settings') }}" class="sidebar-nav-link {% if request.endpoint == 'main.settings' %}is-nav-active{% endif %} flex items-center gap-3 rounded-2xl border border-transparent px-4 py-3 text-sm font-semibold text-slate-400 hover:border-slate-700 hover:bg-slate-800 hover:text-white">
-                      <i class="fa-solid fa-sliders sidebar-icon"></i>
-                      <span class="sidebar-text">Configuracion</span>
-                    </a>
-                    <a href="{{ url_for('main.export_csv') }}" class="sidebar-nav-link flex items-center gap-3 rounded-2xl border border-transparent px-4 py-3 text-sm font-semibold text-slate-400 hover:border-slate-700 hover:bg-slate-800 hover:text-white">
-                      <i class="fa-solid fa-file-export sidebar-icon"></i>
-                      <span class="sidebar-text">Exportar CSV</span>
-                    </a>
-                  </div>
-                </nav>
-              </div>
-
-              <div class="border-t border-slate-800 px-4 py-4">
-                <div class="rounded-3xl border border-slate-800 bg-slate-950/60 p-4 shadow-inner shadow-black/20">
-                  <div class="flex items-center gap-3">
-                    <div class="grid h-12 w-12 place-items-center rounded-full border border-slate-700 bg-slate-800 text-sm font-black text-blue-300">
-                      {{ (g.user.email[:2] if g.user and g.user.email else 'SL') | upper }}
-                    </div>
-                    <div class="sidebar-user-copy min-w-0 flex-1">
-                      <p class="truncate text-sm font-bold text-white">{{ g.user.email }}</p>
-                      <p class="text-xs font-medium uppercase tracking-[0.2em] text-emerald-400">Plan Premium</p>
-                    </div>
-                  </div>
-                  <div class="sidebar-user-actions mt-4 grid gap-2">
-                    <a href="{{ url_for('main.settings') }}" class="flex items-center justify-center gap-2 rounded-2xl border border-slate-700 bg-slate-800 px-4 py-2.5 text-sm font-semibold text-slate-200 hover:border-slate-600 hover:bg-slate-700">
-                      <i class="fa-solid fa-gear text-blue-300"></i>
-                      <span class="sidebar-text">Ajustes</span>
-                    </a>
-                    <form action="{{ url_for('auth.logout') }}" method="post">
-                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                      <button type="submit" class="flex w-full items-center justify-center gap-2 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-sm font-semibold text-rose-200 hover:bg-rose-500/15">
-                        <i class="fa-solid fa-right-from-bracket"></i>
-                        <span class="sidebar-text">Cerrar sesion</span>
-                      </button>
-                    </form>
-                  </div>
-                </div>
+          <div class="loto-sidebar-footer">
+            <div class="loto-user-card">
+              <span class="loto-user-avatar">{{ (g.user.email[:2] if g.user and g.user.email else 'LS') | upper }}</span>
+              <div class="sidebar-user-copy">
+                <strong>{{ g.user.email }}</strong>
+                <span>Loto Software</span>
               </div>
             </div>
-          </aside>
+            <form action="{{ url_for('auth.logout') }}" method="post">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="loto-secondary-button w-full">
+                <i class="fa-solid fa-right-from-bracket"></i>
+                <span class="sidebar-text">Cerrar sesion</span>
+              </button>
+            </form>
+          </div>
+        </aside>
 
-          <main class="min-w-0 flex-1">
-            <div class="sticky top-0 z-20 border-b border-slate-800 bg-slate-950/85 backdrop-blur-xl">
-              <div class="mx-auto flex max-w-[1600px] flex-col gap-5 px-4 py-5 sm:px-6 lg:flex-row lg:items-start lg:justify-between lg:px-8">
-                <div class="max-w-3xl space-y-2">
-                  <p class="text-[11px] font-bold uppercase tracking-[0.34em] text-slate-500">{% block page_kicker %}Operacion{% endblock %}</p>
-                  <h1 class="text-3xl font-black tracking-tight text-white sm:text-4xl">{% block page_title %}Scrapperlanas{% endblock %}</h1>
-                  <p class="max-w-2xl text-sm leading-7 text-slate-400">{% block page_description %}Operacion, seguimiento y decision dentro de una sola consola.{% endblock %}</p>
-                </div>
-                <div class="grid gap-3 lg:min-w-[280px] lg:justify-items-end">
-                  <div class="flex flex-wrap gap-2 lg:justify-end">
-                    {% block page_status %}
-                      <span class="rounded-full border border-blue-500/30 bg-blue-500/15 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-blue-200">Live</span>
-                    {% endblock %}
-                  </div>
-                  <div class="flex flex-wrap gap-2 lg:justify-end">
-                    {% block page_actions %}{% endblock %}
-                  </div>
-                </div>
-              </div>
+        <main class="loto-main">
+          <header class="loto-topbar">
+            <div>
+              <p class="loto-kicker">{% block page_kicker %}Loto Software{% endblock %}</p>
+              <h1>{% block page_title %}Loto Signal{% endblock %}</h1>
+              <p>{% block page_description %}Buyer Intelligence Console para decidir a quien contactar hoy y por que.{% endblock %}</p>
             </div>
-
-            <div class="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">
-              {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                  <section class="mb-6 grid gap-3">
-                    {% for category, message in messages %}
-                      <article class="rounded-2xl border px-4 py-3 text-sm font-medium shadow-lg shadow-black/10 {% if category == 'success' %}border-emerald-500/20 bg-emerald-500/10 text-emerald-100{% else %}border-rose-500/20 bg-rose-500/10 text-rose-100{% endif %}">
-                        {{ message }}
-                      </article>
-                    {% endfor %}
-                  </section>
-                {% endif %}
-              {% endwith %}
-
-              {% block content %}{% endblock %}
+            <div class="loto-topbar-actions">
+              {% block page_status %}{% endblock %}
+              {% block page_actions %}{% endblock %}
             </div>
-          </main>
-        </div>
-      </div>
-    {% else %}
-      <div class="relative min-h-screen overflow-hidden">
-        <div class="pointer-events-none absolute left-[-10%] top-[-10%] h-96 w-96 rounded-full bg-blue-600/30 blur-[140px]"></div>
-        <div class="pointer-events-none absolute bottom-[-10%] right-[-10%] h-96 w-96 rounded-full bg-fuchsia-600/25 blur-[140px]"></div>
-        <div class="pointer-events-none absolute right-[10%] top-[18%] h-72 w-72 rounded-full bg-emerald-500/20 blur-[140px]"></div>
+          </header>
 
-        <main class="relative z-10 mx-auto flex min-h-screen max-w-6xl items-center px-4 py-10 sm:px-6">
-          <div class="w-full">
+          <div class="loto-content">
             {% with messages = get_flashed_messages(with_categories=true) %}
               {% if messages %}
-                <section class="mx-auto mb-6 max-w-md space-y-3">
+                <section class="loto-flashes" aria-live="polite">
                   {% for category, message in messages %}
-                    <article class="rounded-2xl border px-4 py-3 text-sm font-medium shadow-lg shadow-black/20 {% if category == 'success' %}border-emerald-500/20 bg-emerald-500/10 text-emerald-100{% else %}border-rose-500/20 bg-rose-500/10 text-rose-100{% endif %}">
+                    <article class="loto-flash {% if category == 'success' %}is-success{% else %}is-error{% endif %}">
                       {{ message }}
                     </article>
                   {% endfor %}
@@ -171,10 +113,28 @@
               {% endif %}
             {% endwith %}
 
-            {% block auth_content %}{% endblock %}
+            {% block content %}{% endblock %}
           </div>
         </main>
       </div>
+    {% else %}
+      <main class="loto-auth-shell">
+        <div class="loto-auth-frame">
+          {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+              <section class="loto-flashes" aria-live="polite">
+                {% for category, message in messages %}
+                  <article class="loto-flash {% if category == 'success' %}is-success{% else %}is-error{% endif %}">
+                    {{ message }}
+                  </article>
+                {% endfor %}
+              </section>
+            {% endif %}
+          {% endwith %}
+
+          {% block auth_content %}{% endblock %}
+        </div>
+      </main>
     {% endif %}
   </body>
 </html>

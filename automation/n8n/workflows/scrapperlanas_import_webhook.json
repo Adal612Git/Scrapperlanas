@@ -1,5 +1,5 @@
 {
-  "name": "Scrapperlanas Import Webhook",
+  "name": "Loto Signal Import Webhook",
   "active": true,
   "nodes": [
     {
@@ -52,7 +52,7 @@
         }
       },
       "id": "e6650fdf-21af-42cf-a50a-a817d7b3b0d9",
-      "name": "Import Into Scrapperlanas",
+      "name": "Import Into Loto Signal",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -77,7 +77,7 @@
       "main": [
         [
           {
-            "node": "Import Into Scrapperlanas",
+            "node": "Import Into Loto Signal",
             "type": "main",
             "index": 0
           }

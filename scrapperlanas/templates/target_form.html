@@ -1,12 +1,12 @@
 {% extends "base.html" %}
-{% block title %}Target | Scrapperlanas{% endblock %}
+{% block title %}Target comercial | Loto Signal{% endblock %}
 {% block page_kicker %}Senales ATS{% endblock %}
 {% block page_title %}{{ "Nuevo target" if mode == "new" else target.name }}{% endblock %}
 {% block page_description %}Configura una empresa objetivo para escanear vacantes tecnicas publicas sin abrir fuentes masivas.{% endblock %}
 {% block page_actions %}
   <a href="{{ url_for('main.targets') }}" class="inline-flex items-center gap-2 rounded-2xl border border-slate-700 bg-slate-900 px-4 py-2.5 text-sm font-bold text-slate-200 hover:border-slate-600">
     <i class="fa-solid fa-arrow-left"></i>
-    Targets
+    Targets comerciales
   </a>
 {% endblock %}
 {% block content %}

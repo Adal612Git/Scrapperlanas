@@ -272,7 +272,7 @@ def _notice_url(source_name: str, notice_id: str, template: str, fallback: str) 
         return f"https://www.find-tender.service.gov.uk/Notice/{notice_id}"
     if source_name == "uk_contracts_finder":
         return f"https://www.contractsfinder.service.gov.uk/Notice/{notice_id}"
-    return f"https://scrapperlanas.local/procurement/{source_name}/{notice_id}"
+    return f"https://loto-signal.local/procurement/{source_name}/{notice_id}"
 
 
 def _first_nested_date(parent: Mapping[str, Any], *paths: tuple[str, str]) -> str | None:
